@@ -565,6 +565,12 @@ func (w *WebSocketReporter) routeCommand(cmd CommandMessage) {
 		kp, err = w.handleGenerateRealityKeypair(cmd.Data)
 		response.Type = "GenerateRealityKeypairResponse"
 		response.Data = kp
+	// 中转:测试落地(经本前置机用 socks 拨号,回显出口 IP)
+	case "TestOutbound":
+		var testResult map[string]interface{}
+		testResult, err = w.handleTestOutbound(cmd.Data)
+		response.Type = "TestOutboundResponse"
+		response.Data = testResult
 
 	default:
 		err = fmt.Errorf("未知命令类型: %s", cmd.Type)
