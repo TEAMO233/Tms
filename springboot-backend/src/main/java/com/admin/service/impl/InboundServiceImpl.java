@@ -226,8 +226,19 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     }
 
     @Override
-    public R deleteInboundsByNode(Long nodeId) {
-        List<Inbound> inbounds = this.list(new QueryWrapper<Inbound>().eq("node_id", nodeId));
+    public R deleteInboundsByNode(Long nodeId, Boolean relay, Long landingId) {
+        // 只清该机的目标组:relay=true 清某落地的中转协议;否则清直连协议。避免从直连卡把中转也删了。
+        QueryWrapper<Inbound> qw = new QueryWrapper<Inbound>().eq("node_id", nodeId);
+        if (Boolean.TRUE.equals(relay)) {
+            if (landingId != null) {
+                qw.eq("landing_id", landingId);
+            } else {
+                qw.isNotNull("landing_id");
+            }
+        } else {
+            qw.isNull("landing_id");
+        }
+        List<Inbound> inbounds = this.list(qw);
         for (Inbound in : inbounds) {
             deleteInbound(in.getId());
         }
@@ -288,7 +299,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             JSONObject result = new JSONObject();
             result.put("inboundUserId", existed.getId());
             result.put("link", f != null ? buildClientLink(in, existed, node, f) : "");
-            result.put("subToken", getOrCreateLineSubToken(user.getId(), node.getId()));
+            result.put("subToken", getOrCreateLineSubToken(user.getId(), node.getId(), in.getLandingId()));
             return R.ok(result);
         }
 
@@ -332,8 +343,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             userMapper.updateById(user);
         }
 
-        // 5. 存 inbound_user(带该【线路】的订阅 token:车友×该机器一条,该机所有协议共享)
-        String subToken = getOrCreateLineSubToken(user.getId(), node.getId());
+        // 5. 存 inbound_user(带该【线路】的订阅 token:车友×机器×落地组一条)
+        String subToken = getOrCreateLineSubToken(user.getId(), node.getId(), in.getLandingId());
 
         InboundUser iu = new InboundUser();
         iu.setInboundId(in.getId());
@@ -370,14 +381,26 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         if (user == null) {
             return R.err("用户不存在");
         }
-        // 机器卡分配:只分配该节点(机器)上的协议;不传 nodeId=所有节点
-        List<Inbound> inbounds = dto.getNodeId() != null
-                ? this.list(new QueryWrapper<Inbound>().eq("node_id", dto.getNodeId()))
-                : this.list();
-        if (inbounds.isEmpty()) {
-            return R.err("这台机器还没有协议,先去「一键添加」");
+        // 分配的是「直连组」还是「某落地的中转组」——同一台机器的直连、每个落地各算一条独立线路/订阅
+        boolean relay = Boolean.TRUE.equals(dto.getRelay());
+        Long groupLanding = relay ? dto.getLandingId() : null;
+        if (relay && groupLanding == null) {
+            return R.err("中转分配缺落地");
         }
-        // 订阅按【线路】= 车友 × 机器:每台机器一条订阅 token(该机所有协议共享);车友可有很多条线路
+        QueryWrapper<Inbound> qw = new QueryWrapper<>();
+        if (dto.getNodeId() != null) {
+            qw.eq("node_id", dto.getNodeId());
+        }
+        if (relay) {
+            qw.eq("landing_id", groupLanding);   // 中转组:该落地的协议
+        } else {
+            qw.isNull("landing_id");             // 直连组:本机出网的协议
+        }
+        List<Inbound> inbounds = this.list(qw);
+        if (inbounds.isEmpty()) {
+            return R.err(relay ? "这条中转还没有协议" : "这台机器还没有直连协议,先去「一键添加」");
+        }
+        // 订阅按【线路】= 车友 × 机器 × 落地组:一组共享一条订阅 token;车友可有很多条线路
         java.util.Map<Long, String> lineTokens = new java.util.HashMap<>();
         // 车友专属限速器(每车友唯一;每节点只推一次,该机所有协议共享;TCP+UDP 都靠服务级 `$` 限住、车友间独立)
         Integer userLimiter = (dto.getSpeedId() != null) ? perUserLimiterName(user.getId()) : null;
@@ -410,9 +433,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 }
                 limiterPushedNodes.add(node.getId());
             }
-            // 这台机器的线路订阅 token(该机所有协议共享一条)
+            // 这条线路(机器×落地组)的订阅 token,该组所有协议共享一条
             String subToken = lineTokens.computeIfAbsent(node.getId(),
-                    nid -> getOrCreateLineSubToken(user.getId(), nid));
+                    nid -> getOrCreateLineSubToken(user.getId(), nid, groupLanding));
             R r = assignOneNoPush(in, node, user, userLimiter, dto.getExpTime(), subToken);
             if (r.getCode() != 0) {
                 if (firstError == null) firstError = r.getMsg();
@@ -431,9 +454,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         for (Long nid : affectedNodes) {
             pushNodeSingbox(nid);
         }
-        // 结果里带回这条线路的订阅 token(机器卡分配 = 单机,取该机的)
+        // 结果里带回这条线路的订阅 token(机器卡分配 = 单机单落地组)
         String resultToken = (dto.getNodeId() != null)
-                ? lineTokens.computeIfAbsent(dto.getNodeId(), nid -> getOrCreateLineSubToken(user.getId(), nid))
+                ? lineTokens.computeIfAbsent(dto.getNodeId(), nid -> getOrCreateLineSubToken(user.getId(), nid, groupLanding))
                 : (lineTokens.isEmpty() ? null : lineTokens.values().iterator().next());
         if (assigned == 0) {
             if (firstError == null && skipped > 0) {
@@ -562,8 +585,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             return R.ok(lines);
         }
         List<InboundUser> ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("user_id", userId));
-        // 按机器(node)分组 → 一台机器 = 一条线路 = 一条订阅
-        java.util.Map<Long, java.util.List<InboundUser>> byNode = new java.util.LinkedHashMap<>();
+        // 按【线路】= 机器 × 落地组 分组:同一台机器的直连、每个落地各算一条订阅
+        java.util.Map<String, java.util.List<InboundUser>> byLine = new java.util.LinkedHashMap<>();
+        java.util.Map<String, long[]> lineKey = new java.util.HashMap<>(); // key -> [nodeId, landingId(0=直连)]
         for (InboundUser iu : ius) {
             if (iu.getStatus() != null && iu.getStatus() == 0) {
                 continue;
@@ -572,25 +596,22 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             if (in == null) {
                 continue;
             }
-            byNode.computeIfAbsent(in.getNodeId(), k -> new java.util.ArrayList<>()).add(iu);
+            long lid = in.getLandingId() != null ? in.getLandingId() : 0L;
+            String key = in.getNodeId() + "|" + lid;
+            byLine.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(iu);
+            lineKey.putIfAbsent(key, new long[]{in.getNodeId(), lid});
         }
-        for (java.util.Map.Entry<Long, java.util.List<InboundUser>> e : byNode.entrySet()) {
-            Long nodeId = e.getKey();
+        for (java.util.Map.Entry<String, java.util.List<InboundUser>> e : byLine.entrySet()) {
+            long[] k = lineKey.get(e.getKey());
+            Long nodeId = k[0];
+            Long landingId = (k[1] == 0L) ? null : k[1];
             Node node = nodeMapper.selectById(nodeId);
             String token = null;
             int count = 0;
-            Long landingId = null;
             for (InboundUser iu : e.getValue()) {
-                Inbound in = this.getById(iu.getInboundId());
-                if (in == null) {
-                    continue;
-                }
                 count++;
                 if (token == null && iu.getSubToken() != null && !iu.getSubToken().isEmpty()) {
                     token = iu.getSubToken();
-                }
-                if (in.getLandingId() != null) {
-                    landingId = in.getLandingId();
                 }
             }
             if (count == 0) {
@@ -615,10 +636,19 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return R.ok(lines);
     }
 
-    /** 取某车友在某机器(线路)的订阅 token;没有就生成一个,回填给他在这台机器上的所有 inbound_user(该机所有协议共享一条) */
-    private String getOrCreateLineSubToken(Long userId, Long nodeId) {
+    /**
+     * 取某车友在某条线路(机器 × 落地组)的订阅 token;没有就生成,回填给他在该组的所有 inbound_user。
+     * landingId=null → 直连组(该机 landing_id IS NULL);非空 → 该落地的中转组。同机直连/各落地各一条 token。
+     */
+    private String getOrCreateLineSubToken(Long userId, Long nodeId, Long landingId) {
+        QueryWrapper<Inbound> qw = new QueryWrapper<Inbound>().eq("node_id", nodeId);
+        if (landingId != null) {
+            qw.eq("landing_id", landingId);
+        } else {
+            qw.isNull("landing_id");
+        }
         List<Long> inboundIds = new java.util.ArrayList<>();
-        for (Inbound in : this.list(new QueryWrapper<Inbound>().eq("node_id", nodeId))) {
+        for (Inbound in : this.list(qw)) {
             inboundIds.add(in.getId());
         }
         if (inboundIds.isEmpty()) {

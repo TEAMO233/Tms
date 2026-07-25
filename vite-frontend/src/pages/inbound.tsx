@@ -144,8 +144,8 @@ export default function InboundPage() {
   };
 
   const handleClearNode = async (nodeId: number, nodeName: string) => {
-    if (!window.confirm(`确定清空「${nodeName}」上的所有协议?(连带其转发/用户)`)) return;
-    const res = await deleteInboundsByNode(nodeId);
+    if (!window.confirm(`确定清空「${nodeName}」上的直连协议?(连带其转发/用户;中转协议不受影响)`)) return;
+    const res = await deleteInboundsByNode(nodeId, false);
     if (res.code === 0) {
       toast.success("已清空该机协议");
       loadAll();
@@ -154,7 +154,8 @@ export default function InboundPage() {
     }
   };
 
-  const machineNodes = nodes.filter((n) => inbounds.some((ib) => ib.nodeId === n.id));
+  // 协议管理只管【直连】协议(landingId 为空);中转的协议在「中转」页管
+  const machineNodes = nodes.filter((n) => inbounds.some((ib) => ib.nodeId === n.id && !ib.landingId));
 
   return (
     <div className="p-4 space-y-4">
@@ -186,7 +187,7 @@ export default function InboundPage() {
       {/* 一机一卡:每台机器的全套协议折叠成一条记录,卡上直接分配用户 */}
       <div className="grid gap-3 md:grid-cols-2">
         {machineNodes.map((n) => {
-          const nodeInbounds = inbounds.filter((ib) => ib.nodeId === n.id);
+          const nodeInbounds = inbounds.filter((ib) => ib.nodeId === n.id && !ib.landingId);
           const online = n.status === 1;
           const firstIp = n.ip ? String(n.ip).split(",")[0].trim() : (n.serverIp || "");
           return (

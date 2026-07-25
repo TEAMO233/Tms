@@ -67,12 +67,14 @@ public class InboundController extends BaseController {
         return inboundService.deleteInbound(Long.valueOf(String.valueOf(body.get("id"))));
     }
 
-    /** 一键清空某节点上的所有协议入站 */
+    /** 清空某节点上目标组的协议(relay=true 清某落地的中转;否则清直连) */
     @LogAnnotation
     @RequireRole
     @PostMapping("/delete-by-node")
     public R deleteByNode(@RequestBody Map<String, Object> body) {
-        return inboundService.deleteInboundsByNode(Long.valueOf(String.valueOf(body.get("nodeId"))));
+        Boolean relay = body.get("relay") != null && Boolean.parseBoolean(String.valueOf(body.get("relay")));
+        Long landingId = body.get("landingId") == null ? null : Long.valueOf(String.valueOf(body.get("landingId")));
+        return inboundService.deleteInboundsByNode(Long.valueOf(String.valueOf(body.get("nodeId"))), relay, landingId);
     }
 
     @LogAnnotation

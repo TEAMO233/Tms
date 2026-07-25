@@ -110,8 +110,8 @@ export default function RelayPage() {
     setBuildLoading(false);
   };
 
-  const openNodeAssign = (n: any, count: number) => {
-    setAssignForm({ nodeId: n.id, nodeName: n.name, protocolCount: count, userId: null, speedId: null, expDays: null, flowGb: null });
+  const openNodeAssign = (n: any, landingId: any, landingName: string, count: number) => {
+    setAssignForm({ nodeId: n.id, nodeName: n.name, landingId, landingName, protocolCount: count, userId: null, speedId: null, expDays: null, flowGb: null });
     setAssignOpen(true);
   };
 
@@ -119,7 +119,7 @@ export default function RelayPage() {
     if (!assignForm.userId) return toast.error("请选择车友");
     setAssignLoading(true);
     try {
-      const payload: any = { userId: assignForm.userId, nodeId: assignForm.nodeId };
+      const payload: any = { userId: assignForm.userId, nodeId: assignForm.nodeId, relay: true, landingId: assignForm.landingId };
       if (assignForm.speedId) payload.speedId = assignForm.speedId;
       if (assignForm.expDays) payload.expTime = Date.now() + assignForm.expDays * 86400000;
       if (assignForm.flowGb) payload.flow = Math.round(assignForm.flowGb * 1024 * 1024 * 1024);
@@ -137,19 +137,26 @@ export default function RelayPage() {
     setAssignLoading(false);
   };
 
-  const handleClearNode = async (nodeId: number, nodeName: string) => {
-    if (!window.confirm(`确定清空「${nodeName}」上的所有协议?(连带其转发/用户)`)) return;
-    const res = await deleteInboundsByNode(nodeId);
+  const handleClearNode = async (nodeId: number, nodeName: string, landingId: any, landingName: string) => {
+    if (!window.confirm(`确定清空「${nodeName} → ${landingName}」这条中转?(连带其转发/用户;直连和其它落地不受影响)`)) return;
+    const res = await deleteInboundsByNode(nodeId, true, landingId);
     if (res.code === 0) {
-      toast.success("已清空该机协议");
+      toast.success("已清空该条中转");
       loadAll();
     } else {
       toast.error(res.msg || "清空失败");
     }
   };
 
-  // 中转机器 = 有落地(landing_id)入站的节点
-  const relayNodes = nodes.filter((n) => inbounds.some((ib) => ib.nodeId === n.id && ib.landingId));
+  // 中转线路 = 每(前置机 × 落地)一条卡
+  const relayLines: any[] = [];
+  nodes.forEach((n) => {
+    const relayIbs = inbounds.filter((ib) => ib.nodeId === n.id && ib.landingId);
+    const lids = Array.from(new Set(relayIbs.map((ib) => ib.landingId)));
+    lids.forEach((lid) => {
+      relayLines.push({ node: n, landingId: lid, inbounds: relayIbs.filter((ib) => ib.landingId === lid) });
+    });
+  });
 
   return (
     <div className="p-4 space-y-4">
@@ -171,44 +178,38 @@ export default function RelayPage() {
         中转 = 前置机搭协议(抗封锁),流量经「落地」出网。车友连的还是前置机的订阅,只是出口 IP 换成落地那台的。分配/限速/订阅与协议管理完全一致。
       </div>
 
-      {/* 一前置机一卡:全套协议 + 它的落地 */}
+      {/* 每(前置机 × 落地)一张卡 = 一条中转线路 */}
       <div className="grid gap-3 md:grid-cols-2">
-        {relayNodes.map((n) => {
-          const nodeInbounds = inbounds.filter((ib) => ib.nodeId === n.id && ib.landingId);
+        {relayLines.map((ln) => {
+          const n = ln.node;
+          const l = landingById(ln.landingId);
+          const landingName = l ? `${l.name}(${l.type})` : `落地#${ln.landingId}`;
           const online = n.status === 1;
           const firstIp = n.ip ? String(n.ip).split(",")[0].trim() : (n.serverIp || "");
-          const lids = Array.from(new Set(nodeInbounds.map((ib) => ib.landingId)));
           return (
-            <Card key={n.id}>
+            <Card key={`${n.id}-${ln.landingId}`}>
               <CardBody className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-semibold truncate">🖥️ {n.name}</span>
                   <Chip size="sm" variant="flat" color={online ? "success" : "default"}>{online ? "在线" : "离线"}</Chip>
-                  <Chip size="sm" variant="flat" color="primary" className="ml-auto">{nodeInbounds.length} 协议</Chip>
+                  <Chip size="sm" variant="flat" color="primary" className="ml-auto">{ln.inbounds.length} 协议</Chip>
                 </div>
                 {firstIp && <div className="text-xs text-default-500 font-mono">前置机 {firstIp}</div>}
                 <div className="flex flex-wrap items-center gap-1 text-xs">
                   <span className="text-default-500">落地 →</span>
-                  {lids.map((lid) => {
-                    const l = landingById(lid);
-                    return (
-                      <Chip key={String(lid)} size="sm" variant="flat" color="warning">
-                        {l ? `${l.name}(${l.type})` : `落地#${lid}`}
-                      </Chip>
-                    );
-                  })}
+                  <Chip size="sm" variant="flat" color="warning">{landingName}</Chip>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {nodeInbounds.map((ib) => (
+                  {ln.inbounds.map((ib: any) => (
                     <Chip key={ib.id} size="sm" variant="flat" color="secondary">{protoLabel(ib.protocol)}</Chip>
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" color="primary" className="flex-1" onPress={() => openNodeAssign(n, nodeInbounds.length)}>
+                  <Button size="sm" color="primary" className="flex-1" onPress={() => openNodeAssign(n, ln.landingId, landingName, ln.inbounds.length)}>
                     👤 分配用户
                   </Button>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleClearNode(n.id, n.name)}>
-                    清空该机
+                  <Button size="sm" color="danger" variant="flat" onPress={() => handleClearNode(n.id, n.name, ln.landingId, landingName)}>
+                    清空该条
                   </Button>
                 </div>
               </CardBody>
@@ -216,7 +217,7 @@ export default function RelayPage() {
           );
         })}
       </div>
-      {relayNodes.length === 0 && (
+      {relayLines.length === 0 && (
         <div className="text-center text-default-400 py-8">
           还没有中转。点右上角「⚡ 搭中转」→ 选前置机 + 粘贴落地(住宅 socks 或协议链接)→ 测试通 → 搭建。
         </div>
@@ -225,10 +226,10 @@ export default function RelayPage() {
       {/* 分配用户(复用协议管理的整机分配) */}
       <Modal isOpen={assignOpen} onClose={() => setAssignOpen(false)}>
         <ModalContent>
-          <ModalHeader>👤 给车友分配「{assignForm.nodeName}」(中转)</ModalHeader>
+          <ModalHeader>👤 中转分配「{assignForm.nodeName} → {assignForm.landingName}」</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
-              把这台前置机的 <b>{assignForm.protocolCount} 个协议</b> 一次分给车友,出口走落地。分配完到「用户管理」拿这条中转订阅链接。
+              把这条中转的 <b>{assignForm.protocolCount} 个协议</b> 一次分给车友,出口走 {assignForm.landingName}。分配完到「用户管理」拿这条中转订阅链接。
             </div>
             <Select
               label="子账号(车友)"

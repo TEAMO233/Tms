@@ -19,6 +19,12 @@ public class InboundUserDto {
     /** 机器卡整机分配:只分配该节点(机器)上的所有协议;不传=所有节点 */
     private Long nodeId;
 
+    /** 分配的是不是中转组:true=分该机某落地的中转协议(配 landingId);false/空=分该机的直连协议 */
+    private Boolean relay;
+
+    /** 中转分配时指定落地(relay=true 时用);直连分配不用 */
+    private Long landingId;
+
     /** 限速规则ID(可空=不限速) */
     private Integer speedId;
 
