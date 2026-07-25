@@ -29,7 +29,7 @@
 
 **面板端**(中央管理面板,一台即可,全自动;需要 Docker,脚本会自动装):
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/flux-panel/main/panel_install.sh -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
+curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
 ```
 
 **节点端**(转发机,每台要做转发的机器都装;裸二进制,不需要 Docker):
@@ -43,7 +43,7 @@ curl -L https://raw.githubusercontent.com/Teminuosi/flux-panel/main/panel_instal
 
 也可直接在机器上跑下面裸命令,它会 **交互式询问** 面板地址和密钥(密钥同样得先在面板「转发机监控」新增该转发机才有):
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/flux-panel/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 </details>
 
@@ -52,7 +52,7 @@ curl -L https://raw.githubusercontent.com/Teminuosi/flux-panel/main/install.sh -
 国内机器直连 GitHub 会超时(卡在下载那一步)。用 **ghfast.top 镜像 + `-c` 参数**(`-c` 强制内部下载 gost 也走国内镜像,不靠自动检测),把面板给你的「面板地址」「密钥」填进去:
 
 ```bash
-curl -L https://ghfast.top/https://raw.githubusercontent.com/Teminuosi/flux-panel/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh -c -a 面板地址:端口 -s 你的密钥
+curl -L https://ghfast.top/https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh -c -a 面板地址:端口 -s 你的密钥
 ```
 
 - 面板地址、密钥从面板「转发机监控 → 新增该机器 → 点安装」弹出的命令里拿;
@@ -65,28 +65,28 @@ curl -L https://ghfast.top/https://raw.githubusercontent.com/Teminuosi/flux-pane
 
 > ⚠️ 首次登录后请立即修改默认密码！
 
-#### 面板管理(flux 命令)
+#### 面板管理(tms 命令)
 
-装好面板后,服务器上会生成一个 `flux` 管理命令(类似 x-ui),随时输入即可打开管理菜单:
+装好面板后,服务器上会生成一个 `tms` 管理命令(类似 x-ui),随时输入即可打开管理菜单:
 
 ```bash
-flux
+tms
 ```
 
 菜单里可以:更新 / 卸载 / **彻底清理(purge)** / 查看运行状态 / 查看访问信息(地址、账号)。
 
 #### 卸载 / 彻底清理
 
-在 `flux` 菜单里选「卸载」或「彻底清理」即可。也可以直接一条命令**彻底铲平**——删除所有容器、镜像、数据卷、网络、配置和管理命令,**不依赖任何文件,装崩了也能清干净**:
+在 `tms` 菜单里选「卸载」或「彻底清理」即可。也可以直接一条命令**彻底铲平**——删除所有容器、镜像、数据卷、网络、配置和管理命令,**不依赖任何文件,装崩了也能清干净**:
 
 ```bash
-flux purge
+tms purge
 ```
 
-如果 `flux` 命令不存在(比如面板当初没装成功),用这条一次性脚本铲平:
+如果 `tms` 命令不存在(比如面板当初没装成功),用这条一次性脚本铲平:
 
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/flux-panel/main/panel_install.sh -o /tmp/flux.sh && bash /tmp/flux.sh purge
+curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o /tmp/tms.sh && bash /tmp/tms.sh purge
 ```
 
 
@@ -116,5 +116,5 @@ curl -L https://raw.githubusercontent.com/Teminuosi/flux-panel/main/panel_instal
 
 ---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Teminuosi/flux-panel&type=Date)](https://www.star-history.com/#Teminuosi/flux-panel&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Teminuosi/Tms&type=Date)](https://www.star-history.com/#Teminuosi/Tms&Date)
 

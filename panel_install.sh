@@ -9,15 +9,15 @@ export LC_ALL=C
 
 # IPv6:默认关闭。自动改 Docker daemon.json + 内部 IPv6 网络在部分机器上会导致 mysql 启动失败(容器 unhealthy),
 # 而面板根本不需要 Docker 内部 IPv6(容器间走 IPv4 即可;公网 IPv6 访问靠端口映射,与内部网络无关)。
-# 确实需要 Docker 内部 IPv6 的,安装时加 FLUX_IPV6=1 开启。
-FLUX_IPV6="${FLUX_IPV6:-0}"
+# 确实需要 Docker 内部 IPv6 的,安装时加 TMS_IPV6=1 开启。
+TMS_IPV6="${TMS_IPV6:-0}"
 
 # 全局下载地址配置
-DOCKER_COMPOSEV4_URL="https://github.com/Teminuosi/flux-panel/releases/latest/download/docker-compose-v4.yml"
-DOCKER_COMPOSEV6_URL="https://github.com/Teminuosi/flux-panel/releases/latest/download/docker-compose-v6.yml"
-GOST_SQL_URL="https://github.com/Teminuosi/flux-panel/releases/latest/download/gost.sql"
-# 管理脚本自身的 raw 地址(curl|bash 场景下 flux 命令的兜底下载源)
-PANEL_INSTALL_RAW_URL="https://raw.githubusercontent.com/Teminuosi/flux-panel/main/panel_install.sh"
+DOCKER_COMPOSEV4_URL="https://github.com/Teminuosi/Tms/releases/latest/download/docker-compose-v4.yml"
+DOCKER_COMPOSEV6_URL="https://github.com/Teminuosi/Tms/releases/latest/download/docker-compose-v6.yml"
+GOST_SQL_URL="https://github.com/Teminuosi/Tms/releases/latest/download/gost.sql"
+# 管理脚本自身的 raw 地址(curl|bash 场景下 tms 命令的兜底下载源)
+PANEL_INSTALL_RAW_URL="https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh"
 
 COUNTRY=$(curl -s --max-time 5 https://ipinfo.io/country || true)
 if [ "$COUNTRY" = "CN" ]; then
@@ -32,8 +32,8 @@ fi
 
 # 根据IPv6支持情况选择docker-compose URL
 get_docker_compose_url() {
-  # 默认 IPv4(最稳);仅在 FLUX_IPV6=1 时用 IPv6 版 compose
-  if [ "$FLUX_IPV6" = "1" ]; then
+  # 默认 IPv4(最稳);仅在 TMS_IPV6=1 时用 IPv6 版 compose
+  if [ "$TMS_IPV6" = "1" ]; then
     echo "$DOCKER_COMPOSEV6_URL"
   else
     echo "$DOCKER_COMPOSEV4_URL"
@@ -162,7 +162,7 @@ configure_docker_ipv6() {
 # 显示菜单
 show_menu() {
   echo "==============================================="
-  echo "          Flux 面板管理菜单"
+  echo "          TMS 面板管理菜单"
   echo "==============================================="
   echo "  1. 安装面板"
   echo "  2. 更新面板"
@@ -179,12 +179,12 @@ generate_random() {
   LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c16
 }
 
-# 删除脚本自身(仅删一次性下载的安装脚本;常驻的 flux 管理脚本不自删)
+# 删除脚本自身(仅删一次性下载的安装脚本;常驻的 tms 管理脚本不自删)
 delete_self() {
   SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-  # 常驻管理命令 flux 走的就是 /usr/local/bin 下这两个,保留不删,否则 flux 会失效
+  # 常驻管理命令 tms 走的就是 /usr/local/bin 下这两个,保留不删,否则 tms 会失效
   case "$SCRIPT_PATH" in
-    /usr/local/bin/flux-panel.sh|/usr/local/bin/flux) return 0 ;;
+    /usr/local/bin/tms-panel.sh|/usr/local/bin/tms) return 0 ;;
   esac
   echo ""
   echo "🗑️ 操作已完成，正在清理临时安装脚本..."
@@ -192,35 +192,35 @@ delete_self() {
   rm -f "$SCRIPT_PATH" && echo "✅ 临时脚本已删除" || echo "❌ 删除临时脚本失败"
 }
 
-# 安装常驻管理命令 flux(类似 x-ui:装完后随时输 flux 打开管理菜单)
-install_flux_command() {
-  echo "🔗 安装 flux 管理命令..."
+# 安装常驻管理命令 tms(类似 x-ui:装完后随时输 tms 打开管理菜单)
+install_tms_command() {
+  echo "🔗 安装 tms 管理命令..."
   local self panel_dir
   panel_dir="$(pwd)"
   self="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
   # 把当前脚本持久化为管理脚本;拿不到自身(curl|bash)则现下载一份
   if [ -f "$self" ]; then
-    cp -f "$self" /usr/local/bin/flux-panel.sh 2>/dev/null || true
+    cp -f "$self" /usr/local/bin/tms-panel.sh 2>/dev/null || true
   fi
-  if [ ! -f /usr/local/bin/flux-panel.sh ]; then
-    curl -L "$PANEL_INSTALL_RAW_URL" -o /usr/local/bin/flux-panel.sh 2>/dev/null || true
+  if [ ! -f /usr/local/bin/tms-panel.sh ]; then
+    curl -L "$PANEL_INSTALL_RAW_URL" -o /usr/local/bin/tms-panel.sh 2>/dev/null || true
   fi
-  chmod +x /usr/local/bin/flux-panel.sh 2>/dev/null || true
-  # flux 启动器:cd 回面板目录再进管理菜单(compose 操作需要工作目录)
-  cat > /usr/local/bin/flux <<EOF
+  chmod +x /usr/local/bin/tms-panel.sh 2>/dev/null || true
+  # tms 启动器:cd 回面板目录再进管理菜单(compose 操作需要工作目录)
+  cat > /usr/local/bin/tms <<EOF
 #!/bin/bash
-# Flux 面板管理命令(类似 x-ui)。直接输 flux 打开管理菜单。
-FLUX_DIR="$panel_dir"
-[ -d "\$FLUX_DIR" ] && cd "\$FLUX_DIR"
-exec bash /usr/local/bin/flux-panel.sh "\${1:-menu}"
+# TMS 面板管理命令(类似 x-ui)。直接输 tms 打开管理菜单。
+TMS_DIR="$panel_dir"
+[ -d "\$TMS_DIR" ] && cd "\$TMS_DIR"
+exec bash /usr/local/bin/tms-panel.sh "\${1:-menu}"
 EOF
-  chmod +x /usr/local/bin/flux 2>/dev/null || true
-  echo "✅ 管理命令已就绪:以后输入  flux  即可打开管理菜单(更新/卸载/彻底清理/查看状态)"
+  chmod +x /usr/local/bin/tms 2>/dev/null || true
+  echo "✅ 管理命令已就绪:以后输入  tms  即可打开管理菜单(更新/卸载/彻底清理/查看状态)"
 }
 
 # 查看运行状态
 show_status() {
-  echo "📊 Flux 面板容器状态:"
+  echo "📊 TMS 面板容器状态:"
   docker ps -a --filter "name=gost-mysql" --filter "name=springboot-backend" --filter "name=vite-frontend" \
     --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || docker ps -a
 }
@@ -238,7 +238,7 @@ show_access_info() {
 
 # 彻底清理 / 完整卸载:容器、镜像、数据卷、网络、配置、管理命令 全部删除,不依赖任何文件
 purge_panel() {
-  echo "🧨 彻底清理 Flux 面板(删除所有容器/镜像/数据卷/网络/配置和 flux 管理命令)..."
+  echo "🧨 彻底清理 TMS 面板(删除所有容器/镜像/数据卷/网络/配置和 tms 管理命令)..."
   if command -v docker &> /dev/null; then
     # 有 compose 就先规范地 down 一把
     if [ -f docker-compose.yml ]; then
@@ -256,7 +256,7 @@ purge_panel() {
   # 删配置文件
   rm -f docker-compose.yml docker-compose-v4.yml docker-compose-v6.yml gost.sql .env temp_migration.sql 2>/dev/null || true
   # 删管理命令自身
-  rm -f /usr/local/bin/flux /usr/local/bin/flux-panel.sh 2>/dev/null || true
+  rm -f /usr/local/bin/tms /usr/local/bin/tms-panel.sh 2>/dev/null || true
   echo "✅ 已彻底清理完成,系统恢复到未安装状态。"
 }
 
@@ -297,9 +297,9 @@ install_panel() {
   fi
   echo "✅ 文件准备完成"
 
-  # IPv6 默认关闭(避免改 Docker daemon 导致 mysql 启动失败);需要时用 FLUX_IPV6=1 开启
-  if [ "$FLUX_IPV6" = "1" ]; then
-    echo "🚀 FLUX_IPV6=1，启用 Docker IPv6 配置..."
+  # IPv6 默认关闭(避免改 Docker daemon 导致 mysql 启动失败);需要时用 TMS_IPV6=1 开启
+  if [ "$TMS_IPV6" = "1" ]; then
+    echo "🚀 TMS_IPV6=1，启用 Docker IPv6 配置..."
     configure_docker_ipv6
   fi
 
@@ -342,15 +342,15 @@ EOF
     echo "⚠️ 未能自动获取公网IP，请登录后到「网站配置」手动填面板后端地址(格式 IP:${BACKEND_PORT})"
   fi
 
-  # 安装常驻管理命令 flux
-  install_flux_command
+  # 安装常驻管理命令 tms
+  install_tms_command
 
   echo "🎉 部署完成"
   echo "🌐 访问地址: http://${PUBLIC_IP:-服务器IP}:$FRONTEND_PORT"
   echo "🔑 默认账号: admin_user   默认密码: admin_user"
   echo "⚠️  登录后请立即修改默认密码！"
-  echo "🛠️  管理面板: 输入  flux  打开管理菜单(更新 / 卸载 / 彻底清理 / 查看状态)"
-  echo "📚 项目地址: https://github.com/Teminuosi/flux-panel"
+  echo "🛠️  管理面板: 输入  tms  打开管理菜单(更新 / 卸载 / 彻底清理 / 查看状态)"
+  echo "📚 项目地址: https://github.com/Teminuosi/Tms"
 
 
 }
@@ -366,9 +366,9 @@ update_panel() {
   curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
   echo "✅ 下载完成"
 
-  # IPv6 默认关闭(避免改 Docker daemon 导致 mysql 启动失败);需要时用 FLUX_IPV6=1 开启
-  if [ "$FLUX_IPV6" = "1" ]; then
-    echo "🚀 FLUX_IPV6=1，启用 Docker IPv6 配置..."
+  # IPv6 默认关闭(避免改 Docker daemon 导致 mysql 启动失败);需要时用 TMS_IPV6=1 开启
+  if [ "$TMS_IPV6" = "1" ]; then
+    echo "🚀 TMS_IPV6=1，启用 Docker IPv6 配置..."
     configure_docker_ipv6
   fi
 
@@ -1197,7 +1197,7 @@ main() {
   esac
 }
 
-# 交互式菜单(flux 命令默认进入这里;也可 ./panel_install.sh menu)
+# 交互式菜单(tms 命令默认进入这里;也可 ./panel_install.sh menu)
 menu_loop() {
   while true; do
     show_menu
