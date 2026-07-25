@@ -46,4 +46,13 @@ public class LandingController extends BaseController {
     public R delete(@RequestBody Map<String, Object> body) {
         return landingService.deleteLanding(Long.valueOf(String.valueOf(body.get("id"))));
     }
+
+    /** 中转:经前置机测一条落地链接能不能通,回显出口 IP */
+    @RequireRole
+    @PostMapping("/test")
+    public R test(@RequestBody Map<String, Object> body) {
+        return landingService.testLanding(
+                Long.valueOf(String.valueOf(body.get("nodeId"))),
+                String.valueOf(body.get("link")));
+    }
 }

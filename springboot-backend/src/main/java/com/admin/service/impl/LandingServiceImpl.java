@@ -1,13 +1,18 @@
 package com.admin.service.impl;
 
+import com.admin.common.dto.GostDto;
 import com.admin.common.dto.LandingDto;
 import com.admin.common.lang.R;
 import com.admin.common.utils.LandingUtil;
+import com.admin.common.utils.SingboxUtil;
 import com.admin.entity.Inbound;
 import com.admin.entity.Landing;
+import com.admin.entity.Node;
 import com.admin.mapper.InboundMapper;
 import com.admin.mapper.LandingMapper;
+import com.admin.mapper.NodeMapper;
 import com.admin.service.LandingService;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
@@ -26,6 +31,8 @@ public class LandingServiceImpl extends ServiceImpl<LandingMapper, Landing> impl
 
     @Resource
     private InboundMapper inboundMapper;
+    @Resource
+    private NodeMapper nodeMapper;
 
     @Override
     public R createLanding(LandingDto dto) {
@@ -64,5 +71,35 @@ public class LandingServiceImpl extends ServiceImpl<LandingMapper, Landing> impl
         }
         this.removeById(id);
         return R.ok();
+    }
+
+    @Override
+    public R testLanding(Long nodeId, String link) {
+        LandingUtil.Parsed parsed;
+        try {
+            parsed = LandingUtil.parse(link);
+        } catch (IllegalArgumentException e) {
+            return R.err(e.getMessage());
+        }
+        // 协议落地(ss/vless…)暂不在线测,格式已校验即算通过
+        if (!"socks5".equals(parsed.type)) {
+            JSONObject r = new JSONObject();
+            r.put("ok", true);
+            r.put("skipped", true);
+            r.put("type", parsed.type);
+            r.put("msg", parsed.type + " 落地格式已校验(协议落地暂不支持在线测试,可直接保存)");
+            return R.ok(r);
+        }
+        Node node = nodeMapper.selectById(nodeId);
+        if (node == null) {
+            return R.err("前置机不存在");
+        }
+        GostDto g = SingboxUtil.TestOutbound(nodeId, parsed.outbound);
+        if (g == null || !"OK".equals(g.getMsg())) {
+            return R.err("经前置机测落地不通:" + (g != null && g.getMsg() != null ? g.getMsg() : "节点无响应/超时"));
+        }
+        JSONObject data = JSONObject.parseObject(JSONObject.toJSONString(g.getData()));
+        data.put("type", parsed.type);
+        return R.ok(data); // {ok, exitIp, latencyMs, type}
     }
 }

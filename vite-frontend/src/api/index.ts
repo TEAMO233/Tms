@@ -83,11 +83,13 @@ export const assignAllToUser = (data: any) => Network.post("/inbound/assign-all"
 export const unassignInboundUser = (id: number) => Network.post("/inbound/unassign", { id });
 export const getUserSub = (userId: number) => Network.post("/inbound/user-sub", { userId });
 
-// 中转(前置机协议 + 落地出口)
-export const oneClickRelay = (nodeId: number, landingId: number) => Network.post("/inbound/one-click-relay", { nodeId, landingId });
-export const createLanding = (data: any) => Network.post("/landing/create", data);
-export const getLandingList = () => Network.post("/landing/list");
-export const deleteLanding = (id: number) => Network.post("/landing/delete", { id });
+// 中转(前置机协议 + 落地出口):落地内联粘贴、测试、搭建
+export const oneClickRelay = (nodeId: number, link: string, name?: string) => Network.post("/inbound/one-click-relay", { nodeId, link, name });
+export const testLanding = (nodeId: number, link: string) => Network.post("/landing/test", { nodeId, link });
+export const getLandingList = () => Network.post("/landing/list"); // 仅用于中转卡片显示落地名
+
+// 订阅按线路(车友×机器):一个车友的所有订阅线路
+export const getUserLines = (userId: number) => Network.post("/inbound/user-lines", { userId });
 
 // 修改密码接口
 export const updatePassword = (data: any) => Network.post("/user/updatePassword", data);

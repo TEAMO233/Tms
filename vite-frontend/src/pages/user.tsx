@@ -47,7 +47,7 @@ import {
   updateUserTunnel,
   getSpeedLimitList,
   resetUserFlow,
-  getUserSub
+  getUserLines
 } from '@/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { SearchIcon, EditIcon, DeleteIcon, UserIcon, SettingsIcon } from '@/components/icons';
@@ -167,24 +167,25 @@ export default function UserPage() {
   // 重置隧道流量确认相关状态
   const { isOpen: isResetTunnelFlowModalOpen, onOpen: onResetTunnelFlowModalOpen, onClose: onResetTunnelFlowModalClose } = useDisclosure();
 
-  // 订阅链接模态框(合体面板:该车友所有协议的订阅 URL)
+  // 订阅线路模态框(合体面板:车友的每台机器一条订阅,直连/中转各一条)
   const { isOpen: isSubModalOpen, onOpen: onSubModalOpen, onClose: onSubModalClose } = useDisclosure();
-  const [subUrlValue, setSubUrlValue] = useState<string>('');
+  const [subLines, setSubLines] = useState<any[]>([]);
   const [subUserName, setSubUserName] = useState<string>('');
+  const subUrl = (token: string) => `${window.location.origin}/api/v1/open_api/sub?token=${token}`;
 
   const handleShowSub = async (user: User) => {
     try {
-      const res = await getUserSub(user.id);
-      const token = res.code === 0 ? res.data : '';
-      if (!token) {
-        toast.error('该用户还没分配任何协议,先去协议管理分配');
+      const res = await getUserLines(user.id);
+      const lines = res.code === 0 ? (res.data || []) : [];
+      if (!lines.length) {
+        toast.error('该车友还没分配任何线路,先去「协议管理」或「中转」分配');
         return;
       }
       setSubUserName(user.user);
-      setSubUrlValue(`${window.location.origin}/api/v1/open_api/sub?token=${token}`);
+      setSubLines(lines);
       onSubModalOpen();
     } catch (e) {
-      toast.error('获取订阅链接失败');
+      toast.error('获取订阅失败');
     }
   };
   const [tunnelToReset, setTunnelToReset] = useState<UserTunnel | null>(null);
@@ -1485,32 +1486,49 @@ export default function UserPage() {
         </ModalContent>
       </Modal>
 
-      {/* 订阅链接(合体面板:该车友所有协议的订阅 URL) */}
+      {/* 订阅线路(合体面板:车友的每台机器一条订阅,直连/中转各一条) */}
       <Modal isOpen={isSubModalOpen} onClose={onSubModalClose} size="2xl" backdrop="blur" placement="center">
         <ModalContent>
-          <ModalHeader>🔗 {subUserName} 的订阅链接</ModalHeader>
-          <ModalBody>
+          <ModalHeader>🔗 {subUserName} 的订阅线路({subLines.length})</ModalHeader>
+          <ModalBody className="space-y-3">
             <div className="text-small text-default-500">
-              发这条给车友:v2rayN → 订阅 → 添加 → 粘贴 → 更新订阅,他的全部协议自动出现、加新协议自动更新。
+              每台机器一条订阅(直连 / 中转各一条)。发对应的一条给车友:v2rayN → 订阅 → 添加 → 粘贴 → 更新。
             </div>
-            <Input
-              readOnly
-              value={subUrlValue}
-              onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
-            />
+            {subLines.map((ln: any, idx: number) => {
+              const url = subUrl(ln.subToken);
+              const isRelay = ln.type === 'relay';
+              return (
+                <div key={idx} className="border border-default-200 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Chip size="sm" variant="flat" color={isRelay ? 'warning' : 'primary'}>
+                      {isRelay ? `🔀 中转${ln.landingName ? '→' + ln.landingName : ''}` : '🖥️ 直连'}
+                    </Chip>
+                    <span className="font-medium truncate">{ln.nodeName}</span>
+                    <Chip size="sm" variant="flat">{ln.protocolCount} 协议</Chip>
+                  </div>
+                  <Input
+                    readOnly
+                    size="sm"
+                    value={url}
+                    onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
+                  />
+                  <Button
+                    size="sm"
+                    color="primary"
+                    onPress={async () => {
+                      (await copyTextToClipboard(url))
+                        ? toast.success('已复制这条订阅')
+                        : toast.error('复制失败,点框内已全选,按 Ctrl+C');
+                    }}
+                  >
+                    复制这条
+                  </Button>
+                </div>
+              );
+            })}
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={onSubModalClose}>关闭</Button>
-            <Button
-              color="primary"
-              onPress={async () => {
-                (await copyTextToClipboard(subUrlValue))
-                  ? toast.success('已复制订阅链接')
-                  : toast.error('复制失败,点框内已自动全选,按 Ctrl+C');
-              }}
-            >
-              复制
-            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

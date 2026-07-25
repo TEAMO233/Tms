@@ -9,20 +9,19 @@ import toast from "react-hot-toast";
 import {
   getInboundList,
   oneClickRelay,
+  testLanding,
   deleteInboundsByNode,
   assignAllToUser,
   getNodeList,
   getAllUsers,
   getSpeedLimitList,
   getLandingList,
-  createLanding,
-  deleteLanding,
 } from "@/api";
 
 /**
  * 中转(前置机协议 + 落地出口)· 机器卡模式。
- * 一台前置机 = 一张卡:卡上是全套协议,流量经它的「落地」出网。
- * 车友连的还是前置机的协议(订阅),只是出口 IP 在落地那台。分配/限速/订阅与协议管理完全一致。
+ * 搭中转时当场填落地(粘贴分享链接/住宅socks)→ 经前置机测试通 → 保存搭建。
+ * 车友连的还是前置机的订阅,只是出口 IP 在落地那台。
  */
 export default function RelayPage() {
   const [inbounds, setInbounds] = useState<any[]>([]);
@@ -31,13 +30,11 @@ export default function RelayPage() {
   const [speedRules, setSpeedRules] = useState<any[]>([]);
   const [landings, setLandings] = useState<any[]>([]);
 
-  const [oneClickOpen, setOneClickOpen] = useState(false);
-  const [oneClickForm, setOneClickForm] = useState<any>({ nodeId: null, landingId: null });
-  const [oneClickLoading, setOneClickLoading] = useState(false);
-
-  const [landingOpen, setLandingOpen] = useState(false);
-  const [landingForm, setLandingForm] = useState<any>({ name: "", link: "", remark: "" });
-  const [landingLoading, setLandingLoading] = useState(false);
+  const [buildOpen, setBuildOpen] = useState(false);
+  const [buildForm, setBuildForm] = useState<any>({ nodeId: null, name: "", link: "" });
+  const [buildLoading, setBuildLoading] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null); // {ok, exitIp, latencyMs, skipped, msg}
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDays: null, flowGb: null });
@@ -73,52 +70,44 @@ export default function RelayPage() {
     (({ vless: "VLESS-Reality", trojan: "Trojan-Reality", vmess: "VMess", shadowsocks: "Shadowsocks-2022", hysteria2: "Hysteria2", tuic: "TUIC", anytls: "AnyTLS" } as any)[p] || p);
   const landingById = (id: any) => landings.find((l) => l.id === id);
 
-  const handleOneClick = async () => {
-    if (!oneClickForm.nodeId) return toast.error("请选择前置机");
-    if (!oneClickForm.landingId) return toast.error("请选择落地");
-    setOneClickLoading(true);
+  const handleTest = async () => {
+    if (!buildForm.nodeId) return toast.error("先选前置机(要经它测落地)");
+    if (!buildForm.link) return toast.error("先粘贴落地链接");
+    setTestLoading(true);
+    setTestResult(null);
     try {
-      const res = await oneClickRelay(oneClickForm.nodeId, oneClickForm.landingId);
+      const res = await testLanding(buildForm.nodeId, buildForm.link);
+      if (res.code === 0) {
+        setTestResult(res.data);
+        if (res.data?.skipped) toast.success(res.data?.msg || "格式已校验");
+        else if (res.data?.ok) toast.success(`通了,出口 IP ${res.data?.exitIp}`);
+      } else {
+        setTestResult({ ok: false, msg: res.msg });
+        toast.error(res.msg || "测试失败");
+      }
+    } catch (e) {
+      toast.error("测试失败");
+    }
+    setTestLoading(false);
+  };
+
+  const handleBuild = async () => {
+    if (!buildForm.nodeId) return toast.error("请选择前置机");
+    if (!buildForm.link) return toast.error("请粘贴落地链接");
+    setBuildLoading(true);
+    try {
+      const res = await oneClickRelay(buildForm.nodeId, buildForm.link, buildForm.name);
       if (res.code === 0) {
         toast.success("一键搭中转完成:整机协议已建好,出口走落地");
-        setOneClickOpen(false);
+        setBuildOpen(false);
         loadAll();
       } else {
-        toast.error(res.msg || "一键搭中转失败");
+        toast.error(res.msg || "搭建失败");
       }
     } catch (e) {
-      toast.error("一键搭中转失败");
+      toast.error("搭建失败");
     }
-    setOneClickLoading(false);
-  };
-
-  const handleAddLanding = async () => {
-    if (!landingForm.name) return toast.error("给落地起个名");
-    if (!landingForm.link) return toast.error("粘贴一条节点分享链接");
-    setLandingLoading(true);
-    try {
-      const res = await createLanding(landingForm);
-      if (res.code === 0) {
-        toast.success(`落地已添加(${res.data?.type || ""})`);
-        setLandingForm({ name: "", link: "", remark: "" });
-        loadAll();
-      } else {
-        toast.error(res.msg || "添加失败");
-      }
-    } catch (e) {
-      toast.error("添加失败");
-    }
-    setLandingLoading(false);
-  };
-
-  const handleDeleteLanding = async (id: number) => {
-    const res = await deleteLanding(id);
-    if (res.code === 0) {
-      toast.success("已删除");
-      loadAll();
-    } else {
-      toast.error(res.msg || "删除失败");
-    }
+    setBuildLoading(false);
   };
 
   const openNodeAssign = (n: any, count: number) => {
@@ -136,7 +125,7 @@ export default function RelayPage() {
       if (assignForm.flowGb) payload.flow = Math.round(assignForm.flowGb * 1024 * 1024 * 1024);
       const res = await assignAllToUser(payload);
       if (res.code === 0) {
-        toast.success(`已分配 ${res.data?.assigned ?? 0} 个协议` + (res.data?.skipped ? `,跳过 ${res.data.skipped}(已分过)` : "") + " · 订阅链接去「用户管理」拿");
+        toast.success(`已分配 ${res.data?.assigned ?? 0} 个协议` + (res.data?.skipped ? `,跳过 ${res.data.skipped}(已分过)` : "") + " · 订阅去「用户管理」拿");
         setAssignOpen(false);
         loadAll();
       } else {
@@ -166,20 +155,16 @@ export default function RelayPage() {
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">中转</h1>
-        <div className="flex gap-2">
-          <Button
-            color="secondary"
-            onPress={() => {
-              setOneClickForm({ nodeId: null, landingId: null });
-              setOneClickOpen(true);
-            }}
-          >
-            ⚡ 一键搭中转
-          </Button>
-          <Button color="primary" variant="flat" onPress={() => setLandingOpen(true)}>
-            🌍 落地库
-          </Button>
-        </div>
+        <Button
+          color="secondary"
+          onPress={() => {
+            setBuildForm({ nodeId: null, name: "", link: "" });
+            setTestResult(null);
+            setBuildOpen(true);
+          }}
+        >
+          ⚡ 搭中转
+        </Button>
       </div>
 
       <div className="text-xs text-default-500">
@@ -233,7 +218,7 @@ export default function RelayPage() {
       </div>
       {relayNodes.length === 0 && (
         <div className="text-center text-default-400 py-8">
-          还没有中转。先点「🌍 落地库」加个落地(粘贴节点分享链接),再点「⚡ 一键搭中转」选前置机+落地。
+          还没有中转。点右上角「⚡ 搭中转」→ 选前置机 + 粘贴落地(住宅 socks 或协议链接)→ 测试通 → 搭建。
         </div>
       )}
 
@@ -243,7 +228,7 @@ export default function RelayPage() {
           <ModalHeader>👤 给车友分配「{assignForm.nodeName}」(中转)</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
-              把这台前置机的 <b>{assignForm.protocolCount} 个协议</b> 一次分给车友,出口走落地。分配完到「用户管理」页点该车友的「🔗 订阅链接」拿链接。
+              把这台前置机的 <b>{assignForm.protocolCount} 个协议</b> 一次分给车友,出口走落地。分配完到「用户管理」拿这条中转订阅链接。
             </div>
             <Select
               label="子账号(车友)"
@@ -281,77 +266,52 @@ export default function RelayPage() {
         </ModalContent>
       </Modal>
 
-      {/* 一键搭中转:选前置机 + 落地 */}
-      <Modal isOpen={oneClickOpen} onClose={() => setOneClickOpen(false)}>
+      {/* 搭中转:选前置机 + 内联填落地 + 测试 + 搭建 */}
+      <Modal isOpen={buildOpen} onClose={() => setBuildOpen(false)} size="2xl">
         <ModalContent>
-          <ModalHeader>⚡ 一键搭中转</ModalHeader>
+          <ModalHeader>⚡ 搭中转</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
-              在前置机上一键建好全套协议(VLESS-Reality/Trojan/VMess/Hy2/TUIC/AnyTLS),流量全部经选中的落地出网。车友连前置机、出口在落地。
+              选前置机 + 填落地出口 → 测试通了 → 搭建。前置机上建全套协议,流量经落地出网。
             </div>
             <Select
               label="前置机(客户端连的那台)"
               placeholder="选一台前置机(需在线)"
-              selectedKeys={oneClickForm.nodeId ? [String(oneClickForm.nodeId)] : []}
-              onSelectionChange={(k) => setOneClickForm({ ...oneClickForm, nodeId: Number(Array.from(k)[0]) })}
+              selectedKeys={buildForm.nodeId ? [String(buildForm.nodeId)] : []}
+              onSelectionChange={(k) => { setBuildForm({ ...buildForm, nodeId: Number(Array.from(k)[0]) }); setTestResult(null); }}
             >
               {nodes.map((n) => (<SelectItem key={n.id}>{n.name}</SelectItem>))}
             </Select>
-            <Select
-              label="落地(出口)"
-              placeholder={landings.length ? "选一个落地" : "还没有落地,先去落地库加"}
-              selectedKeys={oneClickForm.landingId ? [String(oneClickForm.landingId)] : []}
-              onSelectionChange={(k) => setOneClickForm({ ...oneClickForm, landingId: Number(Array.from(k)[0]) })}
-            >
-              {landings.map((l) => (<SelectItem key={l.id}>{`${l.name}(${l.type})`}</SelectItem>))}
-            </Select>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="light" onPress={() => setOneClickOpen(false)}>取消</Button>
-            <Button color="secondary" isLoading={oneClickLoading} onPress={handleOneClick}>一键全建</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* 落地库:粘贴分享链接建可复用落地 */}
-      <Modal isOpen={landingOpen} onClose={() => setLandingOpen(false)} size="2xl">
-        <ModalContent>
-          <ModalHeader>🌍 落地库</ModalHeader>
-          <ModalBody className="space-y-4">
-            <div className="space-y-2">
-              <div className="text-sm font-semibold">加落地(粘贴一条节点分享链接)</div>
-              <Input
-                label="名称"
-                placeholder="自己起,如 泰国住宅"
-                value={landingForm.name}
-                onChange={(e) => setLandingForm({ ...landingForm, name: e.target.value })}
-              />
-              <Textarea
-                label="分享链接 / 落地地址"
-                placeholder="住宅socks: IP:端口:账号:密码    协议节点: ss:// / vmess:// / vless:// / trojan:// / hysteria2://"
-                minRows={2}
-                value={landingForm.link}
-                onChange={(e) => setLandingForm({ ...landingForm, link: e.target.value })}
-                description="住宅 socks 直接填 IP:端口:账号:密码(也支持 socks5://账号:密码@IP:端口);机场/别人节点整条分享链接粘进来"
-              />
-              <Button color="primary" size="sm" isLoading={landingLoading} onPress={handleAddLanding}>解析并添加</Button>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-sm font-semibold">已有落地({landings.length})</div>
-              {landings.length === 0 && <div className="text-xs text-default-400">还没有落地,粘贴一条链接加一个。</div>}
-              {landings.map((l) => (
-                <div key={l.id} className="flex items-center gap-2 border border-default-200 rounded-lg px-3 py-2">
-                  <Chip size="sm" variant="flat" color="warning">{l.type}</Chip>
-                  <span className="font-medium truncate">{l.name}</span>
-                  <span className="text-xs text-default-400 truncate flex-1">{l.link}</span>
-                  <Button size="sm" color="danger" variant="light" onPress={() => handleDeleteLanding(l.id)}>删除</Button>
-                </div>
-              ))}
+            <Input
+              label="落地名称(自己起)"
+              placeholder="如 泰国住宅"
+              value={buildForm.name}
+              onChange={(e) => setBuildForm({ ...buildForm, name: e.target.value })}
+            />
+            <Textarea
+              label="落地出口(粘贴)"
+              placeholder="住宅socks: IP:端口:账号:密码    协议节点: ss:// / vmess:// / vless:// / trojan:// / hysteria2://"
+              minRows={2}
+              value={buildForm.link}
+              onChange={(e) => { setBuildForm({ ...buildForm, link: e.target.value }); setTestResult(null); }}
+              description="住宅 socks 直接填 IP:端口:账号:密码;机场/别人节点整条分享链接粘进来。测试会经前置机试连、显示出口 IP"
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="flat" color="secondary" isLoading={testLoading} onPress={handleTest}>🔌 测试落地</Button>
+              {testResult && (
+                testResult.skipped ? (
+                  <span className="text-xs text-default-500">{testResult.msg}</span>
+                ) : testResult.ok ? (
+                  <span className="text-xs text-success">✅ 通了 · 出口 IP <b className="font-mono">{testResult.exitIp}</b> · {testResult.latencyMs}ms</span>
+                ) : (
+                  <span className="text-xs text-danger">❌ {testResult.msg || "不通"}</span>
+                )
+              )}
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setLandingOpen(false)}>关闭</Button>
+            <Button variant="light" onPress={() => setBuildOpen(false)}>取消</Button>
+            <Button color="secondary" isLoading={buildLoading} onPress={handleBuild}>保存并搭建</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

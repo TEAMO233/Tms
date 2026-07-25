@@ -20,8 +20,8 @@ public interface InboundService extends IService<Inbound> {
     /** 一键添加:在指定节点上把所有支持的协议一键全建出来 */
     R oneClickCreate(Long nodeId);
 
-    /** 一键搭中转:在前置机上把全套协议建出来,流量经指定落地(landingId)出网 */
-    R oneClickRelay(Long nodeId, Long landingId);
+    /** 一键搭中转:在前置机上把全套协议建出来,流量经落地(内联粘贴的分享链接)出网 */
+    R oneClickRelay(Long nodeId, String link, String name);
 
     /** 入站列表 */
     R getInbounds();
@@ -44,6 +44,9 @@ public interface InboundService extends IService<Inbound> {
     /** 按订阅 token 生成该用户所有协议链接的 base64 订阅内容(客户端订阅用) */
     String buildSubscription(String token);
 
-    /** 取某用户的订阅 token(已分配过协议就有;用于随时查看订阅链接) */
+    /** 取某用户的订阅 token(兼容旧接口;订阅现在按线路,推荐 getUserLines) */
     String getUserSubToken(Long userId);
+
+    /** 取某车友的所有订阅线路(车友×机器):每台机器一条订阅[nodeId,nodeName,type直连/中转,landingName,协议数,subToken] */
+    R getUserLines(Long userId);
 }

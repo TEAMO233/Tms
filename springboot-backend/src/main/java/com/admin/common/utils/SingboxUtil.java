@@ -45,6 +45,25 @@ public class SingboxUtil {
     }
 
     /**
+     * 中转:让【前置机节点】用给定的 socks 落地拨号测一下,回显出口 IP + 延迟。
+     * outbound = LandingUtil 解出的 sing-box 出站(socks:server/server_port/username/password)。
+     * 返回 GostDto.data = {ok, exitIp, latencyMs}(节点端 handleTestOutbound)。
+     */
+    public static GostDto TestOutbound(Long nodeId, JSONObject outbound) {
+        JSONObject payload = new JSONObject();
+        payload.put("type", outbound.getString("type"));
+        payload.put("server", outbound.getString("server"));
+        payload.put("port", outbound.getInteger("server_port"));
+        if (outbound.containsKey("username")) {
+            payload.put("username", outbound.getString("username"));
+        }
+        if (outbound.containsKey("password")) {
+            payload.put("password", outbound.getString("password"));
+        }
+        return WebSocketServer.send_msg(nodeId, payload, "TestOutbound");
+    }
+
+    /**
      * 让节点用 sing-box 生成 Reality 密钥对。
      * 返回的 GostDto.data = {"privateKey": "...", "publicKey": "..."}(节点端 handleGenerateRealityKeypair)。
      */

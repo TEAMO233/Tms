@@ -67,6 +67,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     private UserMapper userMapper;
     @Autowired
     private com.admin.mapper.LandingMapper landingMapper;
+    @Autowired
+    private com.admin.service.LandingService landingService;
 
     @Override
     public R createInbound(InboundDto dto) {
@@ -185,15 +187,20 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     }
 
     @Override
-    public R oneClickRelay(Long nodeId, Long landingId) {
+    public R oneClickRelay(Long nodeId, String link, String name) {
         Node node = nodeMapper.selectById(nodeId);
         if (node == null) {
             return R.err("前置机不存在");
         }
-        com.admin.entity.Landing landing = landingMapper.selectById(landingId);
-        if (landing == null) {
-            return R.err("落地不存在");
+        // 内联建落地(粘贴的分享链接现场解析入库,不走"落地库"选择)
+        com.admin.common.dto.LandingDto ldto = new com.admin.common.dto.LandingDto();
+        ldto.setName((name == null || name.trim().isEmpty()) ? ("落地-" + node.getName()) : name.trim());
+        ldto.setLink(link);
+        R lr = landingService.createLanding(ldto);
+        if (lr.getCode() != 0) {
+            return R.err("落地解析失败:" + lr.getMsg());
         }
+        Long landingId = ((com.admin.entity.Landing) lr.getData()).getId();
         // 和一键搭协议一样建全套,只是每个入站带上 landing_id → 流量经该落地出网
         String[] protocols = {"vless", "trojan", "vmess", "hysteria2", "tuic", "anytls"};
         List<Object> created = new java.util.ArrayList<>();
@@ -281,7 +288,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             JSONObject result = new JSONObject();
             result.put("inboundUserId", existed.getId());
             result.put("link", f != null ? buildClientLink(in, existed, node, f) : "");
-            result.put("subToken", getOrCreateUserSubToken(user.getId()));
+            result.put("subToken", getOrCreateLineSubToken(user.getId(), node.getId()));
             return R.ok(result);
         }
 
@@ -325,8 +332,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             userMapper.updateById(user);
         }
 
-        // 5. 存 inbound_user(带该用户的订阅 token:一个用户所有协议共用一个,回填给旧协议)
-        String subToken = getOrCreateUserSubToken(user.getId());
+        // 5. 存 inbound_user(带该【线路】的订阅 token:车友×该机器一条,该机所有协议共享)
+        String subToken = getOrCreateLineSubToken(user.getId(), node.getId());
 
         InboundUser iu = new InboundUser();
         iu.setInboundId(in.getId());
@@ -370,7 +377,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         if (inbounds.isEmpty()) {
             return R.err("这台机器还没有协议,先去「一键添加」");
         }
-        String subToken = getOrCreateUserSubToken(user.getId());
+        // 订阅按【线路】= 车友 × 机器:每台机器一条订阅 token(该机所有协议共享);车友可有很多条线路
+        java.util.Map<Long, String> lineTokens = new java.util.HashMap<>();
         // 车友专属限速器(每车友唯一;每节点只推一次,该机所有协议共享;TCP+UDP 都靠服务级 `$` 限住、车友间独立)
         Integer userLimiter = (dto.getSpeedId() != null) ? perUserLimiterName(user.getId()) : null;
         java.util.Set<Long> affectedNodes = new java.util.HashSet<>();
@@ -402,6 +410,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 }
                 limiterPushedNodes.add(node.getId());
             }
+            // 这台机器的线路订阅 token(该机所有协议共享一条)
+            String subToken = lineTokens.computeIfAbsent(node.getId(),
+                    nid -> getOrCreateLineSubToken(user.getId(), nid));
             R r = assignOneNoPush(in, node, user, userLimiter, dto.getExpTime(), subToken);
             if (r.getCode() != 0) {
                 if (firstError == null) firstError = r.getMsg();
@@ -420,11 +431,15 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         for (Long nid : affectedNodes) {
             pushNodeSingbox(nid);
         }
+        // 结果里带回这条线路的订阅 token(机器卡分配 = 单机,取该机的)
+        String resultToken = (dto.getNodeId() != null)
+                ? lineTokens.computeIfAbsent(dto.getNodeId(), nid -> getOrCreateLineSubToken(user.getId(), nid))
+                : (lineTokens.isEmpty() ? null : lineTokens.values().iterator().next());
         if (assigned == 0) {
             if (firstError == null && skipped > 0) {
                 // 这台机器的协议这个车友全都分过了 → 不算失败,把现成订阅链接返回,方便重新拿链接
                 JSONObject r2 = new JSONObject();
-                r2.put("subToken", subToken);
+                r2.put("subToken", resultToken);
                 r2.put("assigned", 0);
                 r2.put("skipped", skipped);
                 return R.ok(r2);
@@ -432,7 +447,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             return R.err(firstError != null ? ("分配失败:" + firstError) : "没有可分配的协议(可能都已分配过)");
         }
         JSONObject result = new JSONObject();
-        result.put("subToken", subToken);
+        result.put("subToken", resultToken);
         result.put("assigned", assigned);
         result.put("skipped", skipped);
         result.put("firstError", firstError);
@@ -534,16 +549,83 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         if (userId == null) {
             return "";
         }
-        List<InboundUser> ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("user_id", userId));
-        if (ius.isEmpty()) {
-            return ""; // 还没分配过协议 → 没有订阅
-        }
-        return getOrCreateUserSubToken(userId);
+        // 兼容旧接口:订阅现在按线路(车友×机器),这里返回该车友任意一条现成 token;推荐用 getUserLines
+        InboundUser iu = inboundUserMapper.selectOne(new QueryWrapper<InboundUser>()
+                .eq("user_id", userId).isNotNull("sub_token").last("limit 1"));
+        return (iu != null && iu.getSubToken() != null) ? iu.getSubToken() : "";
     }
 
-    /** 取该用户的订阅 token;没有就生成一个,并回填给他所有入站用户(保证一个 token 覆盖全部协议) */
-    private String getOrCreateUserSubToken(Long userId) {
+    @Override
+    public R getUserLines(Long userId) {
+        com.alibaba.fastjson.JSONArray lines = new com.alibaba.fastjson.JSONArray();
+        if (userId == null) {
+            return R.ok(lines);
+        }
         List<InboundUser> ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("user_id", userId));
+        // 按机器(node)分组 → 一台机器 = 一条线路 = 一条订阅
+        java.util.Map<Long, java.util.List<InboundUser>> byNode = new java.util.LinkedHashMap<>();
+        for (InboundUser iu : ius) {
+            if (iu.getStatus() != null && iu.getStatus() == 0) {
+                continue;
+            }
+            Inbound in = this.getById(iu.getInboundId());
+            if (in == null) {
+                continue;
+            }
+            byNode.computeIfAbsent(in.getNodeId(), k -> new java.util.ArrayList<>()).add(iu);
+        }
+        for (java.util.Map.Entry<Long, java.util.List<InboundUser>> e : byNode.entrySet()) {
+            Long nodeId = e.getKey();
+            Node node = nodeMapper.selectById(nodeId);
+            String token = null;
+            int count = 0;
+            Long landingId = null;
+            for (InboundUser iu : e.getValue()) {
+                Inbound in = this.getById(iu.getInboundId());
+                if (in == null) {
+                    continue;
+                }
+                count++;
+                if (token == null && iu.getSubToken() != null && !iu.getSubToken().isEmpty()) {
+                    token = iu.getSubToken();
+                }
+                if (in.getLandingId() != null) {
+                    landingId = in.getLandingId();
+                }
+            }
+            if (count == 0) {
+                continue;
+            }
+            String landingName = null;
+            if (landingId != null) {
+                com.admin.entity.Landing l = landingMapper.selectById(landingId);
+                if (l != null) {
+                    landingName = l.getName();
+                }
+            }
+            JSONObject line = new JSONObject();
+            line.put("nodeId", nodeId);
+            line.put("nodeName", node != null ? node.getName() : ("机器#" + nodeId));
+            line.put("type", landingId != null ? "relay" : "direct");
+            line.put("landingName", landingName);
+            line.put("protocolCount", count);
+            line.put("subToken", token);
+            lines.add(line);
+        }
+        return R.ok(lines);
+    }
+
+    /** 取某车友在某机器(线路)的订阅 token;没有就生成一个,回填给他在这台机器上的所有 inbound_user(该机所有协议共享一条) */
+    private String getOrCreateLineSubToken(Long userId, Long nodeId) {
+        List<Long> inboundIds = new java.util.ArrayList<>();
+        for (Inbound in : this.list(new QueryWrapper<Inbound>().eq("node_id", nodeId))) {
+            inboundIds.add(in.getId());
+        }
+        if (inboundIds.isEmpty()) {
+            return UUID.randomUUID().toString().replace("-", "");
+        }
+        List<InboundUser> ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>()
+                .eq("user_id", userId).in("inbound_id", inboundIds));
         String token = null;
         for (InboundUser iu : ius) {
             if (iu.getSubToken() != null && !iu.getSubToken().isEmpty()) {

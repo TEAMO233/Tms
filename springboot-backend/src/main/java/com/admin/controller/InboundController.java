@@ -43,14 +43,15 @@ public class InboundController extends BaseController {
         return inboundService.oneClickCreate(Long.valueOf(String.valueOf(body.get("nodeId"))));
     }
 
-    /** 一键搭中转:在前置机上建全套协议,流量经指定落地出网 */
+    /** 一键搭中转:在前置机上建全套协议,流量经内联粘贴的落地出网 */
     @LogAnnotation
     @RequireRole
     @PostMapping("/one-click-relay")
     public R oneClickRelay(@RequestBody Map<String, Object> body) {
         return inboundService.oneClickRelay(
                 Long.valueOf(String.valueOf(body.get("nodeId"))),
-                Long.valueOf(String.valueOf(body.get("landingId"))));
+                String.valueOf(body.get("link")),
+                body.get("name") == null ? null : String.valueOf(body.get("name")));
     }
 
     @RequireRole
@@ -89,11 +90,18 @@ public class InboundController extends BaseController {
         return inboundService.assignAllToUser(dto);
     }
 
-    /** 取某车友的订阅 token(选中用户时用,随时能看到订阅链接) */
+    /** 取某车友的订阅 token(兼容旧接口) */
     @RequireRole
     @PostMapping("/user-sub")
     public R userSub(@RequestBody Map<String, Object> body) {
         return R.ok(inboundService.getUserSubToken(Long.valueOf(String.valueOf(body.get("userId")))));
+    }
+
+    /** 取某车友的所有订阅线路(车友×机器,直连/中转各一条) */
+    @RequireRole
+    @PostMapping("/user-lines")
+    public R userLines(@RequestBody Map<String, Object> body) {
+        return inboundService.getUserLines(Long.valueOf(String.valueOf(body.get("userId"))));
     }
 
     @LogAnnotation

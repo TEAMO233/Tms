@@ -21,4 +21,7 @@ public interface LandingService extends IService<Landing> {
 
     /** 删除落地(被中转入站引用时拒绝) */
     R deleteLanding(Long id);
+
+    /** 中转:经指定前置机(nodeId)测一条落地链接能不能通,回显出口 IP + 延迟 */
+    R testLanding(Long nodeId, String link);
 }
