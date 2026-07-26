@@ -641,6 +641,8 @@ export default function DashboardPage() {
              </CardBody>
            </Card>
 
+           {/* 转发配额/已用转发 = 内部管道口径,车友看了会误解(以为超额),仅管理员显示 */}
+           {isAdmin && (
            <Card className="border border-gray-200 dark:border-default-200 shadow-md hover:shadow-lg transition-shadow">
              <CardBody className="p-3 lg:p-4">
                <div className="flex flex-col space-y-2">
@@ -656,7 +658,9 @@ export default function DashboardPage() {
                </div>
              </CardBody>
            </Card>
+           )}
 
+           {isAdmin && (
            <Card className="border border-gray-200 dark:border-default-200 shadow-md hover:shadow-lg transition-shadow">
              <CardBody className="p-3 lg:p-4">
                <div className="flex flex-col space-y-2">
@@ -678,6 +682,7 @@ export default function DashboardPage() {
                </div>
              </CardBody>
            </Card>
+           )}
          </div>
 
          {/* 24小时流量统计图表 */}
@@ -756,8 +761,8 @@ export default function DashboardPage() {
            </CardBody>
          </Card>
 
-                 {/* 隧道权限 - 管理员不显示 */}
-         {!isAdmin && (
+                 {/* 隧道权限 = 内部转发口径,车友不该看(他只关心「我的订阅」);整块隐藏 */}
+         {false && (
           <Card className="mb-6 lg:mb-8 border border-gray-200 dark:border-default-200 shadow-md">
            <CardHeader className="pb-3">
              <div className="flex items-center gap-2">

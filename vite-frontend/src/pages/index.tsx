@@ -198,9 +198,9 @@ export default function IndexPage() {
       localStorage.setItem("name", response.data.name);
       localStorage.setItem("admin", (response.data.role_id === 0).toString());
 
-      // 登录成功
+      // 登录成功:管理员进仪表板;车友进「我的订阅」
       toast.success('登录成功');
-      navigate("/dashboard");
+      navigate(response.data.role_id === 0 ? "/dashboard" : "/my-sub");
 
     } catch (error) {
       console.error('登录错误:', error);

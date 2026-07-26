@@ -13,6 +13,7 @@ import LimitPage from "@/pages/limit";
 import InboundPage from "@/pages/inbound";
 import RelayPage from "@/pages/relay";
 import GuidePage from "@/pages/guide";
+import MySubPage from "@/pages/my-sub";
 import ConfigPage from "@/pages/config";
 import { SettingsPage } from "@/pages/settings";
 
@@ -20,7 +21,7 @@ import AdminLayout from "@/layouts/admin";
 import H5Layout from "@/layouts/h5";
 import H5SimpleLayout from "@/layouts/h5-simple";
 
-import { isLoggedIn } from "@/utils/auth";
+import { isLoggedIn, isAdmin } from "@/utils/auth";
 import { siteConfig } from "@/config/site";
 
 // 检测是否为H5模式
@@ -109,7 +110,8 @@ const LoginRoute = () => {
   useEffect(() => {
     if (authenticated) {
       // 使用 React Router 导航，避免无限跳转
-      navigate('/dashboard', { replace: true });
+      // 管理员进仪表板;车友进「我的订阅」(他只关心自己的订阅链接)
+      navigate(isAdmin() ? '/dashboard' : '/my-sub', { replace: true });
     }
   }, [authenticated, navigate]);
   
@@ -197,6 +199,14 @@ function App() {
         element={
           <ProtectedRoute>
             <GuidePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-sub"
+        element={
+          <ProtectedRoute>
+            <MySubPage />
           </ProtectedRoute>
         }
       />

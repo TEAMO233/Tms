@@ -106,6 +106,16 @@ public class InboundController extends BaseController {
         return inboundService.getUserLines(Long.valueOf(String.valueOf(body.get("userId"))));
     }
 
+    /** 车友自助:取【我自己】的订阅线路(不需要管理员权限,只能看自己的) */
+    @PostMapping("/my-lines")
+    public R myLines() {
+        Integer uid = com.admin.common.utils.JwtUtil.getUserIdFromToken();
+        if (uid == null) {
+            return R.err("未登录");
+        }
+        return inboundService.getUserLines(uid.longValue());
+    }
+
     @LogAnnotation
     @RequireRole
     @PostMapping("/unassign")

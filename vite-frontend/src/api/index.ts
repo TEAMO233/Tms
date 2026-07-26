@@ -90,6 +90,8 @@ export const getLandingList = () => Network.post("/landing/list"); // 仅用于�
 
 // 订阅按线路(车友×机器):一个车友的所有订阅线路
 export const getUserLines = (userId: number) => Network.post("/inbound/user-lines", { userId });
+// 车友自助:取我自己的订阅线路(不需要管理员权限)
+export const getMyLines = () => Network.post("/inbound/my-lines");
 
 // 修改密码接口
 export const updatePassword = (data: any) => Network.post("/user/updatePassword", data);
