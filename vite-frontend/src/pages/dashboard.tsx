@@ -2,6 +2,7 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -59,6 +60,7 @@ interface StatisticsFlow {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<UserInfo>({} as UserInfo);
   const [userTunnels, setUserTunnels] = useState<UserTunnel[]>([]);
@@ -685,6 +687,24 @@ export default function DashboardPage() {
            )}
          </div>
 
+         {/* 车友:直接给一个去「我的订阅」的入口(他要的就是订阅链接) */}
+         {!isAdmin && (
+           <Card
+             isPressable
+             onPress={() => navigate('/my-sub')}
+             className="w-full mb-6 lg:mb-8 border border-primary/40 bg-primary/5 shadow-md hover:shadow-lg transition-shadow"
+           >
+             <CardBody className="flex flex-row items-center gap-3 p-4">
+               <span className="text-2xl">🔗</span>
+               <div className="flex-1 text-left">
+                 <div className="font-semibold text-foreground">我的订阅</div>
+                 <div className="text-xs text-default-500">查看并复制你的订阅链接,导入客户端即可使用</div>
+               </div>
+               <span className="text-default-400">›</span>
+             </CardBody>
+           </Card>
+         )}
+
          {/* 24小时流量统计图表 */}
          <Card className="mb-6 lg:mb-8 border border-gray-200 dark:border-default-200 shadow-md">
            <CardHeader className="pb-3">
@@ -841,7 +861,8 @@ export default function DashboardPage() {
         </Card>
          )}
 
-                 {/* 转发配置 */}
+                 {/* 转发配置 = 协议/中转的内部管道明细,车友看不懂也不该看 → 仅管理员 */}
+         {isAdmin && (
          <Card className="border border-gray-200 dark:border-default-200 shadow-md">
            <CardHeader className="pb-3">
              <div className="flex items-center gap-2">
@@ -924,6 +945,7 @@ export default function DashboardPage() {
             )}
           </CardBody>
         </Card>
+        )}
 
         {/* 地址列表弹窗 */}
         <Modal isOpen={addressModalOpen} onClose={() => setAddressModalOpen(false)} size="2xl" 

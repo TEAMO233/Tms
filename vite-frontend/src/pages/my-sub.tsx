@@ -74,7 +74,9 @@ export default function MySubPage() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <div className="text-xs text-default-400 mt-1">{pct.toFixed(1)}% 已用</div>
+              <div className="text-xs text-default-400 mt-1">
+                {pct.toFixed(1)}% 已用 · 所有线路共用这一份流量配额
+              </div>
             </div>
           )}
         </CardBody>
@@ -97,12 +99,16 @@ export default function MySubPage() {
             return (
               <Card key={idx}>
                 <CardBody className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Chip size="sm" variant="flat" color={isRelay ? "warning" : "primary"}>
                       {isRelay ? `🔀 中转${ln.landingName ? "→" + ln.landingName : ""}` : "🖥️ 直连"}
                     </Chip>
                     <span className="font-medium truncate">{ln.nodeName}</span>
-                    <Chip size="sm" variant="flat" className="ml-auto">{ln.protocolCount} 协议</Chip>
+                    <div className="ml-auto flex items-center gap-2">
+                      {/* 这条线路各自用了多少(总配额是全部线路共用的,见顶部) */}
+                      <span className="text-xs text-default-500">本线路已用 {fmtGB(ln.flow || 0)}</span>
+                      <Chip size="sm" variant="flat">{ln.protocolCount} 协议</Chip>
+                    </div>
                   </div>
                   <Input
                     readOnly

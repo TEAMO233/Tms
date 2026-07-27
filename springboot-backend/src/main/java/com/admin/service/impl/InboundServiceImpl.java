@@ -608,10 +608,18 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             Node node = nodeMapper.selectById(nodeId);
             String token = null;
             int count = 0;
+            long lineFlow = 0L; // 这条线路已用流量 = 该线路各协议对应转发的上下行之和
             for (InboundUser iu : e.getValue()) {
                 count++;
                 if (token == null && iu.getSubToken() != null && !iu.getSubToken().isEmpty()) {
                     token = iu.getSubToken();
+                }
+                if (iu.getGostForwardId() != null) {
+                    Forward f = forwardMapper.selectById(iu.getGostForwardId());
+                    if (f != null) {
+                        lineFlow += (f.getInFlow() == null ? 0L : f.getInFlow())
+                                + (f.getOutFlow() == null ? 0L : f.getOutFlow());
+                    }
                 }
             }
             if (count == 0) {
@@ -629,6 +637,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             line.put("nodeName", node != null ? node.getName() : ("机器#" + nodeId));
             line.put("type", landingId != null ? "relay" : "direct");
             line.put("landingName", landingName);
+            line.put("flow", lineFlow); // 该线路已用流量(字节)
             line.put("protocolCount", count);
             line.put("subToken", token);
             lines.add(line);
