@@ -9,6 +9,7 @@ import com.admin.common.lang.R;
 import com.admin.common.utils.SingboxUtil;
 import com.admin.entity.Forward;
 import com.admin.entity.Inbound;
+import com.admin.entity.InboundLine;
 import com.admin.entity.InboundUser;
 import com.admin.entity.Node;
 import com.admin.entity.Tunnel;
@@ -67,6 +68,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     private UserMapper userMapper;
     @Autowired
     private com.admin.mapper.LandingMapper landingMapper;
+    @Autowired
+    private com.admin.mapper.InboundLineMapper inboundLineMapper;
     @Autowired
     private com.admin.service.LandingService landingService;
 
@@ -433,9 +436,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 }
                 limiterPushedNodes.add(node.getId());
             }
-            // 这条线路(机器×落地组)的订阅 token,该组所有协议共享一条
+            // 这条线路(机器×落地组)的记录:承载订阅 token + 该线路的流量配额/到期;该组所有协议共享
             String subToken = lineTokens.computeIfAbsent(node.getId(),
-                    nid -> getOrCreateLineSubToken(user.getId(), nid, groupLanding));
+                    nid -> getOrCreateLine(user.getId(), nid, groupLanding, dto.getFlow(), dto.getExpTime()).getSubToken());
             R r = assignOneNoPush(in, node, user, userLimiter, dto.getExpTime(), subToken);
             if (r.getCode() != 0) {
                 if (firstError == null) firstError = r.getMsg();
@@ -445,18 +448,14 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             affectedNodes.add(node.getId());
             assigned++;
         }
-        // 流量配额写到用户(一次)
-        if (dto.getFlow() != null) {
-            user.setFlow(dto.getFlow());
-            userMapper.updateById(user);
-        }
         // 每个受影响的节点只推一次配置(避免反复重启)
         for (Long nid : affectedNodes) {
             pushNodeSingbox(nid);
         }
         // 结果里带回这条线路的订阅 token(机器卡分配 = 单机单落地组)
         String resultToken = (dto.getNodeId() != null)
-                ? lineTokens.computeIfAbsent(dto.getNodeId(), nid -> getOrCreateLineSubToken(user.getId(), nid, groupLanding))
+                ? lineTokens.computeIfAbsent(dto.getNodeId(),
+                        nid -> getOrCreateLine(user.getId(), nid, groupLanding, dto.getFlow(), dto.getExpTime()).getSubToken())
                 : (lineTokens.isEmpty() ? null : lineTokens.values().iterator().next());
         if (assigned == 0) {
             if (firstError == null && skipped > 0) {
@@ -638,11 +637,78 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             line.put("type", landingId != null ? "relay" : "direct");
             line.put("landingName", landingName);
             line.put("flow", lineFlow); // 该线路已用流量(字节)
+            // 该线路自己的配额/到期(线路表);quotaGb=0/null 表示不单独限,只受账号总量约束
+            InboundLine lineRec = getLine(userId, nodeId, landingId);
+            line.put("quotaGb", lineRec != null ? lineRec.getFlow() : null);
+            line.put("lineExpTime", lineRec != null ? lineRec.getExpTime() : null);
+            line.put("lineStatus", lineRec != null ? lineRec.getStatus() : 1);
             line.put("protocolCount", count);
             line.put("subToken", token);
             lines.add(line);
         }
         return R.ok(lines);
+    }
+
+    /** 只读:取这条线路的记录(没有返回 null) */
+    private InboundLine getLine(Long userId, Long nodeId, Long landingId) {
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InboundLine> lw =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InboundLine>()
+                        .eq("user_id", userId).eq("node_id", nodeId);
+        if (landingId != null) {
+            lw.eq("landing_id", landingId);
+        } else {
+            lw.isNull("landing_id");
+        }
+        return inboundLineMapper.selectOne(lw.last("limit 1"));
+    }
+
+    /**
+     * 取/建这条线路(车友 × 机器 × 落地组)的记录。线路承载:订阅 token、流量配额、到期。
+     * quotaGb / expTime 传 null 表示不改动(只取现有线路);传值则写入。
+     */
+    private InboundLine getOrCreateLine(Long userId, Long nodeId, Long landingId, Long quotaGb, Long expTime) {
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InboundLine> lw =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InboundLine>()
+                        .eq("user_id", userId).eq("node_id", nodeId);
+        if (landingId != null) {
+            lw.eq("landing_id", landingId);
+        } else {
+            lw.isNull("landing_id");
+        }
+        InboundLine line = inboundLineMapper.selectOne(lw.last("limit 1"));
+        if (line == null) {
+            line = new InboundLine();
+            line.setUserId(userId);
+            line.setNodeId(nodeId);
+            line.setLandingId(landingId);
+            line.setSubToken(getOrCreateLineSubToken(userId, nodeId, landingId));
+            line.setFlow(quotaGb);
+            line.setExpTime(expTime);
+            line.setStatus(1);
+            line.setCreatedTime(System.currentTimeMillis());
+            line.setUpdatedTime(System.currentTimeMillis());
+            inboundLineMapper.insert(line);
+            return line;
+        }
+        boolean changed = false;
+        if (quotaGb != null) {
+            line.setFlow(quotaGb);
+            changed = true;
+        }
+        if (expTime != null) {
+            line.setExpTime(expTime);
+            changed = true;
+        }
+        if (line.getSubToken() == null || line.getSubToken().isEmpty()) {
+            line.setSubToken(getOrCreateLineSubToken(userId, nodeId, landingId));
+            changed = true;
+        }
+        if (changed) {
+            line.setStatus(1); // 重新分配/续费 → 恢复正常
+            line.setUpdatedTime(System.currentTimeMillis());
+            inboundLineMapper.updateById(line);
+        }
+        return line;
     }
 
     /**

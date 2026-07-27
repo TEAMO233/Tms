@@ -255,9 +255,10 @@ export default function RelayPage() {
             />
             <Input
               type="number"
-              label="流量配额(GB,留空=不限)"
+              label="这条中转的流量配额(GB,留空=不单独限)"
               value={assignForm.flowGb ?? ""}
               onChange={(e) => setAssignForm({ ...assignForm, flowGb: e.target.value ? Number(e.target.value) : null })}
+              description="中转走落地流量成本高,建议单独设:超了只停这条中转,车友的直连线路照用"
             />
           </ModalBody>
           <ModalFooter>

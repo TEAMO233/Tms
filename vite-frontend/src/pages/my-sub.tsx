@@ -75,7 +75,7 @@ export default function MySubPage() {
                 />
               </div>
               <div className="text-xs text-default-400 mt-1">
-                {pct.toFixed(1)}% 已用 · 所有线路共用这一份流量配额
+                {pct.toFixed(1)}% 已用 · 这是账号总额度;下面每条线路若单独标了配额,还要各自受它约束
               </div>
             </div>
           )}
@@ -104,12 +104,27 @@ export default function MySubPage() {
                       {isRelay ? `🔀 中转${ln.landingName ? "→" + ln.landingName : ""}` : "🖥️ 直连"}
                     </Chip>
                     <span className="font-medium truncate">{ln.nodeName}</span>
+                    {ln.lineStatus === 0 && <Chip size="sm" color="danger" variant="flat">已停</Chip>}
                     <div className="ml-auto flex items-center gap-2">
-                      {/* 这条线路各自用了多少(总配额是全部线路共用的,见顶部) */}
-                      <span className="text-xs text-default-500">本线路已用 {fmtGB(ln.flow || 0)}</span>
+                      <span className="text-xs text-default-500">
+                        本线路已用 {fmtGB(ln.flow || 0)}
+                        {ln.quotaGb > 0 && <span className="text-default-400"> / {ln.quotaGb} GB</span>}
+                      </span>
                       <Chip size="sm" variant="flat">{ln.protocolCount} 协议</Chip>
                     </div>
                   </div>
+                  {/* 这条线路有独立配额时,给它自己的进度条 */}
+                  {ln.quotaGb > 0 && (() => {
+                    const lp = Math.min(100, ((ln.flow || 0) / (ln.quotaGb * 1024 * 1024 * 1024)) * 100);
+                    return (
+                      <div className="w-full h-1.5 bg-default-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${lp > 90 ? "bg-danger" : lp > 70 ? "bg-warning" : "bg-primary"}`}
+                          style={{ width: `${lp}%` }}
+                        />
+                      </div>
+                    );
+                  })()}
                   <Input
                     readOnly
                     size="sm"

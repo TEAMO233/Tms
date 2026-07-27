@@ -65,6 +65,14 @@ public class FlowController extends BaseController {
     @Resource
     CheckGostConfigAsync checkGostConfigAsync;
 
+    // 协议/中转的线路级配额检查用
+    @Resource
+    com.admin.mapper.InboundMapper inboundMapper;
+    @Resource
+    com.admin.mapper.InboundUserMapper inboundUserMapper;
+    @Resource
+    com.admin.mapper.InboundLineMapper inboundLineMapper;
+
     /**
      * 加密消息包装器
      */
@@ -233,12 +241,118 @@ public class FlowController extends BaseController {
 
         // 7. 检查和服务暂停操作
         String name = buildServiceName(forwardId, userId, userTunnelId);
-        if (!Objects.equals(userTunnelId, DEFAULT_USER_TUNNEL_ID)) { // 非管理员的转发需要检测流量限制
+        if (!Objects.equals(userTunnelId, DEFAULT_USER_TUNNEL_ID)) { // 走隧道权限的转发(老转发业务)
             checkUserRelatedLimits(userId, name);
             checkUserTunnelRelatedLimits(userTunnelId, name, userId);
+        } else if (forward != null && forward.getUserId() != null && forward.getUserId() != 0) {
+            // 协议/中转的转发:userTunnelId 恒为 0(没有 user_tunnel),以前整个被跳过 → 配额从未生效。
+            // 改为走【线路】检查:线路配额超 → 只停这条线路;账号总量超 → 停该车友全部。
+            checkLineRelatedLimits(forward, userId);
+            checkUserRelatedLimits(userId, name);
         }
 
         return SUCCESS_RESPONSE;
+    }
+
+    /**
+     * 协议/中转的线路级检查:该转发属于哪条线路(车友×机器×落地组)→ 汇总该线路已用流量,
+     * 超过线路配额、或线路到期 → 暂停这条线路的所有转发(不影响车友其它线路)。
+     */
+    private void checkLineRelatedLimits(Forward forward, String userId) {
+        try {
+            InboundUser iu = inboundUserMapper.selectOne(new QueryWrapper<InboundUser>()
+                    .eq("gost_forward_id", forward.getId()).last("limit 1"));
+            if (iu == null) {
+                return; // 不是协议/中转的转发
+            }
+            Inbound in = inboundMapper.selectById(iu.getInboundId());
+            if (in == null) {
+                return;
+            }
+            QueryWrapper<InboundLine> lw = new QueryWrapper<InboundLine>()
+                    .eq("user_id", iu.getUserId()).eq("node_id", in.getNodeId());
+            if (in.getLandingId() != null) {
+                lw.eq("landing_id", in.getLandingId());
+            } else {
+                lw.isNull("landing_id");
+            }
+            InboundLine line = inboundLineMapper.selectOne(lw.last("limit 1"));
+            if (line == null) {
+                return; // 老数据没有线路记录 → 只受账号总量约束
+            }
+
+            boolean overFlow = false;
+            if (line.getFlow() != null && line.getFlow() > 0) {
+                long used = sumLineFlow(iu.getUserId(), in.getNodeId(), in.getLandingId());
+                overFlow = used >= line.getFlow() * BYTES_TO_GB;
+            }
+            boolean expired = line.getExpTime() != null && line.getExpTime() <= System.currentTimeMillis();
+            if (!overFlow && !expired) {
+                return;
+            }
+            pauseLineForwards(iu.getUserId(), in.getNodeId(), in.getLandingId());
+            line.setStatus(0);
+            line.setUpdatedTime(System.currentTimeMillis());
+            inboundLineMapper.updateById(line);
+            log.info("线路已停:user={} node={} landing={} 超额={} 到期={}",
+                    iu.getUserId(), in.getNodeId(), in.getLandingId(), overFlow, expired);
+        } catch (Exception e) {
+            log.warn("线路流量检查失败", e);
+        }
+    }
+
+    /** 汇总某条线路已用流量(该线路各协议对应转发的上下行之和) */
+    private long sumLineFlow(Long userId, Long nodeId, Long landingId) {
+        long total = 0L;
+        for (Forward f : lineForwards(userId, nodeId, landingId)) {
+            total += (f.getInFlow() == null ? 0L : f.getInFlow())
+                    + (f.getOutFlow() == null ? 0L : f.getOutFlow());
+        }
+        return total;
+    }
+
+    /** 暂停某条线路的所有转发 */
+    private void pauseLineForwards(Long userId, Long nodeId, Long landingId) {
+        for (Forward f : lineForwards(userId, nodeId, landingId)) {
+            Tunnel tunnel = tunnelService.getById(f.getTunnelId());
+            if (tunnel != null) {
+                GostUtil.PauseService(tunnel.getInNodeId(),
+                        buildServiceName(String.valueOf(f.getId()), String.valueOf(f.getUserId()), DEFAULT_USER_TUNNEL_ID));
+            }
+            f.setStatus(0);
+            forwardService.updateById(f);
+        }
+    }
+
+    /** 找出某条线路(车友×机器×落地组)下的所有转发 */
+    private List<Forward> lineForwards(Long userId, Long nodeId, Long landingId) {
+        List<Forward> result = new java.util.ArrayList<>();
+        QueryWrapper<Inbound> iw = new QueryWrapper<Inbound>().eq("node_id", nodeId);
+        if (landingId != null) {
+            iw.eq("landing_id", landingId);
+        } else {
+            iw.isNull("landing_id");
+        }
+        List<Inbound> inbounds = inboundMapper.selectList(iw);
+        if (inbounds.isEmpty()) {
+            return result;
+        }
+        List<Long> inboundIds = new java.util.ArrayList<>();
+        for (Inbound in : inbounds) {
+            inboundIds.add(in.getId());
+        }
+        List<InboundUser> ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>()
+                .eq("user_id", userId).in("inbound_id", inboundIds));
+        for (InboundUser iu : ius) {
+            if (iu.getGostForwardId() == null) {
+                continue;
+            }
+            Forward f = forwardService.getById(iu.getGostForwardId());
+            if (f != null) {
+                result.add(f);
+            }
+        }
+        return result;
     }
 
     private void checkUserRelatedLimits(String userId, String name) {

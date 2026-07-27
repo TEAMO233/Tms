@@ -256,9 +256,10 @@ export default function InboundPage() {
             />
             <Input
               type="number"
-              label="流量配额(GB,留空=不限)"
+              label="这条线路的流量配额(GB,留空=不单独限)"
               value={assignForm.flowGb ?? ""}
               onChange={(e) => setAssignForm({ ...assignForm, flowGb: e.target.value ? Number(e.target.value) : null })}
+              description="只算这条线路的用量,超了只停这条,车友其它线路照用;留空则只受账号总流量约束"
             />
           </ModalBody>
           <ModalFooter>
