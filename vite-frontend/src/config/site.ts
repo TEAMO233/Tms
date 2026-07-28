@@ -120,14 +120,30 @@ export const getCachedConfigs = async (): Promise<Record<string, string>> => {
   return {};
 };
 
-// 动态更新网站配置
+/** 面板名变化时广播,让已渲染的头部/侧栏跟着刷新 */
+export const SITE_CONFIG_UPDATED = 'site-config-updated';
+
+/**
+ * 动态更新网站配置(面板名)。
+ * 【必须直接问后端,不能走 getCachedConfig】——它只要本地有缓存就永远不再请求,
+ * 结果是:管理员改了名字只清掉自己浏览器的缓存,其它人(车友)那台一直显示旧名字。
+ * 这里采用"先用缓存渲染、后台再校验刷新"的做法。
+ */
 export const updateSiteConfig = async () => {
-  const appName = await getCachedConfig('app_name');
-    if (appName && appName !== siteConfig.name) {
-      siteConfig.name = appName;
-      // 更新页面标题
-      document.title = appName;
+  try {
+    const response = await getConfigByName('app_name');
+    const fresh = response.code === 0 ? response.data?.value : null;
+    if (fresh) {
+      configCache.set('app_name', fresh);
+      if (fresh !== siteConfig.name) {
+        siteConfig.name = fresh;
+        document.title = fresh;
+        window.dispatchEvent(new Event(SITE_CONFIG_UPDATED));
+      }
     }
+  } catch (error) {
+    // 网络失败就先用缓存里的值,下次再校验
+  }
 };
 
 // 清除配置缓存的工具函数

@@ -1,4 +1,4 @@
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import IndexPage from "@/pages/index";
@@ -162,13 +162,14 @@ function App() {
           </ProtectedRoute>
         } 
       />
-      <Route 
-        path="/dashboard" 
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            {/* 仪表板是账号级口径,车友一切按线路算 → 直接送他去「我的订阅」 */}
+            {isAdmin() ? <DashboardPage /> : <Navigate to="/my-sub" replace />}
           </ProtectedRoute>
-        } 
+        }
       />
       <Route
         path="/forward"

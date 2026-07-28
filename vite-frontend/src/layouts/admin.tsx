@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 import { Logo } from '@/components/icons';
 import { updatePassword } from '@/api';
 import { safeLogout } from '@/utils/logout';
-import { siteConfig } from '@/config/site';
+import { siteConfig, SITE_CONFIG_UPDATED } from '@/config/site';
 import SkinPicker from '@/components/skin-picker';
 
 interface MenuItem {
@@ -41,6 +41,14 @@ export default function AdminLayout({
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
   const [username, setUsername] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  // 面板名:先用本地值渲染,后台校验到新名字时(SITE_CONFIG_UPDATED)实时刷新,
+  // 免得管理员改了名字、车友那边一直显示旧名
+  const [appName, setAppName] = useState(siteConfig.name);
+  useEffect(() => {
+    const onUpdated = () => setAppName(siteConfig.name);
+    window.addEventListener(SITE_CONFIG_UPDATED, onUpdated);
+    return () => window.removeEventListener(SITE_CONFIG_UPDATED, onUpdated);
+  }, []);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     newUsername: '',
@@ -58,7 +66,9 @@ export default function AdminLayout({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
         </svg>
-      )
+      ),
+      // 仪表板是账号级口径(总流量/已用流量),车友那边一切按线路算,看了只会困惑 → 仅管理员
+      adminOnly: true
     },
     {
       // 车友(子账号)的主页面:自己的订阅线路 + 套餐信息
@@ -316,7 +326,7 @@ export default function AdminLayout({
            <div className="flex items-center gap-2 w-full">
              <Logo size={24} />
              <div className="flex-1 min-w-0">
-               <h1 className="text-sm font-bold text-foreground overflow-hidden whitespace-nowrap">{siteConfig.name}</h1>
+               <h1 className="text-sm font-bold text-foreground overflow-hidden whitespace-nowrap">{appName}</h1>
                <p className="text-xs text-default-500">v{siteConfig.version}</p>
              </div>
            </div>
