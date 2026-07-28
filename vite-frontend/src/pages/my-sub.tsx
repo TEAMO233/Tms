@@ -8,12 +8,13 @@ import { getMyLines, getUserPackageInfo } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
 
 /**
- * 我的订阅(车友视角):套餐概况 + 自己的所有订阅线路(直连/中转各一条)。
- * 车友只管拿链接导客户端,内部的转发管道对他隐藏。
+ * 我的订阅(车友视角)· 一条订阅 = 一个套餐。
+ * 每条线路各自带流量配额、到期、状态——不存在"账号总流量"这种混淆概念。
+ * 车友只管复制链接导客户端,内部的机器/端口/转发对他隐藏。
  */
 export default function MySubPage() {
   const [lines, setLines] = useState<any[]>([]);
-  const [info, setInfo] = useState<any>(null);
+  const [account, setAccount] = useState<any>(null); // 只用来判断账号是否被停用/到期
   const [loading, setLoading] = useState(true);
 
   const subUrl = (token: string) => `${window.location.origin}/api/v1/open_api/sub?token=${token}`;
@@ -22,7 +23,7 @@ export default function MySubPage() {
     try {
       const [ln, pkg] = await Promise.all([getMyLines(), getUserPackageInfo()]);
       if (ln.code === 0) setLines(ln.data || []);
-      if (pkg.code === 0) setInfo(pkg.data?.userInfo || null);
+      if (pkg.code === 0) setAccount(pkg.data?.userInfo || null);
     } catch (e) {
       toast.error("加载失败");
     }
@@ -33,56 +34,29 @@ export default function MySubPage() {
     load();
   }, []);
 
-  const fmtGB = (bytes: number) => {
-    if (!bytes || bytes <= 0) return "0 GB";
-    return (bytes / 1024 / 1024 / 1024).toFixed(2) + " GB";
-  };
-  const usedBytes = ((info?.inFlow || 0) + (info?.outFlow || 0)) as number;
-  const totalBytes = info?.flow ? info.flow * 1024 * 1024 * 1024 : 0;
-  const pct = totalBytes > 0 ? Math.min(100, (usedBytes / totalBytes) * 100) : 0;
-  const expText = info?.expTime ? new Date(info.expTime).toLocaleDateString() : "永久";
+  const GB = 1024 * 1024 * 1024;
+  const fmtGB = (bytes: number) => ((bytes || 0) / GB).toFixed(2) + " GB";
+  const fmtDate = (ms: number) => new Date(ms).toLocaleDateString();
+
+  // 账号级异常(被管理员停用 / 账号到期)才提示,平时不打扰
+  const accountDisabled = account && account.status !== undefined && account.status !== 1;
+  const accountExpired = account?.expTime && account.expTime <= Date.now();
 
   return (
     <div className="p-4 space-y-4 max-w-4xl">
-      <h1 className="text-xl font-bold">我的订阅</h1>
+      <div className="flex items-baseline gap-3">
+        <h1 className="text-xl font-bold">我的订阅</h1>
+        <span className="text-sm text-default-500">共 {lines.length} 条线路,每条各自独立</span>
+      </div>
 
-      {/* 套餐概况 */}
-      <Card>
-        <CardBody className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <div className="text-default-500 text-xs">已用流量</div>
-              <div className="text-lg font-semibold">
-                {fmtGB(usedBytes)}
-                {totalBytes > 0 && <span className="text-default-400 text-sm"> / {info.flow} GB</span>}
-              </div>
-            </div>
-            <div>
-              <div className="text-default-500 text-xs">到期时间</div>
-              <div className="text-lg font-semibold">{expText}</div>
-            </div>
-            <div>
-              <div className="text-default-500 text-xs">线路数</div>
-              <div className="text-lg font-semibold">{lines.length}</div>
-            </div>
-          </div>
-          {totalBytes > 0 && (
-            <div>
-              <div className="w-full h-2 bg-default-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${pct > 90 ? "bg-danger" : pct > 70 ? "bg-warning" : "bg-primary"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="text-xs text-default-400 mt-1">
-                {pct.toFixed(1)}% 已用 · 这是账号总额度;下面每条线路若单独标了配额,还要各自受它约束
-              </div>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+      {(accountDisabled || accountExpired) && (
+        <Card className="border border-danger/40 bg-danger/5">
+          <CardBody className="text-sm text-danger">
+            ⚠️ 你的账号{accountExpired ? "已到期" : "已被停用"},所有线路暂时不可用,请联系管理员。
+          </CardBody>
+        </Card>
+      )}
 
-      {/* 我的线路 */}
       {loading ? (
         <div className="text-center text-default-400 py-8">加载中...</div>
       ) : lines.length === 0 ? (
@@ -96,35 +70,49 @@ export default function MySubPage() {
           {lines.map((ln: any, idx: number) => {
             const url = subUrl(ln.subToken);
             const isRelay = ln.type === "relay";
+            const used = ln.flow || 0;
+            const quota = ln.quotaGb > 0 ? ln.quotaGb * GB : 0;
+            const pct = quota > 0 ? Math.min(100, (used / quota) * 100) : 0;
+            const stopped = ln.lineStatus === 0;
             return (
-              <Card key={idx}>
-                <CardBody className="space-y-2">
+              <Card key={idx} className={stopped ? "opacity-70" : ""}>
+                <CardBody className="space-y-3">
+                  {/* 标题行:类型 + 机器 + 协议数 */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Chip size="sm" variant="flat" color={isRelay ? "warning" : "primary"}>
                       {isRelay ? `🔀 中转${ln.landingName ? "→" + ln.landingName : ""}` : "🖥️ 直连"}
                     </Chip>
                     <span className="font-medium truncate">{ln.nodeName}</span>
-                    {ln.lineStatus === 0 && <Chip size="sm" color="danger" variant="flat">已停</Chip>}
-                    <div className="ml-auto flex items-center gap-2">
-                      <span className="text-xs text-default-500">
-                        本线路已用 {fmtGB(ln.flow || 0)}
-                        {ln.quotaGb > 0 && <span className="text-default-400"> / {ln.quotaGb} GB</span>}
+                    {stopped && <Chip size="sm" color="danger" variant="flat">已停用</Chip>}
+                    <Chip size="sm" variant="flat" className="ml-auto">{ln.protocolCount} 协议</Chip>
+                  </div>
+
+                  {/* 这条订阅自己的套餐:流量 + 到期 */}
+                  <div className="flex items-center gap-6 text-sm">
+                    <div>
+                      <span className="text-default-500 text-xs">流量 </span>
+                      <span className="font-semibold">{fmtGB(used)}</span>
+                      <span className="text-default-400">
+                        {quota > 0 ? ` / ${ln.quotaGb} GB` : " / 不限"}
                       </span>
-                      <Chip size="sm" variant="flat">{ln.protocolCount} 协议</Chip>
+                    </div>
+                    <div>
+                      <span className="text-default-500 text-xs">到期 </span>
+                      <span className="font-semibold">
+                        {ln.lineExpTime ? fmtDate(ln.lineExpTime) : "永久"}
+                      </span>
                     </div>
                   </div>
-                  {/* 这条线路有独立配额时,给它自己的进度条 */}
-                  {ln.quotaGb > 0 && (() => {
-                    const lp = Math.min(100, ((ln.flow || 0) / (ln.quotaGb * 1024 * 1024 * 1024)) * 100);
-                    return (
-                      <div className="w-full h-1.5 bg-default-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${lp > 90 ? "bg-danger" : lp > 70 ? "bg-warning" : "bg-primary"}`}
-                          style={{ width: `${lp}%` }}
-                        />
-                      </div>
-                    );
-                  })()}
+                  {quota > 0 && (
+                    <div className="w-full h-1.5 bg-default-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${pct > 90 ? "bg-danger" : pct > 70 ? "bg-warning" : "bg-primary"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {/* 订阅链接 */}
                   <Input
                     readOnly
                     size="sm"
@@ -160,7 +148,7 @@ export default function MySubPage() {
             <li><b>v2rayNG(安卓)</b>:左侧菜单 → 订阅分组设置 → + → 粘贴地址 → 更新订阅</li>
           </ul>
           <div className="text-xs text-default-400">
-            一条订阅 = 一条线路的全部协议;管理员加了新协议,你更新订阅就自动出现。哪条快用哪条。
+            每条线路是独立的套餐:流量、到期各算各的,一条用完不影响另一条。管理员在某条线路上加了新协议,你更新订阅就自动出现。
           </div>
         </CardBody>
       </Card>
