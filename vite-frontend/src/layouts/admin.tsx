@@ -124,7 +124,7 @@ export default function AdminLayout({
     },
     {
       path: '/node',
-      label: '转发机监控',
+      label: '转发机',
       icon: (
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -173,6 +173,26 @@ export default function AdminLayout({
       adminOnly: true
     }
   ];
+
+  // 侧栏显示顺序(改这一行就能调顺序,不用挪上面那些带图标的大块)
+  const MENU_ORDER = [
+    '/dashboard',   // 0 仪表板
+    '/my-sub',      // 车友专属,管理员看不到
+    '/node',        // 1 转发机
+    '/inbound',     // 2 协议管理
+    '/relay',       // 3 中转
+    '/user',        // 4 用户
+    '/limit',       // 5 限速
+    '/tunnel',      // 6 隧道
+    '/forward',     // 7 转发
+    '/config',
+    '/guide',
+  ];
+  menuItems.sort((a, b) => {
+    const ia = MENU_ORDER.indexOf(a.path);
+    const ib = MENU_ORDER.indexOf(b.path);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
 
   // 检查移动端
   const checkMobile = () => {
