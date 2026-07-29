@@ -2,7 +2,7 @@
 # 【本地 build 源码镜像,不拉 :latest,不碰生产】,MySQL 初始化时连 hybrid schema 一起建。
 #
 # 用法(在一台【干净的测试机】上,别和生产面板同机跑,否则容器名/端口冲突):
-#   1) 下源码:curl -L https://github.com/Teminuosi/Tms/archive/refs/heads/hybrid-panel.tar.gz | tar xz && cd Tms-hybrid-panel
+#   1) 下源码:curl -L https://github.com/Teminuosi/Tms/archive/refs/heads/main.tar.gz | tar xz && cd Tms-main
 #   2) 建 .env(见文件末尾示例)
 #   3) docker compose -f docker-compose-hybrid.yml --env-file .env up -d --build
 #      (第一次会本地编译前后端,几分钟)
@@ -20,10 +20,10 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - mysql_data:/var/lib/mysql
+      # gost.sql 已包含全部 hybrid 表(协议/中转/线路),不要再挂 hybrid-schema-*.sql,
+      # 否则里面的 ALTER TABLE 会二次执行报 1060,导致 MySQL 初始化中断。
+      # 那三个文件保留着,供【已有旧库】单独执行升级用。
       - ./gost.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./hybrid-schema-v1.sql:/docker-entrypoint-initdb.d/02-hybrid.sql:ro
-      - ./hybrid-schema-v2.sql:/docker-entrypoint-initdb.d/03-hybrid-relay.sql:ro
-      - ./hybrid-schema-v3.sql:/docker-entrypoint-initdb.d/04-hybrid-line.sql:ro
     command: >
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4

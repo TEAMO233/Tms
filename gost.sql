@@ -308,3 +308,144 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- ============================================================
+-- TMS 合体面板 schema(协议管理 / 中转 / 线路)
+-- 新装时随本文件一次建好;老库升级请单独执行 hybrid-schema-v1/v2/v3.sql。
+-- 注意:合并进来后,docker-compose 里不要再额外挂载那三个文件,
+--       否则 ALTER TABLE 会重复执行报 1060 导致 MySQL 初始化中断。
+-- ============================================================
+
+
+-- flux 合体面板 · 阶段1 数据库 schema(协议搭建 + 限速)
+-- 加法式迁移:只新增表/列,不动现有数据。可在现有 flux 库上直接执行。
+-- 新装最终会并进 gost.sql;此文件供现有库升级用。
+-- 目标库:MySQL 5.7 / utf8mb4。
+
+
+-- ------------------------------------------------------------
+-- 1) node 加"有域名/无域名"相关列
+--    cert_mode: 0=无域名(Reality/自签),1=有域名(正经 TLS 证书)
+--    MySQL 5.7 的 ADD COLUMN 不支持 IF NOT EXISTS,重复执行会报 1060,忽略即可。
+-- ------------------------------------------------------------
+ALTER TABLE `node`
+  ADD COLUMN `domain`    varchar(255) DEFAULT NULL COMMENT '有域名节点的域名，无域名留空',
+  ADD COLUMN `cert_mode` int(10)      NOT NULL DEFAULT 0 COMMENT '0=无域名(Reality/自签) 1=有域名TLS',
+  ADD COLUMN `cert_path` varchar(500) DEFAULT NULL COMMENT '有域名时证书路径',
+  ADD COLUMN `key_path`  varchar(500) DEFAULT NULL COMMENT '有域名时私钥路径';
+
+-- ------------------------------------------------------------
+-- 2) inbound：协议入站(一条 = 一个 sing-box 本机入站)
+--    listen_port 只在 127.0.0.1 监听,公网口由 gost 转发占用(限速)。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `inbound` (
+  `id`           int(10)      NOT NULL AUTO_INCREMENT,
+  `node_id`      int(10)      NOT NULL COMMENT '落在哪台节点',
+  `tag`          varchar(100) NOT NULL COMMENT 'sing-box inbound tag',
+  `protocol`     varchar(50)  NOT NULL COMMENT 'vless/vmess/trojan/shadowsocks/hysteria2',
+  `listen_port`  int(10)      NOT NULL COMMENT 'sing-box 本机监听口(127.0.0.1)',
+  `security`     varchar(20)  NOT NULL DEFAULT 'reality' COMMENT 'none/tls/reality',
+  `sni`          varchar(255) DEFAULT NULL COMMENT 'TLS/Reality 的 SNI',
+  `dest`         varchar(255) DEFAULT NULL COMMENT 'Reality 借用的目标站点',
+  `public_key`   varchar(255) DEFAULT NULL COMMENT 'Reality 公钥',
+  `private_key`  varchar(255) DEFAULT NULL COMMENT 'Reality 私钥',
+  `short_id`     varchar(100) DEFAULT NULL COMMENT 'Reality shortId',
+  `config_json`  longtext              COMMENT '该入站完整 sing-box JSON(后端生成、下发节点)',
+  `remark`       varchar(255) DEFAULT NULL,
+  `status`       int(10)      NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用',
+  `created_time` bigint(20)   NOT NULL,
+  `updated_time` bigint(20)   DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_inbound_node` (`node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- 3) inbound_user：用户在某入站里的凭证 + 对应的 gost 前置转发
+--    gost_forward_id 指向 forward 表:那条转发带该用户的限速/流量/到期。
+--    客户端最终连的是那条 forward 的公网端口(被限速),落地到本入站。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `inbound_user` (
+  `id`              int(10)      NOT NULL AUTO_INCREMENT,
+  `inbound_id`      int(10)      NOT NULL,
+  `user_id`         int(10)      NOT NULL COMMENT '关联 user 表(子账号)',
+  `uuid`            varchar(100) DEFAULT NULL COMMENT 'vless/vmess 用',
+  `password`        varchar(255) DEFAULT NULL COMMENT 'trojan/ss/hysteria2 用',
+  `gost_forward_id` int(10)      DEFAULT NULL COMMENT '对应的 gost 前置转发(带限速/流量/到期)',
+  `sub_token`       varchar(100) DEFAULT NULL COMMENT '订阅链接 token',
+  `status`          int(10)      NOT NULL DEFAULT 1,
+  `created_time`    bigint(20)   NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_iu_inbound` (`inbound_id`),
+  KEY `idx_iu_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- 4) speed_limit：tunnel_id 改为可空(合体面板协议限速不绑隧道,
+--    分配协议用户时按需把限速器推到协议节点)。重复执行无害。
+-- ------------------------------------------------------------
+ALTER TABLE `speed_limit` MODIFY COLUMN `tunnel_id` bigint(20) NULL DEFAULT NULL;
+
+
+-- flux 合体面板 · 阶段3 数据库 schema(中转:前置机协议 + 落地出口)
+-- 加法式迁移:只新增表/列,不动现有数据。可在现有 flux 库上直接执行。
+-- MySQL 5.7 的 ADD COLUMN 不支持 IF NOT EXISTS,重复执行报 1060,忽略即可。
+-- 目标库:MySQL 5.7 / utf8mb4。
+
+
+-- ------------------------------------------------------------
+-- 1) landing:可复用的「落地」出口。粘贴一条节点分享链接建成,
+--    面板解析成 sing-box 出站。一条落地可分给多台前置机复用。
+--    link:原始分享链接(socks5://user:pass@ip:port / ss:// / vmess:// / vless:// / trojan:// / hysteria2://…)
+--    outbound_json:解析后的 sing-box outbound(下发时按 landing_id 注入节点配置)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `landing` (
+  `id`            int(10)      NOT NULL AUTO_INCREMENT,
+  `name`          varchar(100) NOT NULL COMMENT '落地名称(自己起,如 泰国住宅)',
+  `type`          varchar(30)  NOT NULL COMMENT 'socks5/shadowsocks/vmess/vless/trojan/hysteria2',
+  `link`          longtext              COMMENT '原始分享链接',
+  `outbound_json` longtext              COMMENT '解析后的 sing-box outbound JSON',
+  `remark`        varchar(255) DEFAULT NULL,
+  `status`        int(10)      NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用',
+  `created_time`  bigint(20)   NOT NULL,
+  `updated_time`  bigint(20)   DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- 2) inbound 加 landing_id:空=直连(协议管理,本机出网),
+--    有=中转(该入站的流量经这个落地出网)。加法,不影响已有直连入站。
+-- ------------------------------------------------------------
+ALTER TABLE `inbound`
+  ADD COLUMN `landing_id` int(10) DEFAULT NULL COMMENT '落地ID:空=直连,有=经该落地中转出网';
+
+
+-- TMS 面板 · 阶段4 数据库 schema(把「线路」正式建模,支持每条线路独立配额)
+-- 加法式迁移:只新增表,不动现有数据。可在现有库上直接执行。
+-- 目标库:MySQL 5.7 / utf8mb4。
+
+
+-- ------------------------------------------------------------
+-- inbound_line:一条「线路」= 车友 × 机器 × 落地组
+--   landing_id 为空 = 该机器的直连线路;非空 = 该落地的中转线路。
+--   同一台机器的直连和每个中转,各算一条线路、各一条订阅、各一份配额。
+--
+--   sub_token : 这条线路的订阅 token(该线路所有协议共享)
+--   flow      : 这条线路的流量配额(GB);0 或 NULL = 不单独限,只受账号总流量约束
+--   exp_time  : 这条线路的到期时间(epoch ms);空 = 不单独限
+--   已用流量不在这里存,实时汇总该线路各协议对应转发的 in_flow+out_flow。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `inbound_line` (
+  `id`           int(10)      NOT NULL AUTO_INCREMENT,
+  `user_id`      int(10)      NOT NULL COMMENT '车友(user 表)',
+  `node_id`      int(10)      NOT NULL COMMENT '机器',
+  `landing_id`   int(10)      DEFAULT NULL COMMENT '落地ID:空=直连线路,非空=该落地的中转线路',
+  `sub_token`    varchar(100) DEFAULT NULL COMMENT '该线路的订阅 token',
+  `flow`         bigint(20)   DEFAULT NULL COMMENT '该线路流量配额(GB);0/NULL=不单独限',
+  `exp_time`     bigint(20)   DEFAULT NULL COMMENT '该线路到期时间(epoch ms);空=不单独限',
+  `status`       int(10)      NOT NULL DEFAULT 1 COMMENT '1=正常 0=已停(超额/到期)',
+  `created_time` bigint(20)   NOT NULL,
+  `updated_time` bigint(20)   DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_line_user` (`user_id`),
+  KEY `idx_line_user_node` (`user_id`, `node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

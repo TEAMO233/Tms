@@ -13,7 +13,7 @@ set -o pipefail
 
 PANEL_DIR="${TMS_DIR:-$(pwd)}"
 COMPOSE_FILE="docker-compose-hybrid.yml"
-BRANCH="${TMS_BRANCH:-hybrid-panel}"
+BRANCH="${TMS_BRANCH:-main}"
 
 cd "$PANEL_DIR" 2>/dev/null || { echo "❌ 面板目录不存在: $PANEL_DIR"; exit 1; }
 
