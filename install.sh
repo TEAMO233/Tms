@@ -311,22 +311,38 @@ uninstall_gost() {
     systemctl disable gost 2>/dev/null
   fi
 
+  # 协议功能会在本机装 sing-box(服务文件在 /etc/systemd/system,不在安装目录里),
+  # 不一起清掉的话:二进制被删、服务还注册着 → systemd 会一直重启失败刷日志
+  if systemctl list-units --full -all | grep -Fq "sing-box.service"; then
+    echo "🛑 停止并禁用 sing-box 服务..."
+    systemctl stop sing-box 2>/dev/null
+    systemctl disable sing-box 2>/dev/null
+  fi
+
   # 删除服务文件
   if [[ -f "/etc/systemd/system/gost.service" ]]; then
     rm -f "/etc/systemd/system/gost.service"
     echo "🧹 删除服务文件"
   fi
+  if [[ -f "/etc/systemd/system/sing-box.service" ]]; then
+    rm -f "/etc/systemd/system/sing-box.service"
+    echo "🧹 删除 sing-box 服务文件"
+  fi
+  # sing-box 的 systemd 覆盖配置(排查重启限流时可能加过)
+  rm -rf /etc/systemd/system/sing-box.service.d 2>/dev/null
 
-  # 删除安装目录
+  # 删除安装目录(gost 二进制、sing-box 二进制、配置、自签证书都在这里)
   if [[ -d "$INSTALL_DIR" ]]; then
     rm -rf "$INSTALL_DIR"
     echo "🧹 删除安装目录: $INSTALL_DIR"
   fi
 
-  # 重载 systemd
+  # 重载 systemd 并清掉 failed 记录
   systemctl daemon-reload
+  systemctl reset-failed gost 2>/dev/null
+  systemctl reset-failed sing-box 2>/dev/null
 
-  echo "✅ 卸载完成"
+  echo "✅ 卸载完成(gost + sing-box + 配置 + 证书 已全部清除)"
 }
 
 # 主逻辑
