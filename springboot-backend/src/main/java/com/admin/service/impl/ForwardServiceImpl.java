@@ -47,6 +47,8 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
     private static final int FORWARD_STATUS_ACTIVE = 1;
     private static final int FORWARD_STATUS_PAUSED = 0;
     private static final int FORWARD_STATUS_ERROR = -1;
+    /** 自动分配端口时,遇到机器 OS 层被占最多顺延几次 */
+    private static final int MAX_PORT_RETRY = 20;
     private static final int TUNNEL_STATUS_ACTIVE = 1;
 
     private static final long BYTES_TO_GB = 1024L * 1024L * 1024L;
@@ -89,34 +91,56 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
             return R.err(permissionResult.getErrorMessage());
         }
 
-        // 4. 分配端口
+        // 4. 分配端口(留空=自动分配,按节点级避让:该机所有转发的入/出口 + 协议的 sing-box 端口)
+        boolean autoPort = forwardDto.getInPort() == null; // 自动分配时,遇到机器上被别的程序占用可自动顺延
         PortAllocation portAllocation = allocatePorts(tunnel, forwardDto.getInPort());
         if (portAllocation.isHasError()) {
-            return R.err(portAllocation.getErrorMessage());
+            return R.err(portAllocation.getErrorMessage() + suggestPortHint(tunnel));
         }
 
-        // 5. 创建并保存Forward对象
-        Forward forward = createForwardEntity(forwardDto, currentUser, portAllocation);
-        if (!this.save(forward)) {
-            return R.err("端口转发创建失败");
-        }
+        // 5~7. 建实体 + 下发 gost;自动分配时若端口在机器 OS 层被占(gost 报 address already in use),
+        //      自动换下一个可用端口重试,不让用户自己去猜哪个端口空着
+        Integer tryPort = portAllocation.getInPort();
+        R lastErr = null;
+        for (int attempt = 0; attempt < (autoPort ? MAX_PORT_RETRY : 1); attempt++) {
+            PortAllocation pa = PortAllocation.success(tryPort, portAllocation.getOutPort());
+            Forward forward = createForwardEntity(forwardDto, currentUser, pa);
+            if (!this.save(forward)) {
+                return R.err("端口转发创建失败");
+            }
 
-        // 6. 获取所需的节点信息
-        NodeInfo nodeInfo = getRequiredNodes(tunnel);
-        if (nodeInfo.isHasError()) {
+            NodeInfo nodeInfo = getRequiredNodes(tunnel);
+            if (nodeInfo.isHasError()) {
+                this.removeById(forward.getId());
+                return R.err(nodeInfo.getErrorMessage());
+            }
+
+            R gostResult = createGostServices(forward, tunnel,
+                    resolveLimiter(forward, permissionResult.getLimiter()), nodeInfo, permissionResult.getUserTunnel());
+            if (gostResult.getCode() == 0) {
+                return R.ok();
+            }
+
+            // 失败:回滚这条记录
             this.removeById(forward.getId());
-            return R.err(nodeInfo.getErrorMessage());
+            lastErr = gostResult;
+            String msg = gostResult.getMsg() == null ? "" : gostResult.getMsg();
+            boolean portTaken = msg.contains("already in use") || msg.contains("address already");
+            if (!autoPort || !portTaken) {
+                // 手动指定的端口被占 → 明确告诉用户,并建议一个可用端口
+                if (portTaken) {
+                    return R.err("端口 " + tryPort + " 在机器上已被其它程序占用。" + suggestPortHint(tunnel));
+                }
+                return gostResult;
+            }
+            // 自动分配 + 端口被占 → 顺延到下一个候选端口再试
+            Integer next = allocateInPortAfter(tunnel, tryPort);
+            if (next == null) {
+                break;
+            }
+            tryPort = next;
         }
-
-        // 7. 调用Gost服务创建转发
-        R gostResult = createGostServices(forward, tunnel, resolveLimiter(forward, permissionResult.getLimiter()), nodeInfo, permissionResult.getUserTunnel());
-
-        if (gostResult.getCode() != 0) {
-            this.removeById(forward.getId());
-            return gostResult;
-        }
-
-        return R.ok();
+        return lastErr != null ? lastErr : R.err("没有可用端口");
     }
 
     @Override
@@ -1351,6 +1375,36 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
      */
     private Integer allocateInPort(Tunnel tunnel, Long excludeForwardId) {
         return allocatePortForNode(tunnel.getInNodeId(), excludeForwardId);
+    }
+
+    /**
+     * 在 after 之后找下一个可用入口端口(自动分配时,某个端口在机器 OS 层被占就顺延)。
+     * 没有可用返回 null。
+     */
+    private Integer allocateInPortAfter(Tunnel tunnel, int after) {
+        Node node = nodeService.getNodeById(tunnel.getInNodeId());
+        if (node == null) {
+            return null;
+        }
+        Set<Integer> usedPorts = getAllUsedPortsOnNode(tunnel.getInNodeId(), null);
+        for (int port = after + 1; port <= node.getPortEnd(); port++) {
+            if (!usedPorts.contains(port)) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    /** 端口冲突时给用户一个可用端口的建议,免得他自己一个个试 */
+    private String suggestPortHint(Tunnel tunnel) {
+        try {
+            Integer free = allocateInPort(tunnel, null);
+            if (free != null) {
+                return "(建议用 " + free + ",或把入口端口留空由系统自动分配)";
+            }
+        } catch (Exception ignored) {
+        }
+        return "(建议把入口端口留空,由系统自动分配)";
     }
 
     /**

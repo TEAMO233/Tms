@@ -73,6 +73,7 @@ interface Forward {
 interface Tunnel {
   id: number;
   name: string;
+  ip?: string; // 入口机 IP:用来判断哪些隧道在同一台机器上(端口要跨隧道避让)
   inNodePortSta?: number;
   inNodePortEnd?: number;
 }
@@ -527,12 +528,19 @@ export default function ForwardPage() {
     }
   };
 
-  // 算出某隧道下一个可用入口端口(在端口范围内跳过同隧道已占用的);填满则返回 null,交后端分配
+  // 算出某隧道下一个可用入口端口。
+  // 必须【按机器】避让而不是只看本隧道:同一台入口机上别的隧道占了的端口也不能用,
+  // 否则这里填出来的端口提交时才会被后端判为冲突。同 IP = 同一台机器。
+  // 填满则返回 null,交后端分配(后端还会再避开协议的 sing-box 端口、以及机器上被别的程序占用的端口)。
   const getNextAvailableInPort = (tunnel: Tunnel): number | null => {
     const start = tunnel.inNodePortSta ?? 1000;
     const end = tunnel.inNodePortEnd ?? 65535;
+    const sameNodeTunnelIds = new Set<number>([tunnel.id]);
+    if (tunnel.ip) {
+      tunnels.filter(t => t.ip === tunnel.ip).forEach(t => sameNodeTunnelIds.add(t.id));
+    }
     const used = new Set(
-      forwards.filter(f => f.tunnelId === tunnel.id && f.inPort != null).map(f => f.inPort)
+      forwards.filter(f => sameNodeTunnelIds.has(f.tunnelId) && f.inPort != null).map(f => f.inPort)
     );
     for (let p = start; p <= end; p++) {
       if (!used.has(p)) return p;
@@ -1648,8 +1656,8 @@ export default function ForwardPage() {
                       variant="bordered"
                       description={
                         selectedTunnel && selectedTunnel.inNodePortSta && selectedTunnel.inNodePortEnd
-                          ? `已自动填入下一个可用端口,可改;清空则由系统分配。允许范围 ${selectedTunnel.inNodePortSta}-${selectedTunnel.inNodePortEnd}`
-                          : '留空将自动分配可用端口'
+                          ? `已自动填好一个可用端口,可改。留空=系统自动分配(会避开这台机器上已被占用的端口)。允许范围 ${selectedTunnel.inNodePortSta}-${selectedTunnel.inNodePortEnd}`
+                          : '留空=系统自动分配,会避开这台机器上已被占用的端口'
                       }
                     />
                     
