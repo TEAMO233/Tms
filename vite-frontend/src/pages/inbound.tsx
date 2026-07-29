@@ -128,10 +128,19 @@ export default function InboundPage() {
       const payload: any = { userId: assignForm.userId, nodeId: assignForm.nodeId };
       if (assignForm.speedId) payload.speedId = assignForm.speedId;
       if (assignForm.expDays) payload.expTime = Date.now() + assignForm.expDays * 86400000;
-      if (assignForm.flowGb) payload.flow = Math.round(assignForm.flowGb * 1024 * 1024 * 1024);
+      if (assignForm.flowGb) payload.flow = Math.round(assignForm.flowGb); // 单位 GB(线路配额按 GB 存)
       const res = await assignAllToUser(payload);
       if (res.code === 0) {
-        toast.success(`已分配 ${res.data?.assigned ?? 0} 个协议` + (res.data?.skipped ? `,跳过 ${res.data.skipped}(已分过)` : "") + " · 订阅链接去「用户管理」拿");
+        {
+          const a = res.data?.assigned ?? 0, u = res.data?.updated ?? 0;
+          toast.success(
+            a > 0
+              ? `已分配 ${a} 个协议` + (u ? `,更新 ${u} 个` : "") + " · 订阅链接去「用户管理」拿"
+              : u > 0
+              ? `已更新这条线路的限速/到期/流量(${u} 个协议)`
+              : "配额和到期已更新"
+          );
+        }
         setAssignOpen(false);
         loadAll();
       } else {

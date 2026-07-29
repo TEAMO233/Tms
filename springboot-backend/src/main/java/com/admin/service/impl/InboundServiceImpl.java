@@ -405,11 +405,18 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         }
         // 订阅按【线路】= 车友 × 机器 × 落地组:一组共享一条订阅 token;车友可有很多条线路
         java.util.Map<Long, String> lineTokens = new java.util.HashMap<>();
+        // 线路记录(流量配额/到期都记在它上面)必须在循环【之前】建好/更新:
+        // 重新分配(续费、改配额)时协议往往已经全都分过了,循环会整个跳过,
+        // 那样新填的配额和到期就永远写不进去 —— 用户那边看着"改了没反应"。
+        if (dto.getNodeId() != null) {
+            lineTokens.put(dto.getNodeId(),
+                    getOrCreateLine(user.getId(), dto.getNodeId(), groupLanding, dto.getFlow(), dto.getExpTime()).getSubToken());
+        }
         // 车友专属限速器(每车友唯一;每节点只推一次,该机所有协议共享;TCP+UDP 都靠服务级 `$` 限住、车友间独立)
         Integer userLimiter = (dto.getSpeedId() != null) ? perUserLimiterName(user.getId()) : null;
         java.util.Set<Long> affectedNodes = new java.util.HashSet<>();
         java.util.Set<Long> limiterPushedNodes = new java.util.HashSet<>();
-        int assigned = 0, skipped = 0;
+        int assigned = 0, skipped = 0, updated = 0;
         String firstError = null;
         for (Inbound in : inbounds) {
             if (in.getStatus() != null && in.getStatus() == 0) {
@@ -419,7 +426,40 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                     .eq("inbound_id", in.getId()).eq("user_id", user.getId()).last("limit 1"));
             if (existed != null) {
                 skipped++;
-                continue; // 已分过这个协议 → 跳过
+                // 已分过这个协议 → 不能只是跳过。重新分配 = 续费 / 改配置,
+                // 得把新的限速和到期落到【已有的转发】上并重推 gost,否则改了等于没改。
+                if (existed.getGostForwardId() != null && (userLimiter != null || dto.getExpTime() != null)) {
+                    Node n = nodeMapper.selectById(in.getNodeId());
+                    if (n != null) {
+                        if (userLimiter != null && !limiterPushedNodes.contains(n.getId())) {
+                            R lr = speedLimitService.pushUserLimiter(dto.getSpeedId(), userLimiter.longValue(), n.getId());
+                            if (lr.getCode() == 0) {
+                                limiterPushedNodes.add(n.getId());
+                            } else if (firstError == null) {
+                                firstError = "下发限速器失败:" + lr.getMsg();
+                            }
+                        }
+                        Forward f = forwardMapper.selectById(existed.getGostForwardId());
+                        if (f != null) {
+                            if (userLimiter != null) {
+                                f.setSpeedId(userLimiter);
+                            }
+                            if (dto.getExpTime() != null) {
+                                f.setExpTime(dto.getExpTime());
+                            }
+                            f.setStatus(1); // 之前因超额/到期被停的,续费后恢复
+                            f.setUpdatedTime(System.currentTimeMillis());
+                            forwardMapper.updateById(f);
+                            try {
+                                forwardService.updateForwardA(f); // 重推 gost,让新限速立刻生效
+                            } catch (Exception e) {
+                                if (firstError == null) firstError = "更新转发失败:" + e.getMessage();
+                            }
+                            updated++;
+                        }
+                    }
+                }
+                continue;
             }
             Node node = nodeMapper.selectById(in.getNodeId());
             if (node == null) {
@@ -459,11 +499,12 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 : (lineTokens.isEmpty() ? null : lineTokens.values().iterator().next());
         if (assigned == 0) {
             if (firstError == null && skipped > 0) {
-                // 这台机器的协议这个车友全都分过了 → 不算失败,把现成订阅链接返回,方便重新拿链接
+                // 协议早就分过了 → 这次是续费/改配置(配额和到期已写到线路,限速已重推到已有转发)
                 JSONObject r2 = new JSONObject();
                 r2.put("subToken", resultToken);
                 r2.put("assigned", 0);
                 r2.put("skipped", skipped);
+                r2.put("updated", updated);
                 return R.ok(r2);
             }
             return R.err(firstError != null ? ("分配失败:" + firstError) : "没有可分配的协议(可能都已分配过)");
@@ -472,6 +513,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         result.put("subToken", resultToken);
         result.put("assigned", assigned);
         result.put("skipped", skipped);
+        result.put("updated", updated);
         result.put("firstError", firstError);
         return R.ok(result);
     }
