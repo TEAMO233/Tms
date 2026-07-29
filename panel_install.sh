@@ -192,6 +192,27 @@ delete_self() {
   rm -f "$SCRIPT_PATH" && echo "✅ 临时脚本已删除" || echo "❌ 删除临时脚本失败"
 }
 
+# 收尾信息框:装完最重要的就是「地址/账号/密码」,单独框出来别被上面的日志淹掉
+print_access_box() {
+  local ip="$1" fport="$2"
+  echo ""
+  echo "╔══════════════════════════════════════════════════════╗"
+  echo "║              TMS 面板安装完成                        ║"
+  echo "╚══════════════════════════════════════════════════════╝"
+  echo ""
+  echo "    访问地址 :  http://${ip}:${fport}"
+  echo "    账    号 :  admin_user"
+  echo "    密    码 :  admin_user"
+  echo ""
+  echo "    ⚠️  登录后请立即修改默认密码"
+  echo ""
+  echo "  ──────────────────────────────────────────────────────"
+  echo "    管理面板 :  输入  tms  (更新/卸载/彻底清理/查看状态)"
+  echo "    项目地址 :  https://github.com/Teminuosi/Tms"
+  echo "  ──────────────────────────────────────────────────────"
+  echo ""
+}
+
 # 安装常驻管理命令 tms(类似 x-ui:装完后随时输 tms 打开管理菜单)
 install_tms_command() {
   echo "🔗 安装 tms 管理命令..."
@@ -232,8 +253,7 @@ show_access_info() {
   [ -f ".env" ] && fport="$(grep '^FRONTEND_PORT=' .env | cut -d'=' -f2)"
   [ -z "$fport" ] && fport="6366"
   ip="$(curl -s --max-time 8 https://api.ipify.org || curl -s --max-time 8 https://ipinfo.io/ip || echo '你的服务器IP')"
-  echo "🌐 访问地址: http://${ip}:${fport}"
-  echo "🔑 默认账号: admin_user   默认密码: admin_user(如已修改以你的为准)"
+  print_access_box "$ip" "$fport"
 }
 
 # 彻底清理 / 完整卸载:容器、镜像、数据卷、网络、配置、管理命令 全部删除,不依赖任何文件
@@ -283,19 +303,14 @@ install_panel() {
   check_docker
   get_config_params
 
-  echo "🔽 下载必要文件..."
+  echo "[1/4] 下载配置文件..."
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-  echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
-  curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
-
-  # 检查 gost.sql 是否已存在
-  if [[ -f "gost.sql" ]]; then
-    echo "⏭️ 跳过下载: gost.sql (使用当前位置的文件)"
-  else
-    echo "📡 下载数据库初始化文件..."
-    curl -L -o gost.sql "$GOST_SQL_URL"
+  # -sS:静默但保留错误提示,免得进度条表格把关键信息刷没了
+  curl -fsSL -o docker-compose.yml "$DOCKER_COMPOSE_URL" || { echo "❌ 下载配置文件失败,请检查网络"; exit 1; }
+  if [[ ! -f "gost.sql" ]]; then
+    curl -fsSL -o gost.sql "$GOST_SQL_URL" || { echo "❌ 下载数据库文件失败,请检查网络"; exit 1; }
   fi
-  echo "✅ 文件准备完成"
+  echo "      ✔ 完成"
 
   # IPv6 默认关闭(避免改 Docker daemon 导致 mysql 启动失败);需要时用 TMS_IPV6=1 开启
   if [ "$TMS_IPV6" = "1" ]; then
@@ -316,41 +331,44 @@ EOF
   # 关键坑:MySQL 初始化中断过一次后,mysql_data 卷里会残留半拉子文件,
   # 再启动时报 "--initialize specified but the data directory has files in it. Aborting.",
   # 容器一直 unhealthy。全新安装本就该是干净空卷,这里强制清一遍,保证一键装到底。
-  echo "🧹 清理可能残留的旧容器与数据卷（确保全新安装干净）..."
-  $DOCKER_CMD down -v --remove-orphans 2>/dev/null || true
-  docker rm -f gost-mysql springboot-backend vite-frontend 2>/dev/null || true
-  docker volume rm mysql_data backend_logs 2>/dev/null || true
+  echo "[2/4] 清理旧容器与数据卷(确保全新安装干净)..."
+  $DOCKER_CMD down -v --remove-orphans >/dev/null 2>&1 || true
+  docker rm -f gost-mysql springboot-backend vite-frontend >/dev/null 2>&1 || true
+  docker volume rm mysql_data backend_logs >/dev/null 2>&1 || true
+  echo "      ✔ 完成"
 
-  echo "🚀 启动 docker 服务..."
-  $DOCKER_CMD up -d
+  echo "[3/4] 拉取镜像并启动服务(首次约 1-3 分钟,请耐心等待)..."
+  # 进度条太吵会把最后的访问信息刷走,这里只留结果;失败时再把日志打出来
+  if ! $DOCKER_CMD up -d >/tmp/tms_up.log 2>&1; then
+    echo "      ✘ 启动失败,以下是错误信息:"
+    tail -30 /tmp/tms_up.log
+    exit 1
+  fi
+  echo "      ✔ 三个容器已启动"
 
   # 自动写入「面板后端地址」(转发机对接要用),省得登录后再手动到网站配置里填
-  echo "🌐 检测公网IP并自动配置面板后端地址..."
+  echo "[4/4] 检测公网IP并配置面板后端地址..."
   PUBLIC_IP=$(curl -s --max-time 8 https://api.ipify.org || curl -s --max-time 8 https://ipinfo.io/ip || echo "")
   if [ -n "$PUBLIC_IP" ]; then
     for i in $(seq 1 30); do
       if docker exec gost-mysql mysqladmin ping -h localhost --silent >/dev/null 2>&1; then
         if docker exec gost-mysql mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
              -e "INSERT IGNORE INTO vite_config (name, value, time) VALUES ('ip', '${PUBLIC_IP}:${BACKEND_PORT}', $(date +%s)000);" >/dev/null 2>&1; then
-          echo "✅ 已自动设置面板后端地址: ${PUBLIC_IP}:${BACKEND_PORT}"
+          echo "      ✔ 后端地址已设为 ${PUBLIC_IP}:${BACKEND_PORT}"
         fi
         break
       fi
       sleep 2
     done
   else
-    echo "⚠️ 未能自动获取公网IP，请登录后到「网站配置」手动填面板后端地址(格式 IP:${BACKEND_PORT})"
+    echo "      ⚠ 未获取到公网IP,登录后请到「网站配置」手动填(格式 IP:${BACKEND_PORT})"
   fi
 
   # 安装常驻管理命令 tms
-  install_tms_command
+  install_tms_command >/dev/null 2>&1
 
-  echo "🎉 部署完成"
-  echo "🌐 访问地址: http://${PUBLIC_IP:-服务器IP}:$FRONTEND_PORT"
-  echo "🔑 默认账号: admin_user   默认密码: admin_user"
-  echo "⚠️  登录后请立即修改默认密码！"
-  echo "🛠️  管理面板: 输入  tms  打开管理菜单(更新 / 卸载 / 彻底清理 / 查看状态)"
-  echo "📚 项目地址: https://github.com/Teminuosi/Tms"
+  # 收尾信息框:安装过程刷屏很正常,最后必须让人一眼看到地址/账号/密码
+  print_access_box "${PUBLIC_IP:-你的服务器IP}" "$FRONTEND_PORT"
 
 
 }
