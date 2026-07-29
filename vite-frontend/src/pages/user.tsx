@@ -818,6 +818,7 @@ export default function UserPage() {
                 min="1"
                 max="99999"
                 isRequired
+                description="仅用于端口转发/隧道转发。协议和中转的流量在「分配用户」时按线路单独设,不受这里约束"
               />
               <Input
                 label="转发数量"
@@ -865,6 +866,7 @@ export default function UserPage() {
                 isRequired
                 showMonthAndYearPickers
                 className="cursor-pointer"
+                description="账号总到期,到点这个人所有线路全停。单条线路的到期在「分配用户」时单独设"
               />
             </div>
             

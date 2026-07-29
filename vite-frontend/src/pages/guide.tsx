@@ -106,6 +106,14 @@ export default function GuidePage() {
               </p>
             </div>
             <div>
+              <div className="font-medium">流量和到期为什么有两个地方能设?</div>
+              <p className="text-default-500">
+                分两层,不重复:<b>用户管理</b>里的流量限制只对<b>端口转发/隧道转发</b>生效,过期时间是<b>账号总到期</b>(到点这个人所有线路全停);
+                <b>分配用户</b>时设的流量和到期,只管<b>这一条线路</b>——超了只停这条,车友其它线路照用。
+                所以中转(住宅 IP、流量贵)可以单独卡个小额度,直连给大额度,互不影响。
+              </p>
+            </div>
+            <div>
               <div className="font-medium">车友的协议全 -1 / 连不上,但节点显示在线?</div>
               <p className="text-default-500">
                 多半是节点的 gost 太旧、缺自签证书,导致 sing-box 起不来(一个协议崩,整台机的协议全崩)。把该节点的 gost 更新到最新版即可(新装的节点不会有这问题)。
