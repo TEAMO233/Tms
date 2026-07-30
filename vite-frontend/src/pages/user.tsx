@@ -835,6 +835,7 @@ export default function UserPage() {
               />
               <Select
                 label="流量重置日期"
+                description="每月这天把该用户的用量清零,包括每条协议/中转线路的用量;上个月跑满配额被停的线路也会自动恢复。选「不重置」= 配额是终身的"
                 selectedKeys={[userForm.flowResetTime.toString()]}
                 onSelectionChange={(keys) => {
                   const value = Array.from(keys)[0] as string;

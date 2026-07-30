@@ -2,9 +2,13 @@ package com.admin.common.task;
 
 import com.admin.common.utils.GostUtil;
 import com.admin.entity.Forward;
+import com.admin.entity.InboundLine;
+import com.admin.entity.InboundUser;
 import com.admin.entity.Tunnel;
 import com.admin.entity.User;
 import com.admin.entity.UserTunnel;
+import com.admin.mapper.InboundLineMapper;
+import com.admin.mapper.InboundUserMapper;
 import com.admin.service.ForwardService;
 import com.admin.service.TunnelService;
 import com.admin.service.UserService;
@@ -37,6 +41,13 @@ public class ResetFlowAsync {
 
     @Resource
     TunnelService tunnelService;
+
+    // 协议/中转线路的流量重置用
+    @Resource
+    InboundUserMapper inboundUserMapper;
+
+    @Resource
+    InboundLineMapper inboundLineMapper;
 
     /**
      * 每天0点执行流量重置任务
@@ -144,18 +155,72 @@ public class ResetFlowAsync {
                 
                 boolean success = userService.update(null, updateWrapper);
                 if (success) {
-                    log.info("用户[ID: {}, 用户名: {}]流量重置成功，重置日期: 每月{}号", 
+                    log.info("用户[ID: {}, 用户名: {}]流量重置成功，重置日期: 每月{}号",
                            user.getId(), user.getUser(), user.getFlowResetTime());
                 } else {
                     log.info("用户[ID: {}, 用户名: {}]流量重置失败", user.getId(), user.getUser());
                 }
+                // 协议/中转的线路用量 = 该线路各转发的流量之和,只清 user 表没用:
+                // 不把转发流量一起清零,线路配额就成了"终身配额",跑满一次下个月也打不开。
+                resetProtocolLineFlow(user);
             }
             
         } catch (Exception e) {
             log.info("重置用户流量失败", e);
         }
     }
-    
+
+    /**
+     * 重置某车友【协议/中转线路】的用量。
+     * 线路已用量是实时汇总该线路各转发的 in_flow+out_flow 算出来的,所以必须把这些
+     * 转发的流量清零;同时把上个周期因为跑满配额被停掉的线路和转发恢复,否则车友
+     * 续到下个月也用不了。
+     */
+    private void resetProtocolLineFlow(User user) {
+        try {
+            List<InboundUser> ius = inboundUserMapper.selectList(
+                    new QueryWrapper<InboundUser>().eq("user_id", user.getId()));
+            if (ius == null || ius.isEmpty()) {
+                return;
+            }
+            int cleared = 0, resumed = 0;
+            for (InboundUser iu : ius) {
+                if (iu.getGostForwardId() == null) {
+                    continue;
+                }
+                Forward f = forwardService.getById(iu.getGostForwardId());
+                if (f == null) {
+                    continue;
+                }
+                // 1) 清零该转发流量(原子 SQL,只动流量字段,避免和到期任务抢)
+                UpdateWrapper<Forward> fw = new UpdateWrapper<>();
+                fw.eq("id", f.getId()).setSql("in_flow = 0, out_flow = 0");
+                forwardService.update(null, fw);
+                cleared++;
+
+                // 2) 上个周期被停掉的,重新拉起来
+                if (f.getStatus() != null && f.getStatus() == 0) {
+                    try {
+                        forwardService.resumeForward(f.getId());
+                        resumed++;
+                    } catch (Exception e) {
+                        log.info("恢复转发[{}]失败: {}", f.getId(), e.getMessage());
+                    }
+                }
+            }
+            // 3) 线路本身的停用标记也要清掉,不然界面一直显示"已停用"
+            if (cleared > 0) {
+                UpdateWrapper<InboundLine> lw = new UpdateWrapper<>();
+                lw.eq("user_id", user.getId()).eq("status", 0).set("status", 1)
+                  .set("updated_time", System.currentTimeMillis());
+                inboundLineMapper.update(null, lw);
+                log.info("用户[{}]协议线路流量已重置:清零 {} 条转发,恢复 {} 条", user.getUser(), cleared, resumed);
+            }
+        } catch (Exception e) {
+            log.info("重置协议线路流量失败(用户 {}): {}", user.getUser(), e.getMessage());
+        }
+    }
+
     /**
      * 重置用户隧道流量
      * @param currentDay 当前日期（几号）
