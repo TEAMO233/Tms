@@ -101,7 +101,7 @@ public class ResetFlowAsync {
     public void forwardExpiry() {
         try {
             List<Forward> list = forwardService.list(new QueryWrapper<Forward>()
-                    .eq("status", 1).isNotNull("exp_time").lt("exp_time", new Date().getTime()));
+                    .eq("status", 1).isNotNull("exp_time").gt("exp_time", 0).lt("exp_time", new Date().getTime()));
             for (Forward forward : list) {
                 UserTunnel ut = userTunnelService.getOne(new QueryWrapper<UserTunnel>()
                         .eq("user_id", forward.getUserId()).eq("tunnel_id", forward.getTunnelId()));
@@ -278,7 +278,7 @@ public class ResetFlowAsync {
 
     public void user(){
         // 查询过期用户
-        List<User> user_list = userService.list(new QueryWrapper<User>().ne("role_id", 0).eq("status", 1).isNotNull("exp_time").lt("exp_time", new Date().getTime()));
+        List<User> user_list = userService.list(new QueryWrapper<User>().ne("role_id", 0).eq("status", 1).isNotNull("exp_time").gt("exp_time", 0).lt("exp_time", new Date().getTime()));
         for (User user : user_list) {
             // 查询对应转发
             List<Forward> forwardList = forwardService.list(new QueryWrapper<Forward>().eq("user_id", user.getId()).eq("status", 1));
@@ -298,7 +298,7 @@ public class ResetFlowAsync {
 
     public void userTunnel(){
         // 查询过期隧道
-        List<UserTunnel> user_tunnel_list = userTunnelService.list(new QueryWrapper<UserTunnel>().eq("status", 1).isNotNull("exp_time").lt("exp_time", new Date().getTime()));
+        List<UserTunnel> user_tunnel_list = userTunnelService.list(new QueryWrapper<UserTunnel>().eq("status", 1).isNotNull("exp_time").gt("exp_time", 0).lt("exp_time", new Date().getTime()));
         // 查询对应转发
         for (UserTunnel userTunnel : user_tunnel_list) {
             List<Forward> forwardList = forwardService.list(new QueryWrapper<Forward>().eq("tunnel_id", userTunnel.getTunnelId()).eq("user_id", userTunnel.getUserId()).eq("status", 1));

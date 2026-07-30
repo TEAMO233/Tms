@@ -811,6 +811,21 @@ export default function UserPage() {
                 placeholder={isEdit ? '留空则不修改密码' : '请输入密码'}
                 isRequired={!isEdit}
               />
+              <DatePicker
+                label="账号过期时间(留空=永不过期)"
+                value={userForm.expTime ? parseDate(userForm.expTime.toISOString().split('T')[0]) as any : null}
+                onChange={(date) => {
+                  if (date) {
+                    const jsDate = new Date(date.year, date.month - 1, date.day, 23, 59, 59);
+                    setUserForm(prev => ({ ...prev, expTime: jsDate }));
+                  } else {
+                    setUserForm(prev => ({ ...prev, expTime: null }));
+                  }
+                }}
+                showMonthAndYearPickers
+                className="cursor-pointer"
+                description="账号总闸:到这天这个人所有线路一起停。单条线路的到期在「分配用户」时单独设"
+              />
             </div>
 
             <div className="text-xs text-default-500 mt-2">
@@ -866,21 +881,6 @@ export default function UserPage() {
                     ))}
                   </>
                 </Select>
-                <DatePicker
-                  label="账号过期时间"
-                  value={userForm.expTime ? parseDate(userForm.expTime.toISOString().split('T')[0]) as any : null}
-                  onChange={(date) => {
-                    if (date) {
-                      const jsDate = new Date(date.year, date.month - 1, date.day, 23, 59, 59);
-                      setUserForm(prev => ({ ...prev, expTime: jsDate }));
-                    } else {
-                      setUserForm(prev => ({ ...prev, expTime: null }));
-                    }
-                  }}
-                  showMonthAndYearPickers
-                  className="cursor-pointer"
-                  description="账号总闸:到点这个人所有线路全停。一般不用管,不想让他用就把下面状态设为禁用"
-                />
               </div>
             </details>
             

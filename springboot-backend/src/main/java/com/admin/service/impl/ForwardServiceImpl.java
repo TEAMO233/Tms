@@ -260,7 +260,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
                     }
 
                     // 检查隧道权限到期时间
-                    if (userTunnel.getExpTime() != null && userTunnel.getExpTime() <= System.currentTimeMillis()) {
+                    if (userTunnel.getExpTime() != null && userTunnel.getExpTime() > 0 && userTunnel.getExpTime() <= System.currentTimeMillis()) {
                         return R.err("用户的该隧道权限已到期");
                     }
 
@@ -870,7 +870,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
 
         // 获取用户信息
         User userInfo = userService.getById(currentUser.getUserId());
-        if (userInfo.getExpTime() != null && userInfo.getExpTime() <= System.currentTimeMillis()) {
+        if (userInfo.getExpTime() != null && userInfo.getExpTime() > 0 && userInfo.getExpTime() <= System.currentTimeMillis()) {
             return UserPermissionResult.error("当前账号已到期");
         }
 
@@ -885,7 +885,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         }
 
         // 检查隧道权限到期时间
-        if (userTunnel.getExpTime() != null && userTunnel.getExpTime() <= System.currentTimeMillis()) {
+        if (userTunnel.getExpTime() != null && userTunnel.getExpTime() > 0 && userTunnel.getExpTime() <= System.currentTimeMillis()) {
             return UserPermissionResult.error("该隧道权限已到期");
         }
 
@@ -938,7 +938,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
      */
     private R checkUserFlowLimits(Integer userId, Tunnel tunnel) {
         User userInfo = userService.getById(userId);
-        if (userInfo.getExpTime() != null && userInfo.getExpTime() <= System.currentTimeMillis()) {
+        if (userInfo.getExpTime() != null && userInfo.getExpTime() > 0 && userInfo.getExpTime() <= System.currentTimeMillis()) {
             return R.err("当前账号已到期");
         }
 
@@ -948,7 +948,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         }
 
         // 检查隧道权限到期时间
-        if (userTunnel.getExpTime() != null && userTunnel.getExpTime() <= System.currentTimeMillis()) {
+        if (userTunnel.getExpTime() != null && userTunnel.getExpTime() > 0 && userTunnel.getExpTime() <= System.currentTimeMillis()) {
             return R.err("该隧道权限已到期，无法恢复服务");
         }
 

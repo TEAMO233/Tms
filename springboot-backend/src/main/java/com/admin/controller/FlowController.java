@@ -265,7 +265,7 @@ public class FlowController extends BaseController {
         if (u == null) {
             return;
         }
-        if (u.getExpTime() != null && u.getExpTime() <= System.currentTimeMillis()) {
+        if (u.getExpTime() != null && u.getExpTime() > 0 && u.getExpTime() <= System.currentTimeMillis()) {
             pauseAllUserServices(userId, name);
             return;
         }
@@ -306,7 +306,7 @@ public class FlowController extends BaseController {
                 long used = sumLineFlow(iu.getUserId(), in.getNodeId(), in.getLandingId());
                 overFlow = used >= line.getFlow() * BYTES_TO_GB;
             }
-            boolean expired = line.getExpTime() != null && line.getExpTime() <= System.currentTimeMillis();
+            boolean expired = line.getExpTime() != null && line.getExpTime() > 0 && line.getExpTime() <= System.currentTimeMillis();
             if (!overFlow && !expired) {
                 return;
             }
@@ -390,7 +390,7 @@ public class FlowController extends BaseController {
         }
 
         // 检查用户到期时间
-        if (updatedUser.getExpTime() != null && updatedUser.getExpTime() <= new Date().getTime()) {
+        if (updatedUser.getExpTime() != null && updatedUser.getExpTime() > 0 && updatedUser.getExpTime() <= new Date().getTime()) {
             pauseAllUserServices(userId, name);
             return;
         }
@@ -416,7 +416,7 @@ public class FlowController extends BaseController {
             return;
         }
 
-        if (userTunnel.getExpTime() != null && userTunnel.getExpTime() <= System.currentTimeMillis()) {
+        if (userTunnel.getExpTime() != null && userTunnel.getExpTime() > 0 && userTunnel.getExpTime() <= System.currentTimeMillis()) {
             pauseSpecificForward(userTunnel.getTunnelId(), name, userId);
             return;
         }
