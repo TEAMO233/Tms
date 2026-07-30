@@ -19,13 +19,19 @@ type llimiter struct {
 // (设 5MB/s 能测出 10MB/s 以上),用户会以为限速没生效。
 // 收紧到 1/5 秒,短时测速也能贴近设定值;同时不低于 64KB,
 // 否则单次读写(常见 32KB 缓冲)会被切得太碎、拖垮吞吐。
+// 桶再大也不超过 maxBurst:客户端测速往往只下载两三 MB,桶一大就整个被"白送",
+// 平均值算出来能比设定值高一大截(设 5MB/s 测出 8~15)。
 const (
-	burstDivisor = 5
+	burstDivisor = 8
 	minBurst     = 64 * 1024
+	maxBurst     = 256 * 1024
 )
 
 func burstOf(r int) int {
 	b := r / burstDivisor
+	if b > maxBurst {
+		b = maxBurst
+	}
 	if b < minBurst {
 		b = minBurst
 	}
