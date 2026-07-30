@@ -116,7 +116,7 @@ export default function LimitPage() {
     }
     
     if (!form.speed || form.speed < 1) {
-      newErrors.speed = '请输入有效的速度限制（≥1 Mbps）';
+      newErrors.speed = '请输入有效的速度限制（≥1 MB/s）';
     }
 
     // 隧道可选:合体面板的协议限速不用绑隧道(分配协议用户时自动把限速器推到协议节点)
@@ -271,7 +271,7 @@ export default function LimitPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-small text-default-600">速度限制</span>
                       <Chip color="secondary" variant="flat" size="sm">
-                        {rule.speed} Mbps
+                        {rule.speed} MB/s
                       </Chip>
                     </div>
                     <div className="flex justify-between items-center">
@@ -381,10 +381,10 @@ export default function LimitPage() {
                       isInvalid={!!errors.speed}
                       errorMessage={errors.speed}
                       variant="bordered"
-                      description="Mbps=兆比特/秒(和宽带同单位)。实际下载 MB/s = 此值 ÷ 8,如 5 Mbps ≈ 0.6 MB/s"
+                      description="单位 MB/s(兆字节每秒),和客户端测速显示的一致:填 5,车友测出来就是 5MB/s 左右"
                       endContent={
                         <div className="pointer-events-none flex items-center">
-                          <span className="text-default-400 text-small">Mbps</span>
+                          <span className="text-default-400 text-small">MB/s</span>
                         </div>
                       }
                     />
@@ -412,10 +412,10 @@ export default function LimitPage() {
                       value={(form.total ?? 0).toString()}
                       onChange={(e) => setForm(prev => ({ ...prev, total: parseInt(e.target.value) || 0 }))}
                       variant="bordered"
-                      description="整条限速器总带宽上限(Mbps,÷8=MB/s),与上面每IP/每连接叠加,防机房限流。0=不限。想让单人严格封顶,把它设成和上面速度一样"
+                      description="整条限速器的总带宽上限(MB/s),与上面叠加,用来防机房限流。0=不限。给协议/中转限速时不用管这项"
                       endContent={
                         <div className="pointer-events-none flex items-center">
-                          <span className="text-default-400 text-small">Mbps</span>
+                          <span className="text-default-400 text-small">MB/s</span>
                         </div>
                       }
                     />

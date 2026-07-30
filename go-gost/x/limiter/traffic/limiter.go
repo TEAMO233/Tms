@@ -14,9 +14,30 @@ type llimiter struct {
 	limiter *rate.Limiter
 }
 
+// 突发额度(令牌桶容量)。原来是 rate 本身,等于白送 1 秒的量:
+// 客户端做几秒的短时测速时,这一秒会被平摊进平均值,测出来比设定值高一大截
+// (设 5MB/s 能测出 10MB/s 以上),用户会以为限速没生效。
+// 收紧到 1/5 秒,短时测速也能贴近设定值;同时不低于 64KB,
+// 否则单次读写(常见 32KB 缓冲)会被切得太碎、拖垮吞吐。
+const (
+	burstDivisor = 5
+	minBurst     = 64 * 1024
+)
+
+func burstOf(r int) int {
+	b := r / burstDivisor
+	if b < minBurst {
+		b = minBurst
+	}
+	if b > r {
+		b = r // 限速本身就很小时,桶不能比速率还大
+	}
+	return b
+}
+
 func NewLimiter(r int) limiter.Limiter {
 	return &llimiter{
-		limiter: rate.NewLimiter(rate.Limit(r), r),
+		limiter: rate.NewLimiter(rate.Limit(r), burstOf(r)),
 	}
 }
 
@@ -34,7 +55,7 @@ func (l *llimiter) Limit() int {
 
 func (l *llimiter) Set(n int) {
 	l.limiter.SetLimit(rate.Limit(n))
-	l.limiter.SetBurst(n)
+	l.limiter.SetBurst(burstOf(n))
 }
 
 func (l *llimiter) String() string {

@@ -415,8 +415,10 @@ public class SpeedLimitServiceImpl extends ServiceImpl<SpeedLimitMapper, SpeedLi
      * @return 兆字节每秒字符串
      */
     private String convertBitsToMBps(Integer speedInBits) {
-        double mbs = speedInBits / BITS_TO_BYTES_RATIO;
-        BigDecimal bd = new BigDecimal(mbs).setScale(1, RoundingMode.HALF_UP);
+        // 单位就是 MB/s:面板上填几,下发给 gost 就是几 MB/s,客户端测出来也是这个数。
+        // 以前填的是 Mbps、这里再除以 8,用户填 40 实测却是 5MB/s 上下,很难对上;
+        // 现在和客户端(v2rayN 那一列就是 MB/s)统一,填 5 就是 5MB/s。
+        BigDecimal bd = new BigDecimal(speedInBits).setScale(1, RoundingMode.HALF_UP);
         return bd.doubleValue() + "";
     }
 
