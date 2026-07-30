@@ -128,7 +128,10 @@ jobs:
   build-vite:
     name: Build & Push Vite Frontend
     needs: check-version
-    if: needs.check-version.outputs.should_build == 'true'
+    # 镜像每次推 main 都重建::latest 必须始终等于 main 的代码。
+    # 以前这里挂在 should_build 上(只有 VERSION 变了才建),导致 tag 一建好、
+    # 后续所有提交都跳过构建 —— 重装面板拿到的还是旧镜像,前端改动全丢。
+    # 版本 tag / release 仍然只在 VERSION 变化时创建(见 create-release)。
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -151,17 +154,22 @@ jobs:
       - name: Build and push Vite Docker images
         run: |
           VERSION="${{ needs.check-version.outputs.version }}"
+          TAGS="-t ghcr.io/teminuosi/vite-frontend:latest"
+          # 版本号镜像只在该版本【首次发布】时打,否则同一个 1.0.x 会被后来的提交覆盖、
+          # 版本号就失去意义了。:latest 每次都更新,安装脚本用的就是它。
+          if [ "${{ needs.check-version.outputs.should_build }}" = "true" ]; then
+            TAGS="$TAGS -t ghcr.io/teminuosi/vite-frontend:${VERSION}"
+          fi
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --push \
-            -t ghcr.io/teminuosi/vite-frontend:latest \
-            -t ghcr.io/teminuosi/vite-frontend:${VERSION} \
+            $TAGS \
             ./vite-frontend
 
   build-java:
     name: Build & Push Spring Boot Backend
     needs: check-version
-    if: needs.check-version.outputs.should_build == 'true'
+    # 同上:每次推 main 都重建,保证 :latest 是最新代码
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -196,11 +204,15 @@ jobs:
       - name: Build and push Java Docker images
         run: |
           VERSION="${{ needs.check-version.outputs.version }}"
+          TAGS="-t ghcr.io/teminuosi/springboot-backend:latest"
+          # 版本号镜像只在该版本首次发布时打(同上)
+          if [ "${{ needs.check-version.outputs.should_build }}" = "true" ]; then
+            TAGS="$TAGS -t ghcr.io/teminuosi/springboot-backend:${VERSION}"
+          fi
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --push \
-            -t ghcr.io/teminuosi/springboot-backend:latest \
-            -t ghcr.io/teminuosi/springboot-backend:${VERSION} \
+            $TAGS \
             ./springboot-backend
 
   create-release:
