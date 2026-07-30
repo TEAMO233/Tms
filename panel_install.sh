@@ -382,6 +382,23 @@ EOF
 
 # 更新功能
 update_panel() {
+  # 先自更新管理脚本本身。/usr/local/bin/tms-panel.sh 是装机时拷的副本,
+  # 仓库里修了 bug 它也不知道 —— 结果就是"脚本已经修好了,服务器上跑的还是旧的"。
+  # 用环境变量兜底,防止 exec 递归。
+  if [ -z "$TMS_SELF_UPDATED" ] && [ -w /usr/local/bin ]; then
+    if curl -fsSL -o /tmp/tms-panel.new "$PANEL_INSTALL_RAW_URL" 2>/dev/null \
+       && grep -q "install_tms_command" /tmp/tms-panel.new; then
+      if ! cmp -s /tmp/tms-panel.new /usr/local/bin/tms-panel.sh; then
+        mv -f /tmp/tms-panel.new /usr/local/bin/tms-panel.sh
+        chmod +x /usr/local/bin/tms-panel.sh
+        echo "🔄 管理脚本已更新到最新,继续..."
+        export TMS_SELF_UPDATED=1
+        exec bash /usr/local/bin/tms-panel.sh update
+      fi
+    fi
+    rm -f /tmp/tms-panel.new 2>/dev/null
+  fi
+
   echo "🔄 开始更新面板..."
   check_docker
 
