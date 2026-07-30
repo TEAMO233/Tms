@@ -13,9 +13,14 @@ export LC_ALL=C
 TMS_IPV6="${TMS_IPV6:-0}"
 
 # 全局下载地址配置
-DOCKER_COMPOSEV4_URL="https://github.com/Teminuosi/Tms/releases/latest/download/docker-compose-v4.yml"
-DOCKER_COMPOSEV6_URL="https://github.com/Teminuosi/Tms/releases/latest/download/docker-compose-v6.yml"
-GOST_SQL_URL="https://github.com/Teminuosi/Tms/releases/latest/download/gost.sql"
+# 【必须用 raw main,别用 releases/latest】:
+# 节点的 gost 是按 gost-vN 单独发版的,一发版 GitHub 的 "latest release" 就会指向它,
+# 而那个 release 里没有 compose 和 gost.sql —— 于是这里会下到 9 字节的 "Not Found",
+# 把 docker-compose.yml 覆盖成垃圾、面板直接起不来(踩过)。
+# raw main 永远是仓库当前内容,不受发版影响。
+DOCKER_COMPOSEV4_URL="https://raw.githubusercontent.com/Teminuosi/Tms/main/docker-compose-v4.yml"
+DOCKER_COMPOSEV6_URL="https://raw.githubusercontent.com/Teminuosi/Tms/main/docker-compose-v6.yml"
+GOST_SQL_URL="https://raw.githubusercontent.com/Teminuosi/Tms/main/gost.sql"
 # 管理脚本自身的 raw 地址(curl|bash 场景下 tms 命令的兜底下载源)
 PANEL_INSTALL_RAW_URL="https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh"
 
@@ -305,10 +310,12 @@ install_panel() {
 
   echo "[1/4] 下载配置文件..."
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-  # -sS:静默但保留错误提示,免得进度条表格把关键信息刷没了
+  # -fsSL:404 直接失败而不是把 "Not Found" 写进文件;静默但保留错误提示
   curl -fsSL -o docker-compose.yml "$DOCKER_COMPOSE_URL" || { echo "❌ 下载配置文件失败,请检查网络"; exit 1; }
+  grep -q "services:" docker-compose.yml || { echo "❌ 配置文件内容不对(可能下到了错误页),请重试"; exit 1; }
   if [[ ! -f "gost.sql" ]]; then
     curl -fsSL -o gost.sql "$GOST_SQL_URL" || { echo "❌ 下载数据库文件失败,请检查网络"; exit 1; }
+    grep -qi "CREATE TABLE" gost.sql || { echo "❌ 数据库文件内容不对,请重试"; exit 1; }
   fi
   echo "      ✔ 完成"
 
@@ -380,9 +387,16 @@ update_panel() {
 
   echo "🔽 下载最新配置文件..."
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-  echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
-  curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
-  echo "✅ 下载完成"
+  # 先下到临时文件并校验,确认是正经 compose 再覆盖:
+  # 直接 curl -o docker-compose.yml 的话,一旦 404("Not Found" 9 字节)就把现有配置
+  # 冲成垃圾,面板当场起不来、还回不去(踩过)。
+  if curl -fsSL -o docker-compose.yml.new "$DOCKER_COMPOSE_URL" && grep -q "services:" docker-compose.yml.new; then
+    mv -f docker-compose.yml.new docker-compose.yml
+    echo "      ✔ 配置文件已更新"
+  else
+    rm -f docker-compose.yml.new
+    echo "      ✘ 配置文件下载失败,保留原有配置继续更新(不影响已有服务)"
+  fi
 
   # IPv6 默认关闭(避免改 Docker daemon 导致 mysql 启动失败);需要时用 TMS_IPV6=1 开启
   if [ "$TMS_IPV6" = "1" ]; then
