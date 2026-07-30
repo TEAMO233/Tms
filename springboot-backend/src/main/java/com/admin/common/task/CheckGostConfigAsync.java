@@ -21,6 +21,13 @@ import java.util.Objects;
 @Service
 public class CheckGostConfigAsync {
 
+    /**
+     * 「每车友一个」限速器的名字基数(名字 = 该基数 + userId),协议/中转限速用。
+     * 这类限速器在 speed_limit 表里没有对应行,配置巡检必须放行、不能当孤儿清理。
+     * 与 InboundServiceImpl.perUserLimiterName 必须保持一致。
+     */
+    public static final long PER_USER_LIMITER_BASE = 900000000L;
+
     @Resource
     private NodeService nodeService;
 
@@ -139,10 +146,17 @@ public class CheckGostConfigAsync {
 
         for (ConfigItem limiter : gostConfig.getLimiters()) {
             safeExecute(() -> {
+                // 协议/中转用的是「每车友一个」限速器,名字 = 900000000 + userId,
+                // speed_limit 表里当然查不到 —— 绝不能当孤儿删:
+                // 一删,转发引用的限速器就不存在了,gost 会静默忽略,等于完全不限速。
+                long limiterId = Long.parseLong(limiter.getName());
+                if (limiterId >= PER_USER_LIMITER_BASE) {
+                    return;
+                }
                 SpeedLimit speedLimit = speedLimitService.getById(limiter.getName());
                 if (speedLimit == null) {
                     log.info("删除孤立的限流器: {} (节点: {})", limiter.getName(), node.getId());
-                    GostUtil.DeleteLimiters(node.getId(), Long.parseLong(limiter.getName()));
+                    GostUtil.DeleteLimiters(node.getId(), limiterId);
                 }
             }, "清理限流器 " + limiter.getName());
         }

@@ -864,7 +864,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
      * gost 的 UDP 转发(Hy2/TUIC)只认 `$`、不认 per-IP;每车友独立一个限速器 → TCP+UDP 都限住、车友间互不影响。
      */
     private Integer perUserLimiterName(Long userId) {
-        return (int) (900000000L + userId);
+        // 基数与 CheckGostConfigAsync.PER_USER_LIMITER_BASE 共用:
+        // 那边靠这个基数放行,不把这类限速器当孤儿删掉(删了就等于没限速)
+        return (int) (com.admin.common.task.CheckGostConfigAsync.PER_USER_LIMITER_BASE + userId);
     }
 
     /**
