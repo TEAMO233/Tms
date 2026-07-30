@@ -118,14 +118,18 @@ export default function UserPage() {
   // 用户表单相关状态
   const { isOpen: isUserModalOpen, onOpen: onUserModalOpen, onClose: onUserModalClose } = useDisclosure();
   const [isEdit, setIsEdit] = useState(false);
+  // 用户表单只管「人」(账号/密码/状态)。
+  // 套餐参数(限速、流量、到期、重置日)一律在「分配用户」时按线路填 —— 那才是卖出去的东西。
+  // 这里的 flow/num 对协议和中转都不生效(流量按线路算、转发数量分配路径根本不查),
+  // 留着只是给老的端口/隧道转发业务用,所以给足量默认值、表单里不再让人操心。
   const [userForm, setUserForm] = useState<UserForm>({
     user: '',
     pwd: '',
     status: 1,
-    flow: 100,
-    num: 10,
+    flow: 99999,
+    num: 99999,
     expTime: null,
-    flowResetTime: 0
+    flowResetTime: 1
   });
   const [userFormLoading, setUserFormLoading] = useState(false);
 
@@ -807,69 +811,78 @@ export default function UserPage() {
                 placeholder={isEdit ? '留空则不修改密码' : '请输入密码'}
                 isRequired={!isEdit}
               />
-              <Input
-                label="流量限制(GB)"
-                type="number"
-                value={userForm.flow.toString()}
-                onChange={(e) => {
-                  const value = Math.min(Math.max(Number(e.target.value) || 0, 1), 99999);
-                  setUserForm(prev => ({ ...prev, flow: value }));
-                }}
-                min="1"
-                max="99999"
-                isRequired
-                description="仅用于端口转发/隧道转发。协议和中转的流量在「分配用户」时按线路单独设,不受这里约束"
-              />
-              <Input
-                label="转发数量"
-                type="number"
-                value={userForm.num.toString()}
-                onChange={(e) => {
-                  const value = Math.min(Math.max(Number(e.target.value) || 0, 1), 99999);
-                  setUserForm(prev => ({ ...prev, num: value }));
-                }}
-                min="1"
-                max="99999"
-                isRequired
-                description="该用户最多能占多少条转发。合体面板里每分配 1 个协议占 1 条,想给他多协议就调大"
-              />
-              <Select
-                label="流量重置日期"
-                description="每月这天把该用户的用量清零,包括每条协议/中转线路的用量;上个月跑满配额被停的线路也会自动恢复。选「不重置」= 配额是终身的"
-                selectedKeys={[userForm.flowResetTime.toString()]}
-                onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0] as string;
-                  setUserForm(prev => ({ ...prev, flowResetTime: Number(value) }));
-                }}
-              >
-                <>
-                  <SelectItem key="0" textValue="不重置">
-                    不重置
-                  </SelectItem>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                  <SelectItem key={day.toString()} textValue={`每月${day}号（0点重置）`}>
-                    每月{day}号（0点重置）
-                  </SelectItem>
-                ))}
-                </>
-              </Select>
-              <DatePicker
-                label="过期时间"
-                value={userForm.expTime ? parseDate(userForm.expTime.toISOString().split('T')[0]) as any : null}
-                onChange={(date) => {
-                  if (date) {
-                    const jsDate = new Date(date.year, date.month - 1, date.day, 23, 59, 59);
-                    setUserForm(prev => ({ ...prev, expTime: jsDate }));
-                  } else {
-                    setUserForm(prev => ({ ...prev, expTime: null }));
-                  }
-                }}
-                isRequired
-                showMonthAndYearPickers
-                className="cursor-pointer"
-                description="账号总到期,到点这个人所有线路全停。单条线路的到期在「分配用户」时单独设"
-              />
             </div>
+
+            <div className="text-xs text-default-500 mt-2">
+              限速、流量、到期、重置日都在「协议管理 / 中转」的机器卡上点「分配用户」时按线路填,
+              那才是真正卖给车友的套餐。这里只管账号本身。
+            </div>
+
+            {/* 老的端口/隧道转发业务才用得上的账号级配额,默认折叠,别干扰卖订阅的主流程 */}
+            <details className="mt-2">
+              <summary className="text-xs text-default-500 cursor-pointer select-none">
+                高级(仅端口转发 / 隧道转发用)
+              </summary>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                <Input
+                  label="流量限制(GB)"
+                  type="number"
+                  value={userForm.flow.toString()}
+                  onChange={(e) => {
+                    const value = Math.min(Math.max(Number(e.target.value) || 0, 1), 99999);
+                    setUserForm(prev => ({ ...prev, flow: value }));
+                  }}
+                  min="1"
+                  max="99999"
+                  description="对协议/中转无效(它们按线路算)"
+                />
+                <Input
+                  label="转发数量"
+                  type="number"
+                  value={userForm.num.toString()}
+                  onChange={(e) => {
+                    const value = Math.min(Math.max(Number(e.target.value) || 0, 1), 99999);
+                    setUserForm(prev => ({ ...prev, num: value }));
+                  }}
+                  min="1"
+                  max="99999"
+                  description="对协议/中转无效"
+                />
+                <Select
+                  label="流量重置日期"
+                  description="每月这天把该用户所有线路的用量清零,跑满被停的线路自动恢复。选「不重置」= 配额是终身的"
+                  selectedKeys={[userForm.flowResetTime.toString()]}
+                  onSelectionChange={(keys) => {
+                    const value = Array.from(keys)[0] as string;
+                    setUserForm(prev => ({ ...prev, flowResetTime: Number(value) }));
+                  }}
+                >
+                  <>
+                    <SelectItem key="0" textValue="不重置">不重置</SelectItem>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <SelectItem key={day.toString()} textValue={`每月${day}号（0点重置）`}>
+                        每月{day}号（0点重置）
+                      </SelectItem>
+                    ))}
+                  </>
+                </Select>
+                <DatePicker
+                  label="账号过期时间"
+                  value={userForm.expTime ? parseDate(userForm.expTime.toISOString().split('T')[0]) as any : null}
+                  onChange={(date) => {
+                    if (date) {
+                      const jsDate = new Date(date.year, date.month - 1, date.day, 23, 59, 59);
+                      setUserForm(prev => ({ ...prev, expTime: jsDate }));
+                    } else {
+                      setUserForm(prev => ({ ...prev, expTime: null }));
+                    }
+                  }}
+                  showMonthAndYearPickers
+                  className="cursor-pointer"
+                  description="账号总闸:到点这个人所有线路全停。一般不用管,不想让他用就把下面状态设为禁用"
+                />
+              </div>
+            </details>
             
             <RadioGroup
               label="状态"

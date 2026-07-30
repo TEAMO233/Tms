@@ -5,6 +5,8 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import { Chip } from "@heroui/chip";
+import { DatePicker } from "@heroui/date-picker";
+import { parseDate } from "@internationalized/date";
 import toast from "react-hot-toast";
 import {
   getInboundList,
@@ -41,7 +43,7 @@ export default function InboundPage() {
 
   // 机器卡「分配用户」:把整台机器的协议分给车友(只分配,链接去「用户管理」拿)
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDays: null, flowGb: null });
+  const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDate: null, flowGb: null });
   const [assignLoading, setAssignLoading] = useState(false);
 
   // 「我自己用」:一键开给当前管理员自己,完事直接把订阅链接弹出来
@@ -141,7 +143,7 @@ export default function InboundPage() {
   };
 
   const openNodeAssign = (n: any, count: number) => {
-    setAssignForm({ nodeId: n.id, nodeName: n.name, protocolCount: count, userId: null, speedId: null, expDays: null, flowGb: null });
+    setAssignForm({ nodeId: n.id, nodeName: n.name, protocolCount: count, userId: null, speedId: null, expDate: null, flowGb: null });
     setAssignOpen(true);
   };
 
@@ -151,7 +153,8 @@ export default function InboundPage() {
     try {
       const payload: any = { userId: assignForm.userId, nodeId: assignForm.nodeId };
       if (assignForm.speedId) payload.speedId = assignForm.speedId;
-      if (assignForm.expDays) payload.expTime = Date.now() + assignForm.expDays * 86400000;
+      // 到期直接选日期(当天 23:59:59 截止),比填"多少天"直观,续费也只是把日期往后改
+      if (assignForm.expDate) payload.expTime = new Date(`${assignForm.expDate}T23:59:59`).getTime();
       if (assignForm.flowGb) payload.flow = Math.round(assignForm.flowGb); // 单位 GB(线路配额按 GB 存)
       const res = await assignAllToUser(payload);
       if (res.code === 0) {
@@ -321,11 +324,16 @@ export default function InboundPage() {
             >
               {speedRules.map((s) => (<SelectItem key={s.id}>{s.name}</SelectItem>))}
             </Select>
-            <Input
-              type="number"
-              label="到期(天,留空=永久)"
-              value={assignForm.expDays ?? ""}
-              onChange={(e) => setAssignForm({ ...assignForm, expDays: e.target.value ? Number(e.target.value) : null })}
+            <DatePicker
+              label="到期日期(留空=永久)"
+              value={assignForm.expDate ? parseDate(assignForm.expDate) as any : null}
+              onChange={(d: any) => setAssignForm({
+                ...assignForm,
+                expDate: d ? `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}` : null,
+              })}
+              showMonthAndYearPickers
+              className="cursor-pointer"
+              description="到这天 23:59 自动停;续费直接把日期往后改再点一次分配"
             />
             <Input
               type="number"
