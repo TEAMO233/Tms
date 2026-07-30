@@ -12,10 +12,12 @@ import {
   oneClickInbound,
   deleteInboundsByNode,
   assignAllToUser,
+  assignSelf,
   getNodeList,
   getAllUsers,
   getSpeedLimitList,
 } from "@/api";
+import { copyTextToClipboard } from "@/utils/clipboard";
 
 /**
  * 协议管理(合体面板)· 机器卡模式。
@@ -41,6 +43,28 @@ export default function InboundPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDays: null, flowGb: null });
   const [assignLoading, setAssignLoading] = useState(false);
+
+  // 「我自己用」:一键开给当前管理员自己,完事直接把订阅链接弹出来
+  const [selfLoading, setSelfLoading] = useState<number | null>(null);
+  const [selfSubUrl, setSelfSubUrl] = useState<string>("");
+  const [selfOpen, setSelfOpen] = useState(false);
+
+  const handleAssignSelf = async (nodeId: number) => {
+    setSelfLoading(nodeId);
+    try {
+      const res = await assignSelf({ nodeId });
+      if (res.code === 0 && res.data?.subToken) {
+        setSelfSubUrl(`${window.location.origin}/api/v1/open_api/sub?token=${res.data.subToken}`);
+        setSelfOpen(true);
+        loadAll();
+      } else {
+        toast.error(res.msg || "开通失败");
+      }
+    } catch (e) {
+      toast.error("开通失败");
+    }
+    setSelfLoading(null);
+  };
 
   const loadAll = async () => {
     try {
@@ -220,6 +244,16 @@ export default function InboundPage() {
                   <Button size="sm" color="primary" className="flex-1" onPress={() => openNodeAssign(n, nodeInbounds.length)}>
                     👤 分配用户
                   </Button>
+                  {/* 自己用不必先建车友再分配:一键开给当前管理员,不限速不限量不到期 */}
+                  <Button
+                    size="sm"
+                    color="success"
+                    variant="flat"
+                    isLoading={selfLoading === n.id}
+                    onPress={() => handleAssignSelf(n.id)}
+                  >
+                    🔑 我自己用
+                  </Button>
                   <Button size="sm" color="danger" variant="flat" onPress={() => handleClearNode(n.id, n.name)}>
                     清空该机
                   </Button>
@@ -232,6 +266,36 @@ export default function InboundPage() {
       {machineNodes.length === 0 && (
         <div className="text-center text-default-400 py-8">还没有协议,点右上角「⚡ 一键搭建整机协议」在某台机器上把全套协议建出来</div>
       )}
+
+      {/* 「我自己用」结果:直接把订阅链接给出来,不用再去用户管理找 */}
+      <Modal isOpen={selfOpen} onClose={() => setSelfOpen(false)} size="2xl">
+        <ModalContent>
+          <ModalHeader>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</ModalHeader>
+          <ModalBody className="space-y-2">
+            <div className="text-sm text-default-500">
+              这条订阅是给你自己用的,复制到 v2rayN / 小火箭 里就能用。以后随时在「我的订阅」页也能找到。
+            </div>
+            <Input
+              readOnly
+              value={selfSubUrl}
+              onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setSelfOpen(false)}>关闭</Button>
+            <Button
+              color="primary"
+              onPress={async () => {
+                (await copyTextToClipboard(selfSubUrl))
+                  ? toast.success("已复制订阅链接")
+                  : toast.error("复制失败,点框内已全选,按 Ctrl+C");
+              }}
+            >
+              复制订阅链接
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* 机器卡「分配用户」:整机协议一次分给车友,出一条订阅链接 */}
       <Modal isOpen={assignOpen} onClose={() => setAssignOpen(false)}>

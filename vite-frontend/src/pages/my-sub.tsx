@@ -62,7 +62,8 @@ export default function MySubPage() {
       ) : lines.length === 0 ? (
         <Card>
           <CardBody className="text-center text-default-400 py-8">
-            还没有线路。联系管理员给你分配。
+            还没有线路。管理员在「协议管理」或「中转」的机器卡上点「分配用户」给你开通;
+            如果你就是管理员、想自己用,点那张卡上的「🔑 我自己用」即可。
           </CardBody>
         </Card>
       ) : (

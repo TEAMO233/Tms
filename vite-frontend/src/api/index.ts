@@ -80,6 +80,8 @@ export const deleteInbound = (id: number) => Network.post("/inbound/delete", { i
 export const deleteInboundsByNode = (nodeId: number, relay?: boolean, landingId?: number) => Network.post("/inbound/delete-by-node", { nodeId, relay, landingId });
 export const assignInboundUser = (data: any) => Network.post("/inbound/assign", data);
 export const assignAllToUser = (data: any) => Network.post("/inbound/assign-all", data);
+// 「我自己用」:把这台机器/这条中转的协议开给当前登录的管理员自己(不限速/不限量/不到期)
+export const assignSelf = (data: any) => Network.post("/inbound/assign-self", data);
 export const unassignInboundUser = (id: number) => Network.post("/inbound/unassign", { id });
 export const getUserSub = (userId: number) => Network.post("/inbound/user-sub", { userId });
 

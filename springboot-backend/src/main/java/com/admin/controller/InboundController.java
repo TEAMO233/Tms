@@ -92,6 +92,25 @@ public class InboundController extends BaseController {
         return inboundService.assignAllToUser(dto);
     }
 
+    /**
+     * 「我自己用」:把这台机器(或这条中转)的协议开给【当前登录的管理员】自己。
+     * 自己用不需要限速/限流量/限到期,所以这三项一律不设;省掉"先建车友再分配"的麻烦。
+     */
+    @LogAnnotation
+    @RequireRole
+    @PostMapping("/assign-self")
+    public R assignSelf(@RequestBody InboundUserDto dto) {
+        Integer uid = com.admin.common.utils.JwtUtil.getUserIdFromToken();
+        if (uid == null) {
+            return R.err("未登录");
+        }
+        dto.setUserId(uid.longValue());
+        dto.setSpeedId(null);
+        dto.setExpTime(null);
+        dto.setFlow(null);
+        return inboundService.assignAllToUser(dto);
+    }
+
     /** 取某车友的订阅 token(兼容旧接口) */
     @RequireRole
     @PostMapping("/user-sub")
