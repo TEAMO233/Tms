@@ -74,7 +74,7 @@ export const deleteSpeedLimit = (id: number) => Network.post("/speed-limit/delet
 
 // 协议入站(合体面板:协议搭建 + 限速)
 export const createInbound = (data: any) => Network.post("/inbound/create", data);
-export const oneClickInbound = (nodeId: number) => Network.post("/inbound/one-click", { nodeId });
+export const oneClickInbound = (nodeId: number, sni?: string) => Network.post("/inbound/one-click", { nodeId, sni });
 export const getInboundList = () => Network.post("/inbound/list");
 export const deleteInbound = (id: number) => Network.post("/inbound/delete", { id });
 export const deleteInboundsByNode = (nodeId: number, relay?: boolean, landingId?: number) => Network.post("/inbound/delete-by-node", { nodeId, relay, landingId });
@@ -86,7 +86,7 @@ export const unassignInboundUser = (id: number) => Network.post("/inbound/unassi
 export const getUserSub = (userId: number) => Network.post("/inbound/user-sub", { userId });
 
 // 中转(前置机协议 + 落地出口):落地内联粘贴、测试、搭建
-export const oneClickRelay = (nodeId: number, link: string, name?: string) => Network.post("/inbound/one-click-relay", { nodeId, link, name });
+export const oneClickRelay = (nodeId: number, link: string, name?: string, sni?: string) => Network.post("/inbound/one-click-relay", { nodeId, link, name, sni });
 export const testLanding = (nodeId: number, link: string) => Network.post("/landing/test", { nodeId, link });
 export const getLandingList = () => Network.post("/landing/list"); // 仅用于中转卡片显示落地名
 

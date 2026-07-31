@@ -5,6 +5,7 @@ import { Input, Textarea } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import { Chip } from "@heroui/chip";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
 import toast from "react-hot-toast";
@@ -21,6 +22,7 @@ import {
   getLandingList,
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import { SNI_PRESETS, DEFAULT_SNI } from "@/config/sni";
 
 /**
  * 中转(前置机协议 + 落地出口)· 机器卡模式。
@@ -35,7 +37,7 @@ export default function RelayPage() {
   const [landings, setLandings] = useState<any[]>([]);
 
   const [buildOpen, setBuildOpen] = useState(false);
-  const [buildForm, setBuildForm] = useState<any>({ nodeId: null, name: "", link: "" });
+  const [buildForm, setBuildForm] = useState<any>({ nodeId: null, name: "", link: "", sni: DEFAULT_SNI });
   const [buildLoading, setBuildLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [testResult, setTestResult] = useState<any>(null); // {ok, exitIp, latencyMs, skipped, msg}
@@ -123,7 +125,7 @@ export default function RelayPage() {
     if (!buildForm.link) return toast.error("请粘贴落地链接");
     setBuildLoading(true);
     try {
-      const res = await oneClickRelay(buildForm.nodeId, buildForm.link, buildForm.name);
+      const res = await oneClickRelay(buildForm.nodeId, buildForm.link, buildForm.name, buildForm.sni);
       if (res.code === 0) {
         toast.success("一键搭中转完成:整机协议已建好,出口走落地");
         setBuildOpen(false);
@@ -202,7 +204,7 @@ export default function RelayPage() {
         <Button
           color="secondary"
           onPress={() => {
-            setBuildForm({ nodeId: null, name: "", link: "" });
+            setBuildForm({ nodeId: null, name: "", link: "", sni: DEFAULT_SNI });
             setTestResult(null);
             setBuildOpen(true);
           }}
@@ -392,6 +394,18 @@ export default function RelayPage() {
                 )
               )}
             </div>
+            {/* Reality 借壳域名:建在前置机上的协议用,给个常用列表也允许自己输 */}
+            <Autocomplete
+              label="伪装域名(Reality 借壳)"
+              allowsCustomValue
+              defaultItems={SNI_PRESETS}
+              inputValue={buildForm.sni}
+              onInputChange={(v) => setBuildForm({ ...buildForm, sni: v })}
+              onSelectionChange={(k) => { if (k) setBuildForm({ ...buildForm, sni: String(k) }); }}
+              description="只影响前置机上 VLESS / Trojan 这两个 Reality 协议。可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,握不上手)"
+            >
+              {(item: any) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
+            </Autocomplete>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setBuildOpen(false)}>取消</Button>

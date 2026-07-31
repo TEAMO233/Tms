@@ -5,6 +5,7 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import { Chip } from "@heroui/chip";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
 import toast from "react-hot-toast";
@@ -20,6 +21,7 @@ import {
   getSpeedLimitList,
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import { SNI_PRESETS, DEFAULT_SNI } from "@/config/sni";
 
 /**
  * 协议管理(合体面板)· 机器卡模式。
@@ -39,6 +41,7 @@ export default function InboundPage() {
 
   const [oneClickOpen, setOneClickOpen] = useState(false);
   const [oneClickNodeId, setOneClickNodeId] = useState<number | null>(null);
+  const [oneClickSni, setOneClickSni] = useState<string>(DEFAULT_SNI);
   const [oneClickLoading, setOneClickLoading] = useState(false);
 
   // 机器卡「分配用户」:把整台机器的协议分给车友(只分配,链接去「用户管理」拿)
@@ -128,7 +131,7 @@ export default function InboundPage() {
     if (!oneClickNodeId) return toast.error("请选择节点");
     setOneClickLoading(true);
     try {
-      const res = await oneClickInbound(oneClickNodeId);
+      const res = await oneClickInbound(oneClickNodeId, oneClickSni);
       if (res.code === 0) {
         toast.success("一键添加完成:整机全套协议已建好");
         setOneClickOpen(false);
@@ -368,6 +371,18 @@ export default function InboundPage() {
                 <SelectItem key={n.id}>{n.name}</SelectItem>
               ))}
             </Select>
+            {/* Reality 借壳域名:给个常用列表,也允许自己输 */}
+            <Autocomplete
+              label="伪装域名(Reality 借壳)"
+              allowsCustomValue
+              defaultItems={SNI_PRESETS}
+              inputValue={oneClickSni}
+              onInputChange={(v) => setOneClickSni(v)}
+              onSelectionChange={(k) => { if (k) setOneClickSni(String(k)); }}
+              description="只影响 VLESS / Trojan 这两个 Reality 协议。可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,握不上手)"
+            >
+              {(item: any) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
+            </Autocomplete>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setOneClickOpen(false)}>取消</Button>
@@ -414,12 +429,17 @@ export default function InboundPage() {
             </Select>
             {isReality(createForm.protocol) && (
               <>
-                <Input
-                  label="SNI(借用的站点)"
-                  value={createForm.sni}
-                  onChange={(e) => setCreateForm({ ...createForm, sni: e.target.value })}
-                  description="推荐 www.apple.com / www.icloud.com;别用 www.microsoft.com(它上了后量子,reality 握不上)"
-                />
+                <Autocomplete
+                  label="伪装域名(Reality 借壳)"
+                  allowsCustomValue
+                  defaultItems={SNI_PRESETS}
+                  inputValue={createForm.sni}
+                  onInputChange={(v) => setCreateForm({ ...createForm, sni: v })}
+                  onSelectionChange={(k) => { if (k) setCreateForm({ ...createForm, sni: String(k) }); }}
+                  description="可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,Reality 握不上手)"
+                >
+                  {(item: any) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
+                </Autocomplete>
                 <Input
                   label="Reality 目标(留空=同 SNI)"
                   value={createForm.dest}

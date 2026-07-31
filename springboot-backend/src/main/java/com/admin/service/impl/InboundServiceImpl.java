@@ -159,13 +159,19 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return R.ok(in);
     }
 
+    /** Reality 借壳域名:没填就用苹果(实测最稳);别用 www.microsoft.com,它上了后量子握不上手 */
+    private String realitySni(String sni) {
+        return (sni == null || sni.trim().isEmpty()) ? "www.apple.com" : sni.trim();
+    }
+
     @Override
-    public R oneClickCreate(Long nodeId) {
+    public R oneClickCreate(Long nodeId, String sni) {
         Node node = nodeMapper.selectById(nodeId);
         if (node == null) {
             return R.err("节点不存在");
         }
-        // 支持的协议一键全建(reality 类默认借 www.apple.com)。SS 用不了,已去掉。
+        // 支持的协议一键全建。SS 用不了,已去掉。
+        String realitySni = realitySni(sni);
         String[] protocols = {"vless", "trojan", "vmess", "hysteria2", "tuic", "anytls"};
         List<Object> created = new java.util.ArrayList<>();
         for (String p : protocols) {
@@ -173,7 +179,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             dto.setNodeId(nodeId);
             dto.setProtocol(p);
             if ("vless".equals(p) || "trojan".equals(p)) {
-                dto.setSni("www.apple.com");
+                dto.setSni(realitySni);
             }
             R r = buildAndSaveInbound(dto); // 只入库,不推送(否则每个都重启 sing-box,7 次触发 systemd 限流)
             if (r.getCode() != 0) {
@@ -190,7 +196,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     }
 
     @Override
-    public R oneClickRelay(Long nodeId, String link, String name) {
+    public R oneClickRelay(Long nodeId, String link, String name, String sni) {
         Node node = nodeMapper.selectById(nodeId);
         if (node == null) {
             return R.err("前置机不存在");
@@ -205,6 +211,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         }
         Long landingId = ((com.admin.entity.Landing) lr.getData()).getId();
         // 和一键搭协议一样建全套,只是每个入站带上 landing_id → 流量经该落地出网
+        String realitySni = realitySni(sni);
         String[] protocols = {"vless", "trojan", "vmess", "hysteria2", "tuic", "anytls"};
         List<Object> created = new java.util.ArrayList<>();
         for (String p : protocols) {
@@ -213,7 +220,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             dto.setProtocol(p);
             dto.setLandingId(landingId);
             if ("vless".equals(p) || "trojan".equals(p)) {
-                dto.setSni("www.apple.com");
+                dto.setSni(realitySni);
             }
             R r = buildAndSaveInbound(dto);
             if (r.getCode() != 0) {

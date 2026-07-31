@@ -40,7 +40,9 @@ public class InboundController extends BaseController {
     @RequireRole
     @PostMapping("/one-click")
     public R oneClick(@RequestBody Map<String, Object> body) {
-        return inboundService.oneClickCreate(Long.valueOf(String.valueOf(body.get("nodeId"))));
+        return inboundService.oneClickCreate(
+                Long.valueOf(String.valueOf(body.get("nodeId"))),
+                body.get("sni") == null ? null : String.valueOf(body.get("sni")));
     }
 
     /** 一键搭中转:在前置机上建全套协议,流量经内联粘贴的落地出网 */
@@ -51,7 +53,8 @@ public class InboundController extends BaseController {
         return inboundService.oneClickRelay(
                 Long.valueOf(String.valueOf(body.get("nodeId"))),
                 String.valueOf(body.get("link")),
-                body.get("name") == null ? null : String.valueOf(body.get("name")));
+                body.get("name") == null ? null : String.valueOf(body.get("name")),
+                body.get("sni") == null ? null : String.valueOf(body.get("sni")));
     }
 
     @RequireRole
