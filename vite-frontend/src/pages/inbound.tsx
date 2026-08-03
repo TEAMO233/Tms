@@ -22,6 +22,7 @@ import {
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { SNI_PRESETS, DEFAULT_SNI } from "@/config/sni";
+import { SubQr } from "@/components/sub-qr";
 
 /**
  * 协议管理(合体面板)· 机器卡模式。
@@ -286,6 +287,7 @@ export default function InboundPage() {
               value={selfSubUrl}
               onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
             />
+            <SubQr url={selfSubUrl} />
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setSelfOpen(false)}>关闭</Button>

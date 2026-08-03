@@ -23,6 +23,7 @@ import {
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { SNI_PRESETS, DEFAULT_SNI } from "@/config/sni";
+import { SubQr } from "@/components/sub-qr";
 
 /**
  * 中转(前置机协议 + 落地出口)· 机器卡模式。
@@ -285,6 +286,7 @@ export default function RelayPage() {
               value={selfSubUrl}
               onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
             />
+            <SubQr url={selfSubUrl} />
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setSelfOpen(false)}>关闭</Button>

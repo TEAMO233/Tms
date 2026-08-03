@@ -50,6 +50,7 @@ import {
   getUserLines
 } from '@/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
+import { SubQrToggle } from '@/components/sub-qr';
 import { SearchIcon, EditIcon, DeleteIcon, UserIcon, SettingsIcon } from '@/components/icons';
 import { parseDate } from "@internationalized/date";
 
@@ -1528,17 +1529,20 @@ export default function UserPage() {
                     value={url}
                     onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
                   />
-                  <Button
-                    size="sm"
-                    color="primary"
-                    onPress={async () => {
-                      (await copyTextToClipboard(url))
-                        ? toast.success('已复制这条订阅')
-                        : toast.error('复制失败,点框内已全选,按 Ctrl+C');
-                    }}
-                  >
-                    复制这条
-                  </Button>
+                  <div className="flex gap-2 items-start">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      onPress={async () => {
+                        (await copyTextToClipboard(url))
+                          ? toast.success('已复制这条订阅')
+                          : toast.error('复制失败,点框内已全选,按 Ctrl+C');
+                      }}
+                    >
+                      复制这条
+                    </Button>
+                    <SubQrToggle url={url} />
+                  </div>
                 </div>
               );
             })}

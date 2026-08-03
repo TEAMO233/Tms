@@ -6,6 +6,7 @@ import { Chip } from "@heroui/chip";
 import toast from "react-hot-toast";
 import { getMyLines, getUserPackageInfo } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import { SubQrToggle } from "@/components/sub-qr";
 
 /**
  * 我的订阅(车友视角)· 一条订阅 = 一个套餐。
@@ -120,17 +121,20 @@ export default function MySubPage() {
                     value={url}
                     onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
                   />
-                  <Button
-                    size="sm"
-                    color="primary"
-                    onPress={async () => {
-                      (await copyTextToClipboard(url))
-                        ? toast.success("已复制,去客户端粘贴")
-                        : toast.error("复制失败,点框内已全选,按 Ctrl+C");
-                    }}
-                  >
-                    复制订阅链接
-                  </Button>
+                  <div className="flex gap-2 items-start">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      onPress={async () => {
+                        (await copyTextToClipboard(url))
+                          ? toast.success("已复制,去客户端粘贴")
+                          : toast.error("复制失败,点框内已全选,按 Ctrl+C");
+                      }}
+                    >
+                      复制订阅链接
+                    </Button>
+                    <SubQrToggle url={url} />
+                  </div>
                 </CardBody>
               </Card>
             );
