@@ -392,7 +392,10 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
     @Override
     public R resumeForward(Long id) {
         Forward f = this.getById(id);
-        if (f != null && f.getExpTime() != null && f.getExpTime() < System.currentTimeMillis()) {
+        // exp_time = 0 是「永不过期」,不是 1970 年过期的。少了 > 0 这个守卫,
+        // 不设到期的转发一旦被暂停就再也恢复不了,月初流量重置那次批量 resume 也会全军覆没
+        if (f != null && f.getExpTime() != null && f.getExpTime() > 0
+                && f.getExpTime() < System.currentTimeMillis()) {
             return R.err("该转发已到期,无法恢复");
         }
         return changeForwardStatus(id, FORWARD_STATUS_ACTIVE, "恢复", "ResumeService");

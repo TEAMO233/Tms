@@ -328,7 +328,7 @@ export default function UserPage() {
   };
 
   const handleSubmitUser = async () => {
-    if (!userForm.user || (!userForm.pwd && !isEdit) || !userForm.expTime) {
+    if (!userForm.user || (!userForm.pwd && !isEdit)) {
       toast.error('请填写完整信息');
       return;
     }
@@ -337,7 +337,8 @@ export default function UserPage() {
     try {
       const submitData: any = {
         ...userForm,
-        expTime: userForm.expTime.getTime()
+        // 到期留空 = 永不过期。后端约定用 0 表示,别传 null(DTO 上是 @NotNull)
+        expTime: userForm.expTime ? userForm.expTime.getTime() : 0
       };
 
       if (isEdit && !submitData.pwd) {
@@ -376,7 +377,7 @@ export default function UserPage() {
   };
 
   const handleAssignTunnel = async () => {
-    if (!tunnelForm.tunnelId || !tunnelForm.expTime || !currentUser) {
+    if (!tunnelForm.tunnelId || !currentUser) {
       toast.error('请填写完整信息');
       return;
     }
@@ -388,7 +389,8 @@ export default function UserPage() {
         tunnelId: tunnelForm.tunnelId,
         flow: tunnelForm.flow,
         num: tunnelForm.num,
-        expTime: tunnelForm.expTime.getTime(),
+        // 留空 = 永久,用 0 表示(DTO 上是 @NotNull,不能传 null)
+        expTime: tunnelForm.expTime ? tunnelForm.expTime.getTime() : 0,
         flowResetTime: tunnelForm.flowResetTime,
         speedId: tunnelForm.speedId
       });
@@ -1013,7 +1015,7 @@ export default function UserPage() {
                     </Select>
                     
                     <DatePicker
-                      label="到期时间"
+                      label="到期时间(留空=永久)"
                       value={tunnelForm.expTime ? parseDate(tunnelForm.expTime.toISOString().split('T')[0]) as any : null}
                       onChange={(date) => {
                         if (date) {
@@ -1232,19 +1234,19 @@ export default function UserPage() {
                   </Select>
                   
                   <DatePicker
-                    label="到期时间"
+                    label="到期时间(留空=永久)"
                     value={editTunnelForm.expTime ? parseDate(new Date(editTunnelForm.expTime).toISOString().split('T')[0]) as any : null}
                     onChange={(date) => {
                       if (date) {
                         const jsDate = new Date(date.year, date.month - 1, date.day, 23, 59, 59);
                         setEditTunnelForm(prev => prev ? { ...prev, expTime: jsDate.getTime() } : null);
                       } else {
-                        setEditTunnelForm(prev => prev ? { ...prev, expTime: Date.now() } : null);
+                        // 清空 = 永久(0)。之前这里给的是 Date.now(),等于一清空权限立刻过期,行为反了
+                        setEditTunnelForm(prev => prev ? { ...prev, expTime: 0 } : null);
                       }
                     }}
                     showMonthAndYearPickers
                     className="cursor-pointer"
-                    isRequired
                   />
                 </div>
                 

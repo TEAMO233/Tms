@@ -68,7 +68,8 @@ public class OpenApiController extends BaseController {
                     userInfo.getOutFlow(),
                     userInfo.getInFlow(),
                     userInfo.getFlow() * GIGA,
-                    userInfo.getExpTime() / 1000
+                    // 没设到期就报 0(订阅协议里 expire=0 = 不过期);别直接拆箱,老数据里可能是 null
+                    userInfo.getExpTime() == null ? 0 : userInfo.getExpTime() / 1000
             );
         } else {
             UserTunnel tunnelInfo = userTunnelService.getById(tunnel);
@@ -78,7 +79,7 @@ public class OpenApiController extends BaseController {
                     tunnelInfo.getOutFlow(),
                     tunnelInfo.getInFlow(),
                     tunnelInfo.getFlow() * GIGA,
-                    tunnelInfo.getExpTime() / 1000
+                    tunnelInfo.getExpTime() == null ? 0 : tunnelInfo.getExpTime() / 1000
             );
         }
 

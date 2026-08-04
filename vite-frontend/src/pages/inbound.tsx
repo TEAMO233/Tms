@@ -37,7 +37,7 @@ export default function InboundPage() {
   const [speedRules, setSpeedRules] = useState<any[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<any>({ nodeId: null, protocol: "vless", sni: "www.apple.com", dest: "", remark: "" });
+  const [createForm, setCreateForm] = useState<any>({ nodeId: null, protocol: "vless", sni: DEFAULT_SNI, dest: "", remark: "" });
   const [createLoading, setCreateLoading] = useState(false);
 
   const [oneClickOpen, setOneClickOpen] = useState(false);
@@ -215,7 +215,7 @@ export default function InboundPage() {
             color="primary"
             variant="flat"
             onPress={() => {
-              setCreateForm({ nodeId: null, protocol: "vless", sni: "www.apple.com", dest: "", remark: "" });
+              setCreateForm({ nodeId: null, protocol: "vless", sni: DEFAULT_SNI, dest: "", remark: "" });
               setCreateOpen(true);
             }}
           >
