@@ -118,7 +118,8 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
             R gostResult = createGostServices(forward, tunnel,
                     resolveLimiter(forward, permissionResult.getLimiter()), nodeInfo, permissionResult.getUserTunnel());
             if (gostResult.getCode() == 0) {
-                return R.ok();
+                // 把最终落地的端口带回去:留空自动分配(或被占顺延)时,用户得知道分到了哪个口
+                return R.ok(java.util.Collections.singletonMap("inPort", forward.getInPort()));
             }
 
             // 失败:回滚这条记录

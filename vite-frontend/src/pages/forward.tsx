@@ -532,34 +532,14 @@ export default function ForwardPage() {
     }
   };
 
-  // 算出某隧道下一个可用入口端口。
-  // 必须【按机器】避让而不是只看本隧道:同一台入口机上别的隧道占了的端口也不能用,
-  // 否则这里填出来的端口提交时才会被后端判为冲突。同 IP = 同一台机器。
-  // 填满则返回 null,交后端分配(后端还会再避开协议的 sing-box 端口、以及机器上被别的程序占用的端口)。
-  const getNextAvailableInPort = (tunnel: Tunnel): number | null => {
-    const start = tunnel.inNodePortSta ?? 1000;
-    const end = tunnel.inNodePortEnd ?? 65535;
-    const sameNodeTunnelIds = new Set<number>([tunnel.id]);
-    if (tunnel.ip) {
-      tunnels.filter(t => t.ip === tunnel.ip).forEach(t => sameNodeTunnelIds.add(t.id));
-    }
-    const used = new Set(
-      forwards.filter(f => sameNodeTunnelIds.has(f.tunnelId) && f.inPort != null).map(f => f.inPort)
-    );
-    for (let p = start; p <= end; p++) {
-      if (!used.has(p)) return p;
-    }
-    return null;
-  };
-
-  // 处理隧道选择变化:选好隧道自动填入下一个可用入口端口(自动排号,可改;清空则由后端分配)
+  // 处理隧道选择变化。端口一律不预填:前端只看得见数据库里的占用,
+  // 机器上被别的程序占了的端口它不知道;后端分配才是 DB + OS 双查,还会自动顺延。
   const handleTunnelChange = (tunnelId: string) => {
     const tunnel = tunnels.find(t => t.id === parseInt(tunnelId));
     setSelectedTunnel(tunnel || null);
     setForm(prev => ({
       ...prev,
       tunnelId: parseInt(tunnelId),
-      inPort: tunnel ? getNextAvailableInPort(tunnel) : prev.inPort,
     }));
   };
 
@@ -609,7 +589,15 @@ export default function ForwardPage() {
       }
       
       if (res.code === 0) {
-        toast.success(isEdit ? '修改成功' : '创建成功');
+        // 端口留空时后端才挑的号（还可能因为机器上被占而顺延），得回显出来
+        const assignedPort = (res.data as any)?.inPort;
+        toast.success(
+          isEdit
+            ? '修改成功'
+            : assignedPort
+            ? `创建成功 · 入口端口 ${assignedPort}`
+            : '创建成功'
+        );
         setModalOpen(false);
         loadData();
       } else {
@@ -1683,8 +1671,8 @@ export default function ForwardPage() {
                       variant="bordered"
                       description={
                         selectedTunnel && selectedTunnel.inNodePortSta && selectedTunnel.inNodePortEnd
-                          ? `已自动填好一个可用端口,可改。留空=系统自动分配(会避开这台机器上已被占用的端口)。允许范围 ${selectedTunnel.inNodePortSta}-${selectedTunnel.inNodePortEnd}`
-                          : '留空=系统自动分配,会避开这台机器上已被占用的端口'
+                          ? `留空即可,系统自动挑一个没被占的(既避开面板里已用的,也避开机器上被别的程序占的)。想指定就填,允许范围 ${selectedTunnel.inNodePortSta}-${selectedTunnel.inNodePortEnd}`
+                          : '留空即可,系统自动挑一个没被占的(既避开面板里已用的,也避开机器上被别的程序占的)'
                       }
                     />
                     
