@@ -89,4 +89,13 @@ public class ForwardWithTunnelDto {
     private Integer inx;
 
     private String interfaceName;
+
+    /**
+     * 是否是「搭协议/搭中转」时自动生成的转发。
+     *
+     * 这类转发是协议的内部管道(公网口 → 本机 sing-box 入站),用户在
+     * 「协议管理」「中转」页面管它们,不该跟手工建的端口转发混在一起,
+     * 所以转发管理页默认折叠隐藏,需要排障时再展开。
+     */
+    private Boolean protocolManaged;
 }

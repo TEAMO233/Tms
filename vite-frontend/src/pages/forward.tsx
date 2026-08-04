@@ -68,6 +68,8 @@ interface Forward {
   inx?: number;
   expTime?: number;
   speedId?: number;
+  /** 搭协议/搭中转自动生成的内部管道,默认不显示在这一页 */
+  protocolManaged?: boolean;
 }
 
 interface Tunnel {
@@ -129,6 +131,8 @@ interface TunnelGroup {
 export default function ForwardPage() {
   const [loading, setLoading] = useState(true);
   const [forwards, setForwards] = useState<Forward[]>([]);
+  // 搭协议/搭中转自动建的管道,默认收起来;排障时才展开看
+  const [showProtocolForwards, setShowProtocolForwards] = useState(false);
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [speedRules, setSpeedRules] = useState<any[]>([]);
   
@@ -1143,12 +1147,16 @@ export default function ForwardPage() {
       return [];
     }
     
+    // 搭协议/搭中转自动建的管道默认不露面：它们归「协议管理」「中转」页管，
+    // 混在这里只会把手工建的端口转发淹掉（注意只在展示层过滤，
+    // forwards 本身要保持完整，端口占用检测还得靠它避让 20000+ 那一段）
+    let filteredForwards = showProtocolForwards ? forwards : forwards.filter(f => !f.protocolManaged);
+
     // 在平铺模式下，只显示当前用户的转发
-    let filteredForwards = forwards;
     if (viewMode === 'direct') {
       const currentUserId = JwtUtil.getUserIdFromToken();
       if (currentUserId !== null) {
-        filteredForwards = forwards.filter(forward => forward.userId === currentUserId);
+        filteredForwards = filteredForwards.filter(forward => forward.userId === currentUserId);
       }
     }
     
@@ -1396,13 +1404,32 @@ export default function ForwardPage() {
   }
 
   const userGroups = groupForwardsByUserAndTunnel();
+  const protocolForwardCount = forwards.filter(f => f.protocolManaged).length;
 
   return (
-    
+
       <div className="px-3 lg:px-6 py-8">
         {/* 页面头部 */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
+            {protocolForwardCount > 0 && (
+              <div className="text-xs text-default-500 flex items-center gap-2 flex-wrap">
+                <span>
+                  {showProtocolForwards
+                    ? `正在显示 ${protocolForwardCount} 条协议自动生成的转发`
+                    : `已隐藏 ${protocolForwardCount} 条协议自动生成的转发`}
+                  ,它们归「协议管理」「中转」页管
+                </span>
+                <Button
+                  size="sm"
+                  variant="light"
+                  className="h-6 min-w-0 px-2 text-xs"
+                  onPress={() => setShowProtocolForwards(!showProtocolForwards)}
+                >
+                  {showProtocolForwards ? "收起" : "展开看看"}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {/* 显示模式切换按钮 */}
@@ -1549,7 +1576,7 @@ export default function ForwardPage() {
           )
         ) : (
           /* 直接显示模式 */
-          forwards.length > 0 ? (
+          getSortedForwards().length > 0 ? (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
