@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -192,26 +193,60 @@ func ensureSingboxInstalled(mirror string) error {
 		return nil
 	}
 
-	arch := runtime.GOARCH // amd64 / arm64
-	asset := fmt.Sprintf("sing-box-%s-linux-%s.tar.gz", singboxVersion, arch)
-	url := fmt.Sprintf("https://github.com/SagerNet/sing-box/releases/download/v%s/%s", singboxVersion, asset)
-	if mirror != "" {
-		url = mirror + url
-	}
-
+	// 下载和解压当成一件事:任一步失败就换下一个源,
+	// 免得国内机留下半个包却只报"解压失败",让人以为是归档坏了
 	tmp := filepath.Join(installDir, "sing-box.tar.gz")
-	if err := downloadFile(url, tmp); err != nil {
-		return fmt.Errorf("下载 sing-box 失败(%s): %v", url, err)
+	var lastErr error
+	for _, url := range singboxDownloadURLs(mirror) {
+		if err := downloadFile(url, tmp); err != nil {
+			os.Remove(tmp)
+			lastErr = fmt.Errorf("%s: %v", url, err)
+			fmt.Printf("⚠️ 下载 sing-box 失败,换下一个源: %v\n", lastErr)
+			continue
+		}
+		if err := extractSingboxBinary(tmp, bin); err != nil {
+			os.Remove(tmp)
+			lastErr = fmt.Errorf("%s 解压失败: %v", url, err)
+			fmt.Printf("⚠️ %v,换下一个源\n", lastErr)
+			continue
+		}
+		os.Remove(tmp)
+		if err := os.Chmod(bin, 0o755); err != nil {
+			return fmt.Errorf("给 sing-box 加执行权限失败: %v", err)
+		}
+		fmt.Printf("✅ sing-box %s 安装完成(源: %s)\n", singboxVersion, url)
+		return nil
 	}
-	defer os.Remove(tmp)
+	return fmt.Errorf("所有下载源都失败,最后一个 %v", lastErr)
+}
 
-	if err := extractSingboxBinary(tmp, bin); err != nil {
-		return fmt.Errorf("解压 sing-box 失败: %v", err)
+// GitHub 加速镜像,给国内机器兜底 —— 拼在完整 github 地址前面即可。
+var singboxMirrors = []string{
+	"https://ghfast.top/",
+	"https://gh-proxy.com/",
+	"https://ghproxy.net/",
+}
+
+// singboxDownloadURLs 按优先级列出候选下载地址:直连排第一(境外机秒过),
+// 连不上或下到一半断流就顺着镜像往下换。
+//
+// 光靠调用方传 mirror 不够 —— 后台预装那条路径压根没传,国内机必然
+// context deadline exceeded,所以兜底放在这里,谁调用都能自愈。
+func singboxDownloadURLs(mirror string) []string {
+	asset := fmt.Sprintf("sing-box-%s-linux-%s.tar.gz", singboxVersion, runtime.GOARCH)
+	origin := fmt.Sprintf("https://github.com/SagerNet/sing-box/releases/download/v%s/%s", singboxVersion, asset)
+
+	urls := make([]string, 0, len(singboxMirrors)+2)
+	if mirror != "" {
+		urls = append(urls, mirror+origin)
 	}
-	if err := os.Chmod(bin, 0o755); err != nil {
-		return fmt.Errorf("给 sing-box 加执行权限失败: %v", err)
+	urls = append(urls, origin)
+	for _, m := range singboxMirrors {
+		if m != mirror {
+			urls = append(urls, m+origin)
+		}
 	}
-	return nil
+	return urls
 }
 
 func writeSingboxConfig(cfg json.RawMessage) error {
@@ -272,7 +307,16 @@ WantedBy=multi-user.target
 // ---- 下载 / 解压工具 ----
 
 func downloadFile(url, dest string) error {
-	client := &http.Client{Timeout: 10 * time.Minute}
+	// 总超时给足(二进制十几兆,慢线路也得下完),但连不上/服务端不吭声要快速失败,
+	// 否则国内机会在 GitHub 那一个源上干等十分钟,轮不到后面的镜像
+	client := &http.Client{
+		Timeout: 10 * time.Minute,
+		Transport: &http.Transport{
+			DialContext:           (&net.Dialer{Timeout: 15 * time.Second}).DialContext,
+			TLSHandshakeTimeout:   15 * time.Second,
+			ResponseHeaderTimeout: 30 * time.Second,
+		},
+	}
 	resp, err := client.Get(url)
 	if err != nil {
 		return err
