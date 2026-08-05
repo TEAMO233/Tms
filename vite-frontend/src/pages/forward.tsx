@@ -10,6 +10,8 @@ import { Spinner } from "@heroui/spinner";
 import { Switch } from "@heroui/switch";
 import { Alert } from "@heroui/alert";
 import { Accordion, AccordionItem } from "@heroui/accordion";
+import { DatePicker } from "@heroui/date-picker";
+import { parseDate } from "@internationalized/date";
 import toast from 'react-hot-toast';
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
@@ -47,6 +49,20 @@ import {
   getSpeedLimitList
 } from "@/api";
 import { JwtUtil } from "@/utils/jwt";
+
+/** 时间戳 → 本地日期串。不能用 toISOString(那是 UTC,凌晨点「30天」会少算一天) */
+const toLocalDateStr = (ms: number) => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** N 天后那天的 23:59:59,跟手选日期的口径保持一致 */
+const endOfDayAfter = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  d.setHours(23, 59, 59, 0);
+  return d.getTime();
+};
 
 interface Forward {
   id: number;
@@ -1609,23 +1625,23 @@ export default function ForwardPage() {
           isOpen={modalOpen}
           onOpenChange={setModalOpen}
           size="2xl"
-          scrollBehavior="outside"
+          scrollBehavior="inside"
           backdrop="blur"
           placement="center"
         >
           <ModalContent>
             {(onClose) => (
               <>
-                <ModalHeader className="flex flex-col gap-1">
-                  <h2 className="text-xl font-bold">
+                <ModalHeader className="flex flex-col gap-0.5 border-b border-divider">
+                  <h2 className="text-lg font-bold">
                     {isEdit ? '编辑转发' : '新增转发'}
                   </h2>
-                  <p className="text-small text-default-500">
+                  <p className="text-tiny text-default-500 font-normal">
                     {isEdit ? '修改现有转发配置的信息' : '创建新的转发配置'}
                   </p>
                 </ModalHeader>
-                <ModalBody>
-                  <div className="space-y-4 pb-4">
+                <ModalBody className="py-5">
+                  <div className="space-y-4">
                     <Input
                       label="转发名称"
                       placeholder="请输入转发名称"
@@ -1671,38 +1687,48 @@ export default function ForwardPage() {
                       variant="bordered"
                       description={
                         selectedTunnel && selectedTunnel.inNodePortSta && selectedTunnel.inNodePortEnd
-                          ? `留空即可,系统自动挑一个没被占的(既避开面板里已用的,也避开机器上被别的程序占的)。想指定就填,允许范围 ${selectedTunnel.inNodePortSta}-${selectedTunnel.inNodePortEnd}`
-                          : '留空即可,系统自动挑一个没被占的(既避开面板里已用的,也避开机器上被别的程序占的)'
+                          ? `留空即可,系统自动挑一个没被占用的。想指定就填,范围 ${selectedTunnel.inNodePortSta}-${selectedTunnel.inNodePortEnd}`
+                          : '留空即可,系统自动挑一个没被占用的端口'
                       }
                     />
                     
                     <Textarea
                       label="远程地址"
-                      placeholder="请输入远程地址，多个地址用换行分隔&#10;例如:&#10;192.168.1.100:8080&#10;example.com:3000"
+                      placeholder="192.168.1.100:8080"
                       value={form.remoteAddr}
                       onChange={(e) => setForm(prev => ({ ...prev, remoteAddr: e.target.value }))}
                       isInvalid={!!errors.remoteAddr}
                       errorMessage={errors.remoteAddr}
                       variant="bordered"
-                      description="格式: IP:端口 或 域名:端口，支持多个地址（每行一个）"
-                      minRows={3}
+                      description="IP:端口 或 域名:端口。多个地址每行一个,填多个会多出「负载策略」可选"
+                      minRows={2}
                       maxRows={6}
                     />
                     
-                    <Accordion variant="light" className="px-0" itemClasses={{ title: "text-sm text-default-500", trigger: "py-2" }}>
-                      <AccordionItem key="advanced" aria-label="高级选项" title="高级选项（多IP出口，一般留空不用管）">
-                        <Input
-                          label="出口网卡名或IP"
-                          placeholder="留空即可（不懂就别填）"
-                          value={form.interfaceName}
-                          onChange={(e) => setForm(prev => ({ ...prev, interfaceName: e.target.value }))}
-                          isInvalid={!!errors.interfaceName}
-                          errorMessage={errors.interfaceName}
-                          variant="bordered"
-                          description="仅【本机】有多个IP时才填，且要填【本机】的某个本地IP或网卡名(如 eth0)。这不是目标地址！填成远程地址的IP会导致连不上，不懂就留空"
-                        />
-                      </AccordionItem>
-                    </Accordion>
+                    {/* 负载策略跟远程地址是一回事,填了多个地址才有意义,所以紧挨着它 */}
+                    {getAddressCount(form.remoteAddr) > 1 && (
+                      <Select
+                        label="负载策略"
+                        placeholder="请选择负载均衡策略"
+                        selectedKeys={[form.strategy]}
+                        onSelectionChange={(keys) => {
+                          const selectedKey = Array.from(keys)[0] as string;
+                          setForm(prev => ({ ...prev, strategy: selectedKey }));
+                        }}
+                        variant="bordered"
+                        description="多个目标地址的负载均衡策略"
+                      >
+                        <SelectItem key="fifo" >主备模式 - 自上而下</SelectItem>
+                        <SelectItem key="round" >轮询模式 - 依次轮换</SelectItem>
+                        <SelectItem key="rand" >随机模式 - 随机选择</SelectItem>
+                        <SelectItem key="hash" >哈希模式 - IP哈希</SelectItem>
+                      </Select>
+                    )}
+                  </div>
+
+                  {/* 套餐:限速 + 到期。跟上面的「这条转发通到哪」不是一类事,拉开距离单独成组 */}
+                  <div className="space-y-4 pt-4 border-t border-divider">
+                    <div className="text-xs font-medium text-default-500">套餐(可选)</div>
 
                     <Select
                       label="限速规则"
@@ -1722,16 +1748,24 @@ export default function ForwardPage() {
                         ))}
                     </Select>
 
-                    <div className="flex flex-col gap-2">
-                      <Input
-                        label="到期时间"
-                        type="datetime-local"
-                        value={form.expTime ? new Date(form.expTime - new Date(form.expTime).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
-                        onChange={(e) => setForm(prev => ({ ...prev, expTime: e.target.value ? new Date(e.target.value).getTime() : null }))}
+                    <div className="space-y-2">
+                      {/* 原生 datetime-local 换掉了:它空值时也一直显示「年/月/日 --:--」,
+                          HeroUI 以为没输入就把浮动 label 压在正中间,和那串占位文字叠成一坨;
+                          换成 DatePicker 顺带跟「分配用户」那边的到期选择统一 */}
+                      <DatePicker
+                        label="到期时间(留空=永久)"
                         variant="bordered"
-                        description="留空 = 永不过期;到点自动暂停(每分钟检查一次)。可点下方按钮从今天起算"
+                        showMonthAndYearPickers
+                        className="cursor-pointer"
+                        value={form.expTime ? parseDate(toLocalDateStr(form.expTime)) as any : null}
+                        onChange={(d: any) => setForm(prev => ({
+                          ...prev,
+                          expTime: d ? new Date(d.year, d.month - 1, d.day, 23, 59, 59).getTime() : null,
+                        }))}
+                        description="到这天 23:59 自动暂停(每分钟检查一次)"
                       />
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-tiny text-default-400">从今天起算</span>
                         {[
                           { label: '30天', days: 30 },
                           { label: '90天', days: 90 },
@@ -1743,7 +1777,7 @@ export default function ForwardPage() {
                             size="sm"
                             variant="flat"
                             color="primary"
-                            onPress={() => setForm(prev => ({ ...prev, expTime: Date.now() + p.days * 86400000 }))}
+                            onPress={() => setForm(prev => ({ ...prev, expTime: endOfDayAfter(p.days) }))}
                           >
                             {p.label}
                           </Button>
@@ -1757,25 +1791,24 @@ export default function ForwardPage() {
                         </Button>
                       </div>
                     </div>
+                  </div>
 
-                    {getAddressCount(form.remoteAddr) > 1 && (
-                      <Select
-                        label="负载策略"
-                        placeholder="请选择负载均衡策略"
-                        selectedKeys={[form.strategy]}
-                        onSelectionChange={(keys) => {
-                          const selectedKey = Array.from(keys)[0] as string;
-                          setForm(prev => ({ ...prev, strategy: selectedKey }));
-                        }}
-                        variant="bordered"
-                        description="多个目标地址的负载均衡策略"
-                      >
-                        <SelectItem key="fifo" >主备模式 - 自上而下</SelectItem>
-                        <SelectItem key="round" >轮询模式 - 依次轮换</SelectItem>
-                        <SelectItem key="rand" >随机模式 - 随机选择</SelectItem>
-                        <SelectItem key="hash" >哈希模式 - IP哈希</SelectItem>
-                      </Select>
-                    )}
+                  {/* 高级挪到最后:夹在中间会把「限速/到期」这些常用项挤到折叠区下面去 */}
+                  <div className="pt-1 border-t border-divider">
+                    <Accordion variant="light" className="px-0" itemClasses={{ title: "text-sm text-default-500", trigger: "py-2" }}>
+                      <AccordionItem key="advanced" aria-label="高级选项" title="高级选项（多IP出口，一般留空不用管）">
+                        <Input
+                          label="出口网卡名或IP"
+                          placeholder="留空即可（不懂就别填）"
+                          value={form.interfaceName}
+                          onChange={(e) => setForm(prev => ({ ...prev, interfaceName: e.target.value }))}
+                          isInvalid={!!errors.interfaceName}
+                          errorMessage={errors.interfaceName}
+                          variant="bordered"
+                          description="仅【本机】有多个IP时才填，且要填【本机】的某个本地IP或网卡名(如 eth0)。这不是目标地址！填成远程地址的IP会导致连不上，不懂就留空"
+                        />
+                      </AccordionItem>
+                    </Accordion>
                   </div>
                 </ModalBody>
                 <ModalFooter>
