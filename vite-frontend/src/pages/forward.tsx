@@ -94,6 +94,8 @@ interface Tunnel {
   ip?: string; // 入口机 IP:用来判断哪些隧道在同一台机器上(端口要跨隧道避让)
   inNodePortSta?: number;
   inNodePortEnd?: number;
+  type?: number; // 1=端口转发(只有入口机) 2=隧道转发(入口机 + 出口机)
+  protocol?: string;
 }
 
 interface ForwardForm {
@@ -1692,15 +1694,20 @@ export default function ForwardPage() {
                       }
                     />
                     
+                    {/* 隧道转发时这个地址是【出口机】去连的,不是入口机——最容易填错的地方,所以分开写说明 */}
                     <Textarea
-                      label="远程地址"
-                      placeholder="192.168.1.100:8080"
+                      label={selectedTunnel?.type === 2 ? "远程地址(由出口机去连)" : "远程地址"}
+                      placeholder={selectedTunnel?.type === 2 ? "127.0.0.1:443" : "192.168.1.100:8080"}
                       value={form.remoteAddr}
                       onChange={(e) => setForm(prev => ({ ...prev, remoteAddr: e.target.value }))}
                       isInvalid={!!errors.remoteAddr}
                       errorMessage={errors.remoteAddr}
                       variant="bordered"
-                      description="IP:端口 或 域名:端口。多个地址每行一个,填多个会多出「负载策略」可选"
+                      description={
+                        selectedTunnel?.type === 2
+                          ? "发起连接的是【出口机】,所以填出口机能访问到的地址。目标就在出口机本机上就填 127.0.0.1:端口。多个地址每行一个"
+                          : "IP:端口 或 域名:端口。多个地址每行一个,填多个会多出「负载策略」可选"
+                      }
                       minRows={2}
                       maxRows={6}
                     />
