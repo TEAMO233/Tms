@@ -29,8 +29,68 @@ export default function GuidePage() {
             </div>
             <div className="flex gap-2 items-start">
               <Chip size="sm" color="default" variant="flat">隧道转发</Chip>
-              <span>把<b>你自己两台</b>机器加密串起来(2 跳),从后面那台出网。客户端拿到裸端口。</span>
+              <span>两台机器之间走<b>加密隧道</b>(2 跳),由后面那台去连目标。<b>只在「境内入口 → 境外裸落地」时才需要</b>,其它情况端口转发就够。</span>
             </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* 决策树:先看这个,省得四个功能挨个试 */}
+      <Card className="border border-primary/30">
+        <CardBody className="space-y-3">
+          <div className="font-semibold">该用哪个?照着问两句就定了</div>
+          <div className="text-sm text-default-600 space-y-3">
+            <div>
+              <div className="font-medium">第一问:客户端要拿到的是「订阅」还是「一个端口」?</div>
+              <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li><b>订阅</b>(给车友翻墙用)→ 出口就用这台机 = <b>协议管理</b>;出口要换成住宅 IP 或别的节点 = <b>中转</b>。到这就完了,下面不用看。</li>
+                <li><b>一个端口</b>(自己用 / 搬服务)→ 接着问第二句。</li>
+              </ul>
+            </div>
+            <div>
+              <div className="font-medium">第二问:要搬的东西自己加密吗?</div>
+              <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li>
+                  <b>自己加密</b>(VLESS / Trojan / SS / Hysteria 这些协议)→ <b>端口转发</b>。
+                  搬的是密文,过不过墙都无所谓,而且落地那台什么都不用装,别人机场的节点也能搬。
+                </li>
+                <li>
+                  <b>裸的</b>(socks5 / SSH / 游戏 / 数据库 / 明文服务)→ 再看<b>入口机到落地这一段过不过墙</b>:
+                  <ul className="list-[circle] pl-5 space-y-1 mt-1">
+                    <li>不过墙(两头都在境内,或两头都在境外)→ 还是 <b>端口转发</b>。</li>
+                    <li>过墙(境内入口 → 境外裸落地,比如河北直连泰国住宅 socks)→ 这才轮到 <b>隧道转发</b>:中间加一台境外机,把过墙那段包进加密隧道。</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+            <p className="text-xs text-default-500 border-t border-default-200 pt-2">
+              <b>结论:隧道转发只在最后那一格才需要</b>,其它情况端口转发都够,还更省事(只有入口机要装 gost)。
+              别看落地是不是裸的就下结论——关键是那段路<b>过不过墙</b>。
+            </p>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* 进阶搭法 */}
+      <Card>
+        <CardBody className="space-y-3">
+          <div className="font-semibold">进阶:国内入口 + 住宅出口,还要能发订阅</div>
+          <div className="text-sm text-default-600 space-y-2">
+            <p>
+              想同时拿到「客户端连国内不过墙、晚高峰稳」和「出口是干净住宅 IP」,还要有订阅能分车友——用<b>两层中转</b>,别用隧道转发:
+            </p>
+            <div className="font-mono text-xs bg-default-100 rounded-lg p-3 leading-relaxed overflow-x-auto">
+              第一层:中转 = 前置【香港】+ 落地【泰国住宅 socks】<br />
+              第二层:中转 = 前置【河北】+ 落地【第一层那条 vless:// 链接】<br />
+              <br />
+              客户端 --Reality--&gt; 河北 --VLESS--&gt; 香港 --socks5--&gt; 泰国住宅
+            </div>
+            <p className="text-xs text-default-500">
+              拿第一层的链接:给它点「🔑 我自己用」拿到订阅地址,浏览器打开,把里面那条 vless:// 复制出来,粘到第二层的落地框。
+            </p>
+            <p className="text-xs text-default-500">
+              为什么不用隧道转发做这件事:隧道方案客户端要手配裸 socks5(明文、没订阅),而且<b>住宅的账号密码得填进客户端</b>——等于把凭据交给车友。两层中转全程加密、订阅自动指向河北、每人独立 UUID 和限速,住宅凭据只留在香港那台机上。机器数量一样是两台。
+            </p>
           </div>
         </CardBody>
       </Card>
@@ -60,7 +120,7 @@ export default function GuidePage() {
             <p>这俩给的是<b>裸端口</b>(IP:端口),客户端不是翻墙客户端(比如游戏、网站、API、SSH、你自己的服务)。</p>
             <ul className="list-disc pl-5 space-y-1">
               <li><b>端口转发</b>(1 跳):借一台线路好的入口机,把流量转发到<b>任意地址</b>(别人的服务 / 住宅 socks / 你的机器)。常用于优质线路加速、给被墙/内网的服务套个干净入口。</li>
-              <li><b>隧道转发</b>(2 跳,加密):把<b>你自己两台</b>机器加密串起来——入口机负责"让用户快速连进来",出口机负责"从对的地方出网"。落地必须是你自己装了节点的机器。</li>
+              <li><b>隧道转发</b>(2 跳,加密):入口机和出口机之间走加密隧道,再由<b>出口机</b>去连远程地址。要装 gost 的是这两台,远程地址本身可以是任意地址(住宅 socks、别人的服务都行)。只有「境内入口 → 境外裸落地」这种过墙路径才需要它,其它时候端口转发就够。</li>
             </ul>
           </div>
         </CardBody>
@@ -84,7 +144,8 @@ export default function GuidePage() {
               <tbody className="[&>tr]:border-b [&>tr]:border-default-100">
                 <tr><td className="py-2 pr-3 text-default-500">客户端拿到</td><td className="py-2 pr-3">订阅</td><td className="py-2 pr-3">订阅</td><td className="py-2 pr-3">裸端口</td><td className="py-2 pr-3">裸端口</td></tr>
                 <tr><td className="py-2 pr-3 text-default-500">抗封锁伪装</td><td className="py-2 pr-3">有</td><td className="py-2 pr-3">有</td><td className="py-2 pr-3">无</td><td className="py-2 pr-3">入口→出口有</td></tr>
-                <tr><td className="py-2 pr-3 text-default-500">出口在哪</td><td className="py-2 pr-3">本机</td><td className="py-2 pr-3">落地(任意)</td><td className="py-2 pr-3">任意地址</td><td className="py-2 pr-3">你自己的出口机</td></tr>
+                <tr><td className="py-2 pr-3 text-default-500">出口在哪</td><td className="py-2 pr-3">本机</td><td className="py-2 pr-3">落地(任意)</td><td className="py-2 pr-3">任意地址</td><td className="py-2 pr-3">出口机去连的任意地址</td></tr>
+                <tr><td className="py-2 pr-3 text-default-500">要装 gost 的机器</td><td className="py-2 pr-3">1 台</td><td className="py-2 pr-3">1 台(前置机)</td><td className="py-2 pr-3">1 台(入口机)</td><td className="py-2 pr-3">2 台(入口+出口)</td></tr>
                 <tr><td className="py-2 pr-3 text-default-500">跳数</td><td className="py-2 pr-3">1</td><td className="py-2 pr-3">2(前置+落地)</td><td className="py-2 pr-3">1</td><td className="py-2 pr-3">2(加密)</td></tr>
                 <tr><td className="py-2 pr-3 text-default-500">卖给谁</td><td className="py-2 pr-3">翻墙车友</td><td className="py-2 pr-3">翻墙车友</td><td className="py-2 pr-3">要搬端口的</td><td className="py-2 pr-3">要搬端口的</td></tr>
               </tbody>
