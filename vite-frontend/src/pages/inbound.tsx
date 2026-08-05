@@ -21,7 +21,7 @@ import {
   getSpeedLimitList,
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import { SNI_PRESETS, DEFAULT_SNI } from "@/config/sni";
+import { SNI_PRESETS, DEFAULT_SNI, cleanSni } from "@/config/sni";
 import { SubQr } from "@/components/sub-qr";
 
 /**
@@ -111,7 +111,7 @@ export default function InboundPage() {
         remark: createForm.remark,
       };
       if (isReality(createForm.protocol)) {
-        payload.sni = createForm.sni;
+        payload.sni = cleanSni(createForm.sni);
         payload.dest = createForm.dest;
       }
       const res = await createInbound(payload);
@@ -132,7 +132,7 @@ export default function InboundPage() {
     if (!oneClickNodeId) return toast.error("请选择节点");
     setOneClickLoading(true);
     try {
-      const res = await oneClickInbound(oneClickNodeId, oneClickSni);
+      const res = await oneClickInbound(oneClickNodeId, cleanSni(oneClickSni));
       if (res.code === 0) {
         toast.success("一键添加完成:整机全套协议已建好");
         setOneClickOpen(false);
@@ -383,7 +383,7 @@ export default function InboundPage() {
               onSelectionChange={(k) => { if (k) setOneClickSni(String(k)); }}
               description="只影响 VLESS / Trojan 这两个 Reality 协议。可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,握不上手)"
             >
-              {(item: any) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
+              {(item: any) => <AutocompleteItem key={item.value} description={item.desc || undefined}>{item.label}</AutocompleteItem>}
             </Autocomplete>
           </ModalBody>
           <ModalFooter>
@@ -440,7 +440,7 @@ export default function InboundPage() {
                   onSelectionChange={(k) => { if (k) setCreateForm({ ...createForm, sni: String(k) }); }}
                   description="可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,Reality 握不上手)"
                 >
-                  {(item: any) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
+                  {(item: any) => <AutocompleteItem key={item.value} description={item.desc || undefined}>{item.label}</AutocompleteItem>}
                 </Autocomplete>
                 <Input
                   label="Reality 目标(留空=同 SNI)"

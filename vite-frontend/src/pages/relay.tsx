@@ -22,7 +22,7 @@ import {
   getLandingList,
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import { SNI_PRESETS, DEFAULT_SNI } from "@/config/sni";
+import { SNI_PRESETS, DEFAULT_SNI, cleanSni } from "@/config/sni";
 import { SubQr } from "@/components/sub-qr";
 
 /**
@@ -126,7 +126,7 @@ export default function RelayPage() {
     if (!buildForm.link) return toast.error("请粘贴落地链接");
     setBuildLoading(true);
     try {
-      const res = await oneClickRelay(buildForm.nodeId, buildForm.link, buildForm.name, buildForm.sni);
+      const res = await oneClickRelay(buildForm.nodeId, buildForm.link, buildForm.name, cleanSni(buildForm.sni));
       if (res.code === 0) {
         toast.success("一键搭中转完成:整机协议已建好,出口走落地");
         setBuildOpen(false);
@@ -406,7 +406,7 @@ export default function RelayPage() {
               onSelectionChange={(k) => { if (k) setBuildForm({ ...buildForm, sni: String(k) }); }}
               description="只影响前置机上 VLESS / Trojan 这两个 Reality 协议。可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,握不上手)"
             >
-              {(item: any) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
+              {(item: any) => <AutocompleteItem key={item.value} description={item.desc || undefined}>{item.label}</AutocompleteItem>}
             </Autocomplete>
           </ModalBody>
           <ModalFooter>

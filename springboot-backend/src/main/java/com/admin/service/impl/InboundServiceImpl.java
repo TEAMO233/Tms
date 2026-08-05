@@ -126,12 +126,15 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         } else if ("hysteria2".equals(protocol) || "tuic".equals(protocol) || "anytls".equals(protocol)) {
             // 自签 TLS(Hy2/TUIC 走 QUIC/UDP,AnyTLS 走 TCP;客户端 insecure);证书由节点端自动生成
             in.setSecurity("tls");
-            in.setSni((dto.getSni() != null && !dto.getSni().isEmpty()) ? dto.getSni() : "www.bing.com");
+            String tlsSni = sanitizeSni(dto.getSni());
+            in.setSni(tlsSni != null ? tlsSni : "www.bing.com");
         } else if ("vless".equals(protocol) || "trojan".equals(protocol)) {
             // VLESS / Trojan 均走 Reality(无域名):节点用 sing-box 生成 Reality 密钥对
             if (dto.getSni() == null || dto.getSni().isEmpty()) {
                 return R.err("Reality 协议需要 SNI");
             }
+            // 脏值(比如下拉的显示文字)会原样进 sing-box 的 server_name,握手必挂,这里最后卡一道
+            String realSni = realitySni(dto.getSni());
             GostDto kp = SingboxUtil.GenerateRealityKeypair(node.getId(), null);
             // send_msg 返回的 GostDto 不设 code,判成功看 msg=="OK"(与 ForwardServiceImpl 一致)
             if (kp == null || !"OK".equals(kp.getMsg()) || kp.getData() == null) {
@@ -144,8 +147,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 return R.err("Reality 密钥解析失败");
             }
             in.setSecurity("reality");
-            in.setSni(dto.getSni());
-            in.setDest((dto.getDest() != null && !dto.getDest().isEmpty()) ? dto.getDest() : dto.getSni());
+            in.setSni(realSni);
+            String destSni = sanitizeSni(dto.getDest());
+            in.setDest(destSni != null ? destSni : realSni);
             in.setPublicKey(publicKey);
             in.setPrivateKey(privateKey);
             in.setShortId(randomShortId());
@@ -159,9 +163,32 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return R.ok(in);
     }
 
-    /** Reality 借壳域名:没填就用苹果(实测最稳);别用 www.microsoft.com,它上了后量子握不上手 */
+    /** 借壳域名默认值:apple 实测最稳,别换成 www.microsoft.com(上了后量子,Reality 握不上手) */
+    private static final String DEFAULT_REALITY_SNI = "www.apple.com";
+
+    /** 只允许域名字符的白名单,把「www.apple.com(默认,最稳)」这种带说明的整串挡在外面 */
+    private static final java.util.regex.Pattern SNI_PATTERN = java.util.regex.Pattern
+            .compile("^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$");
+
+    /**
+     * 规范化 Reality 借壳域名。
+     *
+     * 前端下拉曾经把选项的显示文字(带中文说明)当值传上来,直接写进了 sing-box 的
+     * server_name,结果 VLESS/Trojan 全部握不上手而其它协议正常 —— 这种脏值不能
+     * 再有第二次,所以在落库前用域名白名单卡一道,不合格就退回默认值。
+     */
     private String realitySni(String sni) {
-        return (sni == null || sni.trim().isEmpty()) ? "www.apple.com" : sni.trim();
+        String s = sanitizeSni(sni);
+        return s == null ? DEFAULT_REALITY_SNI : s;
+    }
+
+    /** 清洗 SNI:合法域名原样返回,脏值(带说明文字、空白等)一律返回 null 交给调用方兜默认 */
+    private String sanitizeSni(String sni) {
+        if (sni == null) {
+            return null;
+        }
+        String s = sni.trim();
+        return (!s.isEmpty() && SNI_PATTERN.matcher(s).matches()) ? s : null;
     }
 
     @Override
