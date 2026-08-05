@@ -612,7 +612,9 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
         dto.setIp(tunnel.getInIp());
         dto.setType(tunnel.getType());
         dto.setProtocol(tunnel.getProtocol());
-        
+        dto.setInNodeId(tunnel.getInNodeId());
+        dto.setOutNodeId(tunnel.getOutNodeId());
+
         // 获取入口节点的端口范围信息
         if (tunnel.getInNodeId() != null) {
             Node inNode = nodeService.getById(tunnel.getInNodeId());

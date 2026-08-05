@@ -46,7 +46,8 @@ import {
   resumeForwardService,
   diagnoseForward,
   updateForwardOrder,
-  getSpeedLimitList
+  getSpeedLimitList,
+  getInboundList
 } from "@/api";
 import { JwtUtil } from "@/utils/jwt";
 
@@ -96,6 +97,8 @@ interface Tunnel {
   inNodePortEnd?: number;
   type?: number; // 1=端口转发(只有入口机) 2=隧道转发(入口机 + 出口机)
   protocol?: string;
+  inNodeId?: number;
+  outNodeId?: number;
 }
 
 interface ForwardForm {
@@ -152,6 +155,8 @@ export default function ForwardPage() {
   // 搭协议/搭中转自动建的管道,默认收起来;排障时才展开看
   const [showProtocolForwards, setShowProtocolForwards] = useState(false);
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
+  // 目标机器上已搭的协议:用来给「远程地址」做一键填入,免得手打 127.0.0.1:端口
+  const [inbounds, setInbounds] = useState<any[]>([]);
   const [speedRules, setSpeedRules] = useState<any[]>([]);
   
   // 检测是否为移动端
@@ -298,10 +303,12 @@ export default function ForwardPage() {
   const loadData = async (lod = true) => {
     setLoading(lod);
     try {
-      const [forwardsRes, tunnelsRes, speedRulesRes] = await Promise.all([
+      const [forwardsRes, tunnelsRes, speedRulesRes, inboundsRes] = await Promise.all([
         getForwardList(),
         userTunnel(),
-        getSpeedLimitList()
+        getSpeedLimitList(),
+        // 车友没有这个接口的权限,失败就当没有协议可选,不影响建转发
+        getInboundList().catch(() => ({ code: -1, data: [] } as any))
       ]);
       
       if (forwardsRes.code === 0) {
@@ -374,6 +381,10 @@ export default function ForwardPage() {
       if (speedRulesRes?.code === 0) {
         setSpeedRules(speedRulesRes.data || []);
       }
+
+      if (inboundsRes?.code === 0) {
+        setInbounds(inboundsRes.data || []);
+      }
     } catch (error) {
       console.error('加载数据失败:', error);
       toast.error('加载数据失败');
@@ -430,9 +441,8 @@ export default function ForwardPage() {
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
     
-    if (!form.name.trim()) {
-      newErrors.name = '请输入转发名称';
-    } else if (form.name.length < 2 || form.name.length > 50) {
+    // 名称留空就自动起一个(见 autoForwardName),只在填了的时候校验长度
+    if (form.name.trim() && (form.name.trim().length < 2 || form.name.trim().length > 50)) {
       newErrors.name = '转发名称长度应在2-50个字符之间';
     }
     
@@ -550,6 +560,27 @@ export default function ForwardPage() {
     }
   };
 
+  // 远程地址那台机器上已经搭好的协议 —— 端口转发是入口机自己去连,隧道转发是出口机去连。
+  // 列出来让用户点一下就填 127.0.0.1:端口,比让他回协议页抄端口号靠谱。
+  const targetInbounds = (() => {
+    if (!selectedTunnel) return [];
+    const nodeId = selectedTunnel.type === 2 ? selectedTunnel.outNodeId : selectedTunnel.inNodeId;
+    if (!nodeId) return [];
+    return inbounds.filter((ib: any) => ib.nodeId === nodeId && ib.listenPort);
+  })();
+
+  const protoLabel = (p: string) =>
+    (({ vless: "VLESS", trojan: "Trojan", vmess: "VMess", shadowsocks: "SS-2022", hysteria2: "Hysteria2", tuic: "TUIC", anytls: "AnyTLS" } as any)[p] || p);
+
+  // 名称留空就按「隧道名-序号」自动起,序号取该隧道下已有转发数往后排,撞了就继续往后
+  const autoForwardName = (): string => {
+    const base = selectedTunnel?.name || '转发';
+    const used = new Set(forwards.map(f => f.name));
+    let n = forwards.filter(f => f.tunnelId === form.tunnelId).length + 1;
+    while (used.has(`${base}-${n}`)) n++;
+    return `${base}-${n}`;
+  };
+
   // 处理隧道选择变化。端口一律不预填:前端只看得见数据库里的占用,
   // 机器上被别的程序占了的端口它不知道;后端分配才是 DB + OS 双查,还会自动顺延。
   const handleTunnelChange = (tunnelId: string) => {
@@ -594,7 +625,7 @@ export default function ForwardPage() {
       } else {
         // 创建时不需要id和userId（后端会自动设置）
         const createData = {
-          name: form.name,
+          name: form.name.trim() || autoForwardName(),
           tunnelId: form.tunnelId,
           inPort: form.inPort,
           remoteAddr: processedRemoteAddr,
@@ -1646,12 +1677,13 @@ export default function ForwardPage() {
                   <div className="space-y-4">
                     <Input
                       label="转发名称"
-                      placeholder="请输入转发名称"
+                      placeholder={isEdit ? "" : "留空自动起名"}
                       value={form.name}
                       onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                       isInvalid={!!errors.name}
                       errorMessage={errors.name}
                       variant="bordered"
+                      description={isEdit ? undefined : "留空就按「隧道名-序号」自动起,想自己起也行"}
                     />
                     
                     <Select
@@ -1711,7 +1743,28 @@ export default function ForwardPage() {
                       minRows={2}
                       maxRows={6}
                     />
-                    
+
+                    {/* 目标机器上搭了协议的话,直接点一下填进去,不用回协议页抄端口 */}
+                    {targetInbounds.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 -mt-1">
+                        <span className="text-tiny text-default-400">
+                          {selectedTunnel?.type === 2 ? '出口机' : '这台机器'}上的协议:
+                        </span>
+                        {targetInbounds.map((ib: any) => (
+                          <Button
+                            key={ib.id}
+                            size="sm"
+                            variant="flat"
+                            color="secondary"
+                            className="h-6 min-w-0 px-2 text-tiny"
+                            onPress={() => setForm(prev => ({ ...prev, remoteAddr: `127.0.0.1:${ib.listenPort}` }))}
+                          >
+                            {protoLabel(ib.protocol)}:{ib.listenPort}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+
                     {/* 负载策略跟远程地址是一回事,填了多个地址才有意义,所以紧挨着它 */}
                     {getAddressCount(form.remoteAddr) > 1 && (
                       <Select
