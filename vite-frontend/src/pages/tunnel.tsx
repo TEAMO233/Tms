@@ -665,9 +665,11 @@ export default function TunnelPage() {
                         isInvalid={!!errors.flow}
                         errorMessage={errors.flow}
                         variant="bordered"
+                        description="决定车友配额扣多快。中转机按流量计费就选双向,包月不限流量选单向"
                       >
-                        <SelectItem key="1">单向计算（仅上传）</SelectItem>
-                        <SelectItem key="2">双向计算（上传+下载）</SelectItem>
+                        {/* 后端是 flow * flowType(1 或 2),不是"只算上传/只算下载",别再写成那样 */}
+                        <SelectItem key="1" textValue="单向计算">单向计算(用多少记多少)</SelectItem>
+                        <SelectItem key="2" textValue="双向计算">双向计算(进出都算,记两倍)</SelectItem>
                       </Select>
 
                       <Input
@@ -682,6 +684,7 @@ export default function TunnelPage() {
                         isInvalid={!!errors.trafficRatio}
                         errorMessage={errors.trafficRatio}
                         variant="bordered"
+                        description="在上面基础上再乘一个系数,默认 1 不加成"
                         endContent={
                           <div className="pointer-events-none flex items-center">
                             <span className="text-default-400 text-small">x</span>
