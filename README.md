@@ -111,14 +111,16 @@ curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o
 ```bash
 systemctl stop gost sing-box 2>/dev/null
 systemctl disable gost sing-box 2>/dev/null
-rm -f /etc/systemd/system/gost.service /etc/systemd/system/sing-box.service
 rm -rf /etc/systemd/system/sing-box.service.d /etc/gost
+find /etc/systemd /run/systemd \( -name 'gost.service' -o -name 'sing-box.service' \) -delete 2>/dev/null
 systemctl daemon-reload
-systemctl reset-failed gost sing-box 2>/dev/null
+systemctl reset-failed 2>/dev/null
 echo "✅ 节点已卸载(gost + sing-box + 配置 + 证书)"
 ```
 
 > ⚠️ **别只删 `/etc/gost`**。搭过协议的机器上还有 sing-box,它的服务文件在 `/etc/systemd/system/`,只删安装目录的话二进制没了、服务还注册着,systemd 会一直重启失败刷满日志。
+
+> 💡 上面用 `find ... -delete` 而不是直接 `rm` 服务文件,是为了连 `multi-user.target.wants/` 里的**软链接**一起清掉。正常情况 `systemctl disable` 会删它们,但服务已经异常时可能残留,结果 `systemctl list-units --all` 里一直挂着一条 `not-found`,看着像没卸干净。
 
 也可以重新下节点脚本走菜单(选 `3` 卸载):
 

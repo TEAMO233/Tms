@@ -331,6 +331,11 @@ uninstall_gost() {
   # sing-box 的 systemd 覆盖配置(排查重启限流时可能加过)
   rm -rf /etc/systemd/system/sing-box.service.d 2>/dev/null
 
+  # target 的 .wants 里残留的软链接。正常情况 systemctl disable 会删掉,
+  # 但服务本身已经异常、或当初是手工 enable 的话就会留下来 ——
+  # 结果是 systemctl list-units --all 里一直挂着一条 not-found,看着像没卸干净
+  find /etc/systemd /run/systemd \( -name 'gost.service' -o -name 'sing-box.service' \) -delete 2>/dev/null
+
   # 删除安装目录(gost 二进制、sing-box 二进制、配置、自签证书都在这里)
   if [[ -d "$INSTALL_DIR" ]]; then
     rm -rf "$INSTALL_DIR"
@@ -339,8 +344,7 @@ uninstall_gost() {
 
   # 重载 systemd 并清掉 failed 记录
   systemctl daemon-reload
-  systemctl reset-failed gost 2>/dev/null
-  systemctl reset-failed sing-box 2>/dev/null
+  systemctl reset-failed 2>/dev/null
 
   echo "✅ 卸载完成(gost + sing-box + 配置 + 证书 已全部清除)"
 }
