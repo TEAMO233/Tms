@@ -43,6 +43,10 @@ public class CheckGostConfigAsync {
     @Lazy
     private TunnelService tunnelService;
 
+    @Resource
+    @Lazy
+    private UserService userService;
+
 
 
     /**
@@ -147,10 +151,18 @@ public class CheckGostConfigAsync {
         for (ConfigItem limiter : gostConfig.getLimiters()) {
             safeExecute(() -> {
                 // 协议/中转用的是「每车友一个」限速器,名字 = 900000000 + userId,
-                // speed_limit 表里当然查不到 —— 绝不能当孤儿删:
+                // speed_limit 表里当然查不到 —— 不能拿"表里没有"当孤儿判据:
                 // 一删,转发引用的限速器就不存在了,gost 会静默忽略,等于完全不限速。
+                // 但也不能无条件放行,否则车友删号后限速器永远留在节点上。
+                // 判据换成「这个 userId 还在不在」:人还在就留着,人没了才清。
                 long limiterId = Long.parseLong(limiter.getName());
                 if (limiterId >= PER_USER_LIMITER_BASE) {
+                    long ownerId = limiterId - PER_USER_LIMITER_BASE;
+                    if (userService.getById(ownerId) != null) {
+                        return;
+                    }
+                    log.info("删除已删用户的限速器: {} (节点: {})", limiter.getName(), node.getId());
+                    GostUtil.DeleteLimiters(node.getId(), limiterId);
                     return;
                 }
                 SpeedLimit speedLimit = speedLimitService.getById(limiter.getName());

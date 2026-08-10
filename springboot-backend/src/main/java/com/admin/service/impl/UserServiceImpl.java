@@ -97,6 +97,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     
     @Resource
     private UserTunnelMapper userTunnelMapper;
+
+    @Resource
+    @Lazy
+    private com.admin.mapper.InboundUserMapper inboundUserMapper;
+
+    @Resource
+    @Lazy
+    private com.admin.mapper.InboundLineMapper inboundLineMapper;
     
     @Resource
     @Lazy
@@ -526,9 +534,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private void deleteUserRelatedData(Long userId) {
         // 1. 删除用户的所有转发和对应的Gost服务
         deleteUserForwardsAndGostServices(userId);
-        
+
         // 2. 删除用户隧道权限
         deleteUserTunnelPermissions(userId);
+
+        // 3. 删除协议/中转的分配记录和线路记录。
+        //    不删的话订阅 token、配额、到期这些会一直留在库里变成孤儿数据,
+        //    「我的订阅」「用户订阅线路」那些查询也会读到已经不存在的人。
+        try {
+            inboundUserMapper.delete(new QueryWrapper<InboundUser>().eq("user_id", userId));
+            inboundLineMapper.delete(new QueryWrapper<InboundLine>().eq("user_id", userId));
+        } catch (Exception e) {
+            System.err.println("删除用户的协议分配/线路记录失败，用户ID: " + userId + ", 错误: " + e.getMessage());
+        }
     }
 
     /**

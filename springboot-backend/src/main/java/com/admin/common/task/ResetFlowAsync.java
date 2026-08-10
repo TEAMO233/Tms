@@ -208,11 +208,17 @@ public class ResetFlowAsync {
                     }
                 }
             }
-            // 3) 线路本身的停用标记也要清掉,不然界面一直显示"已停用"
+            // 3) 线路本身的停用标记也要清掉,不然界面一直显示"已停用"。
+            //    但只恢复「跑满配额」停的,已经到期的线路不能跟着复活 ——
+            //    否则界面显示正常、实际转发还是停的(resumeForward 有到期守卫),
+            //    车友看着能用却连不上。exp_time 为 0/NULL 表示永久。
             if (cleared > 0) {
+                long now = System.currentTimeMillis();
                 UpdateWrapper<InboundLine> lw = new UpdateWrapper<>();
-                lw.eq("user_id", user.getId()).eq("status", 0).set("status", 1)
-                  .set("updated_time", System.currentTimeMillis());
+                lw.eq("user_id", user.getId()).eq("status", 0)
+                  .and(w -> w.isNull("exp_time").or().le("exp_time", 0).or().gt("exp_time", now))
+                  .set("status", 1)
+                  .set("updated_time", now);
                 inboundLineMapper.update(null, lw);
                 log.info("用户[{}]协议线路流量已重置:清零 {} 条转发,恢复 {} 条", user.getUser(), cleared, resumed);
             }
