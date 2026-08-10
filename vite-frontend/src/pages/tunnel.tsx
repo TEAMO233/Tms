@@ -36,6 +36,8 @@ interface Tunnel {
   trafficRatio: number;
   status: number;
   createdTime: string;
+  /** 搭协议时自动建的隧道(每台机一条,用来挂协议的 gost 转发),默认不显示 */
+  protocolManaged?: boolean;
 }
 
 interface Node {
@@ -79,6 +81,8 @@ interface DiagnosisResult {
 export default function TunnelPage() {
   const [loading, setLoading] = useState(true);
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
+  // 搭协议自动建的隧道默认收起来:用户没手工建过,看到它们只会困惑
+  const [showProtocolTunnels, setShowProtocolTunnels] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
   
   // 模态框状态
@@ -419,16 +423,37 @@ export default function TunnelPage() {
             <span className="text-default-600">正在加载...</span>
           </div>
         </div>
-      
+
     );
   }
 
+  const protocolTunnelCount = tunnels.filter(t => t.protocolManaged).length;
+  const visibleTunnels = showProtocolTunnels ? tunnels : tunnels.filter(t => !t.protocolManaged);
+
   return (
-    
+
       <div className="px-3 lg:px-6 py-8">
         {/* 页面头部 */}
         <div className="flex items-center justify-between mb-6">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
+          {protocolTunnelCount > 0 && (
+            <div className="text-xs text-default-500 flex items-center gap-2 flex-wrap">
+              <span>
+                {showProtocolTunnels
+                  ? `正在显示 ${protocolTunnelCount} 条协议自动生成的隧道`
+                  : `已隐藏 ${protocolTunnelCount} 条协议自动生成的隧道`}
+                ,搭协议时每台机器自动建一条,不用管它
+              </span>
+              <Button
+                size="sm"
+                variant="light"
+                className="h-6 min-w-0 px-2 text-xs"
+                onPress={() => setShowProtocolTunnels(!showProtocolTunnels)}
+              >
+                {showProtocolTunnels ? "收起" : "展开看看"}
+              </Button>
+            </div>
+          )}
         </div>
 
         <Button
@@ -436,17 +461,17 @@ export default function TunnelPage() {
               variant="flat"
               color="primary"
               onPress={handleAdd}
-             
+
             >
               新增
             </Button>
-     
+
         </div>
 
         {/* 隧道卡片网格 */}
-        {tunnels.length > 0 ? (
+        {visibleTunnels.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-            {tunnels.map((tunnel) => {
+            {visibleTunnels.map((tunnel) => {
               const statusDisplay = getStatusDisplay(tunnel.status);
               const typeDisplay = getTypeDisplay(tunnel.type);
               
