@@ -262,11 +262,22 @@ show_access_info() {
 }
 
 # 彻底清理 / 完整卸载:容器、镜像、数据卷、网络、配置、管理命令 全部删除,不依赖任何文件
+# 当前目录的 docker-compose.yml 是不是 TMS 自己的。
+# purge 里的 `down -v --rmi all` 和 `rm .env` 杀伤力很大,在别人的项目目录里
+# 跑一下能把人家的容器、数据卷、镜像连同 .env 一锅端 —— 认准了再动手。
+is_tms_compose() {
+  [ -f docker-compose.yml ] && grep -q "teminuosi\|gost-mysql" docker-compose.yml
+}
+
 purge_panel() {
   echo "🧨 彻底清理 TMS 面板(删除所有容器/镜像/数据卷/网络/配置和 tms 管理命令)..."
+  if [ -f docker-compose.yml ] && ! is_tms_compose; then
+    echo "⚠️  当前目录的 docker-compose.yml 不是 TMS 的,已跳过 compose 清理和配置文件删除,"
+    echo "    只按名字清 TMS 自己的容器/镜像。要清面板请先 cd 到面板安装目录。"
+  fi
   if command -v docker &> /dev/null; then
-    # 有 compose 就先规范地 down 一把
-    if [ -f docker-compose.yml ]; then
+    # 有 compose 就先规范地 down 一把(确认是 TMS 的才动)
+    if is_tms_compose; then
       docker compose down -v --rmi all --remove-orphans 2>/dev/null \
         || docker-compose down -v --rmi all --remove-orphans 2>/dev/null || true
     fi
@@ -278,11 +289,16 @@ purge_panel() {
     # 只清悬空镜像(不动其他应用),回收磁盘
     docker image prune -f 2>/dev/null || true
   fi
-  # 删配置文件
-  rm -f docker-compose.yml docker-compose-v4.yml docker-compose-v6.yml gost.sql .env temp_migration.sql 2>/dev/null || true
+  # 删配置文件 —— 只在确认是 TMS 目录时删。.env 这名字太常见,
+  # 在别人的项目目录里跑一下就把人家的环境变量文件删了
+  if is_tms_compose || [ ! -f docker-compose.yml ]; then
+    rm -f docker-compose.yml docker-compose-v4.yml docker-compose-v6.yml gost.sql .env temp_migration.sql 2>/dev/null || true
+  fi
   # 删管理命令自身
   rm -f /usr/local/bin/tms /usr/local/bin/tms-panel.sh 2>/dev/null || true
   echo "✅ 已彻底清理完成,系统恢复到未安装状态。"
+  echo "ℹ️  这只清了【面板】。转发机上的 gost / sing-box 节点程序不在此列,"
+  echo "    要卸载节点请到对应机器上单独执行节点卸载(见 README)。"
 }
 
 
