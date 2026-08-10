@@ -75,19 +75,85 @@ tms
 
 菜单里可以:更新 / 卸载 / **彻底清理(purge)** / 查看运行状态 / 查看访问信息(地址、账号)。
 
-#### 卸载 / 彻底清理
+## 卸载
 
-在 `tms` 菜单里选「卸载」或「彻底清理」即可。也可以直接一条命令**彻底铲平**——删除所有容器、镜像、数据卷、网络、配置和管理命令,**不依赖任何文件,装崩了也能清干净**:
+**先分清两种机器,卸载方式完全不同:**
+
+| 角色 | 装了什么 | 有 `tms` 命令吗 |
+|---|---|---|
+| **面板机**(只有一台) | Docker:MySQL + 后端 + 前端 | ✅ 有 |
+| **节点机 / 转发机**(每台) | gost + sing-box(systemd 服务) | ❌ 没有 |
+
+> ⚠️ `tms purge` 和 `panel_install.sh purge` **只清面板**,对节点机上的 gost 一点作用都没有。反过来,清节点也不会影响面板。两边要分别执行。
+
+### 一、卸载面板机
+
+在面板安装目录下执行:
 
 ```bash
 tms purge
 ```
 
-如果 `tms` 命令不存在(比如面板当初没装成功),用这条一次性脚本铲平:
+删除所有容器、镜像、数据卷、网络、配置文件和 `tms` 管理命令。也可以直接输入 `tms` 打开菜单选「彻底清理」。
+
+如果 `tms` 命令不在了(比如当初就没装成功),用一次性脚本:
 
 ```bash
 curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o /tmp/tms.sh && bash /tmp/tms.sh purge
 ```
+
+> 💡 请 **cd 到当初安装面板的目录**再执行。脚本会检查当前目录的 `docker-compose.yml` 是不是 TMS 的,不是就跳过 compose 清理,避免误删你其它项目的容器和 `.env`。
+
+### 二、卸载节点机(转发机)
+
+**每台转发机都要单独执行**,直接复制这段:
+
+```bash
+systemctl stop gost sing-box 2>/dev/null
+systemctl disable gost sing-box 2>/dev/null
+rm -f /etc/systemd/system/gost.service /etc/systemd/system/sing-box.service
+rm -rf /etc/systemd/system/sing-box.service.d /etc/gost
+systemctl daemon-reload
+systemctl reset-failed gost sing-box 2>/dev/null
+echo "✅ 节点已卸载(gost + sing-box + 配置 + 证书)"
+```
+
+> ⚠️ **别只删 `/etc/gost`**。搭过协议的机器上还有 sing-box,它的服务文件在 `/etc/systemd/system/`,只删安装目录的话二进制没了、服务还注册着,systemd 会一直重启失败刷满日志。
+
+也可以重新下节点脚本走菜单(选 `3` 卸载):
+
+```bash
+curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o /tmp/n.sh && chmod +x /tmp/n.sh && /tmp/n.sh
+```
+
+> 💡 **国内机器**(阿里云等)大概率下不动 GitHub,直接用上面那段命令。
+
+### 三、验证是否清干净
+
+**面板机:**
+```bash
+docker ps -a | grep -E 'gost-mysql|springboot-backend|vite-frontend'
+command -v tms
+```
+
+**节点机:**
+```bash
+systemctl list-units --all | grep -E 'gost|sing-box'
+ls /etc/gost
+```
+
+都没有输出就说明干净了。
+
+### 四、顺手清理防火墙(可选)
+
+卸载不会动防火墙规则,之前给转发开的端口还留着。不打算再装的话:
+
+```bash
+ufw status numbered      # 看编号
+ufw delete <编号>        # 逐条删
+```
+
+云服务器还要去控制台把**安全组**里对应的入方向规则删掉(阿里云、腾讯云、evoxt 等)。端口后面没服务在听,留着也不影响安全,看个人习惯。
 
 
 ## 免责声明
