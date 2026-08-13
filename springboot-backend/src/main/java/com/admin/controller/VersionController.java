@@ -34,8 +34,16 @@ public class VersionController extends BaseController {
     /** 面板大版本,跟 CI 里的 VERSION 对齐,只用于展示 */
     private static final String PANEL_VERSION = "1.0.1";
 
-    private static final String COMMITS_API =
-            "https://api.github.com/repos/Teminuosi/Tms/commits/main";
+    /**
+     * 注意查的是【最新一次构建成功的 workflow】,不是 main 的最新 commit。
+     *
+     * 用 commits/main 的话,push 完到 CI 构建完中间隔着几分钟,这段时间面板会提示
+     * "有更新",用户跑 tms update 却只能拉到旧镜像 —— 提示还一直挂着。
+     * 按构建成功的 head_sha 比,提示亮起来时镜像一定已经在 GHCR 上了。
+     */
+    private static final String RUNS_API =
+            "https://api.github.com/repos/Teminuosi/Tms/actions/runs"
+                    + "?branch=main&status=success&per_page=1";
 
     /** GitHub 未认证接口每小时每 IP 只有 60 次,而且国内机大概率连不上,查一次缓存 6 小时 */
     private static final long CACHE_TTL_MS = 6 * 60 * 60 * 1000L;
@@ -75,7 +83,7 @@ public class VersionController extends BaseController {
         return c.length() > 7 ? c.substring(0, 7) : c;
     }
 
-    /** 取 GitHub 上 main 的最新短 commit,带缓存;失败返回 null(不抛异常、不阻塞页面) */
+    /** 取最新一次构建成功的短 commit,带缓存;失败返回 null(不抛异常、不阻塞页面) */
     private String latestCommit() {
         long now = System.currentTimeMillis();
         if (cachedLatest != null && now - cachedAt < CACHE_TTL_MS) {
@@ -86,7 +94,7 @@ public class VersionController extends BaseController {
             return cachedLatest;
         }
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(COMMITS_API).openConnection();
+            HttpURLConnection conn = (HttpURLConnection) new URL(RUNS_API).openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
@@ -105,9 +113,13 @@ public class VersionController extends BaseController {
                 }
             }
             JSONObject obj = JSON.parseObject(sb.toString());
-            String sha = obj == null ? null : obj.getString("sha");
+            com.alibaba.fastjson.JSONArray runs = obj == null ? null : obj.getJSONArray("workflow_runs");
+            if (runs == null || runs.isEmpty()) {
+                throw new RuntimeException("没有构建成功的记录");
+            }
+            String sha = runs.getJSONObject(0).getString("head_sha");
             if (sha == null || sha.length() < 7) {
-                throw new RuntimeException("响应里没有 sha");
+                throw new RuntimeException("响应里没有 head_sha");
             }
             cachedLatest = sha.substring(0, 7);
             cachedAt = now;
