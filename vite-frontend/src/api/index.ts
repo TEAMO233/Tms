@@ -95,6 +95,9 @@ export const getUserLines = (userId: number) => Network.post("/inbound/user-line
 // 车友自助:取我自己的订阅线路(不需要管理员权限)
 export const getMyLines = () => Network.post("/inbound/my-lines");
 
+// 版本信息 / 更新检查(后端拿构建时注入的 commit 跟 GitHub main 比)
+export const getVersionInfo = () => Network.post("/version/info");
+
 // 修改密码接口
 export const updatePassword = (data: any) => Network.post("/user/updatePassword", data);
 

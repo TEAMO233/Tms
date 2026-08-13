@@ -209,9 +209,12 @@ jobs:
           if [ "${{ needs.check-version.outputs.should_build }}" = "true" ]; then
             TAGS="$TAGS -t ghcr.io/teminuosi/springboot-backend:${VERSION}"
           fi
+          # 注入构建标识:面板拿它跟 GitHub 上 main 的最新 commit 比,判断有没有新版本
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --push \
+            --build-arg BUILD_COMMIT="${GITHUB_SHA:0:7}" \
+            --build-arg BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             $TAGS \
             ./springboot-backend
 

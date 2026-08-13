@@ -7,7 +7,7 @@ import { Input } from "@heroui/input";
 import { toast } from 'react-hot-toast';
 
 import { Logo } from '@/components/icons';
-import { updatePassword } from '@/api';
+import { updatePassword, getVersionInfo } from '@/api';
 import { safeLogout } from '@/utils/logout';
 import { siteConfig, SITE_CONFIG_UPDATED } from '@/config/site';
 import SkinPicker from '@/components/skin-picker';
@@ -49,6 +49,16 @@ export default function AdminLayout({
     window.addEventListener(SITE_CONFIG_UPDATED, onUpdated);
     return () => window.removeEventListener(SITE_CONFIG_UPDATED, onUpdated);
   }, []);
+  // 版本 / 更新提示。只给管理员看 —— 车友看到"有新版本"也没法更新,徒增困惑。
+  // 后端拿构建时注入的 commit 跟 GitHub main 比,连不上 GitHub 时不提示(国内机常见)。
+  const [versionInfo, setVersionInfo] = useState<any>(null);
+  useEffect(() => {
+    if (!isAdmin) return;
+    getVersionInfo()
+      .then((res) => { if (res.code === 0) setVersionInfo(res.data); })
+      .catch(() => {});
+  }, [isAdmin]);
+
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     newUsername: '',
@@ -346,7 +356,23 @@ export default function AdminLayout({
              <Logo size={24} />
              <div className="flex-1 min-w-0">
                <h1 className="text-sm font-bold text-foreground overflow-hidden whitespace-nowrap">{appName}</h1>
-               <p className="text-xs text-default-500">v{siteConfig.version}</p>
+               <div className="flex items-center gap-1.5">
+                 <p className="text-xs text-default-500">
+                   v{versionInfo?.panelVersion || siteConfig.version}
+                   {versionInfo?.commit && versionInfo.commit !== 'dev' && (
+                     <span className="text-default-400">-{versionInfo.commit}</span>
+                   )}
+                 </p>
+                 {versionInfo?.updateAvailable && (
+                   <span
+                     className="flex items-center gap-1 text-[10px] text-warning cursor-help"
+                     title={`有新版本(${versionInfo.latest})\n在面板服务器上执行 tms update 即可更新`}
+                   >
+                     <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+                     有更新
+                   </span>
+                 )}
+               </div>
              </div>
            </div>
          </div>
