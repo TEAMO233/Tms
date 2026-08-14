@@ -54,9 +54,13 @@ export default function InboundPage() {
   const [selfLoading, setSelfLoading] = useState<number | null>(null);
   const [selfSubUrl, setSelfSubUrl] = useState<string>("");
   const [selfOpen, setSelfOpen] = useState(false);
+  // 订阅链接的域名部分永远是【面板地址】,几台机器点出来长得几乎一样,
+  // 只有末尾 token 不同 —— 不写清楚是哪台机器,很容易以为"点第二台弹的还是第一台"
+  const [selfNodeName, setSelfNodeName] = useState<string>("");
 
-  const handleAssignSelf = async (nodeId: number) => {
+  const handleAssignSelf = async (nodeId: number, nodeName?: string) => {
     setSelfLoading(nodeId);
+    setSelfNodeName(nodeName || "");
     try {
       const res = await assignSelf({ nodeId });
       if (res.code === 0 && res.data?.subToken) {
@@ -257,7 +261,7 @@ export default function InboundPage() {
                     color="success"
                     variant="flat"
                     isLoading={selfLoading === n.id}
-                    onPress={() => handleAssignSelf(n.id)}
+                    onPress={() => handleAssignSelf(n.id, n.name)}
                   >
                     🔑 我自己用
                   </Button>
@@ -277,10 +281,21 @@ export default function InboundPage() {
       {/* 「我自己用」结果:直接把订阅链接给出来,不用再去用户管理找 */}
       <Modal isOpen={selfOpen} onClose={() => setSelfOpen(false)} size="2xl">
         <ModalContent>
-          <ModalHeader>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</ModalHeader>
+          <ModalHeader className="flex flex-col gap-1">
+            <span>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</span>
+            {selfNodeName && (
+              <span className="text-sm font-normal text-default-500">
+                机器:<b className="text-foreground">{selfNodeName}</b>
+              </span>
+            )}
+          </ModalHeader>
           <ModalBody className="space-y-2">
             <div className="text-sm text-default-500">
               这条订阅是给你自己用的,复制到 v2rayN / 小火箭 里就能用。以后随时在「我的订阅」页也能找到。
+            </div>
+            <div className="text-xs text-default-400 bg-default-100 rounded-lg px-3 py-2">
+              💡 链接前半段是<b>面板地址</b>,所以每台机器点出来都一样 —— 真正区分线路的是末尾的
+              <b> token</b>。拉下来的节点才是这台机器的。
             </div>
             <Input
               readOnly

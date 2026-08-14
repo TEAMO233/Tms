@@ -50,11 +50,14 @@ export default function RelayPage() {
   // 「我自己用」:一键把这条中转开给当前管理员自己,完事直接弹订阅链接
   const [selfLoading, setSelfLoading] = useState<string | null>(null);
   const [selfSubUrl, setSelfSubUrl] = useState<string>("");
+  // 中转这边更容易混:同一台前置机可能有好几条落地,弹出来的链接域名部分还都一样
+  const [selfLineName, setSelfLineName] = useState<string>("");
   const [selfOpen, setSelfOpen] = useState(false);
 
-  const handleAssignSelf = async (nodeId: number, landingId: any) => {
+  const handleAssignSelf = async (nodeId: number, landingId: any, lineName?: string) => {
     const key = `${nodeId}-${landingId}`;
     setSelfLoading(key);
+    setSelfLineName(lineName || "");
     try {
       const res = await assignSelf({ nodeId, relay: true, landingId });
       if (res.code === 0 && res.data?.subToken) {
@@ -254,7 +257,7 @@ export default function RelayPage() {
                     color="success"
                     variant="flat"
                     isLoading={selfLoading === `${n.id}-${ln.landingId}`}
-                    onPress={() => handleAssignSelf(n.id, ln.landingId)}
+                    onPress={() => handleAssignSelf(n.id, ln.landingId, `${n.name} → ${landingName}`)}
                   >
                     🔑 我自己用
                   </Button>
@@ -276,10 +279,21 @@ export default function RelayPage() {
       {/* 「我自己用」结果:直接把订阅链接给出来 */}
       <Modal isOpen={selfOpen} onClose={() => setSelfOpen(false)} size="2xl">
         <ModalContent>
-          <ModalHeader>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</ModalHeader>
+          <ModalHeader className="flex flex-col gap-1">
+            <span>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</span>
+            {selfLineName && (
+              <span className="text-sm font-normal text-default-500">
+                线路:<b className="text-foreground">{selfLineName}</b>
+              </span>
+            )}
+          </ModalHeader>
           <ModalBody className="space-y-2">
             <div className="text-sm text-default-500">
               这条中转订阅是给你自己用的,复制到客户端就能用,出口走落地。以后在「我的订阅」页也能找到。
+            </div>
+            <div className="text-xs text-default-400 bg-default-100 rounded-lg px-3 py-2">
+              💡 链接前半段是<b>面板地址</b>,所以每条线路点出来都一样 —— 真正区分线路的是末尾的
+              <b> token</b>。拉下来的节点才是这条线路的。
             </div>
             <Input
               readOnly
