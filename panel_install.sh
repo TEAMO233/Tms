@@ -176,6 +176,7 @@ show_menu() {
   echo "  5. 查看运行状态"
   echo "  6. 查看访问信息(地址/账号)"
   echo "  7. 导出数据库备份"
+  echo "  8. 配置域名 + HTTPS"
   echo "  0. 退出"
   echo "==============================================="
 }
@@ -251,14 +252,27 @@ show_status() {
     --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || docker ps -a
 }
 
-# 查看访问信息(地址 / 默认账号)
-show_access_info() {
-  local fport ip
-  fport="6366"
+# 取本机公网 IP(拿不到就回退成占位串,调用方自己判断)
+get_server_ip() {
+  curl -s --max-time 8 https://api.ipify.org 2>/dev/null \
+    || curl -s --max-time 8 https://ipinfo.io/ip 2>/dev/null \
+    || echo '你的服务器IP'
+}
+
+# 取面板前端端口(.env 里的,默认 6366)
+get_frontend_port() {
+  local fport=""
   [ -f ".env" ] && fport="$(grep '^FRONTEND_PORT=' .env | cut -d'=' -f2)"
   [ -z "$fport" ] && fport="6366"
-  ip="$(curl -s --max-time 8 https://api.ipify.org || curl -s --max-time 8 https://ipinfo.io/ip || echo '你的服务器IP')"
-  print_access_box "$ip" "$fport"
+  echo "$fport"
+}
+
+# 查看访问信息(地址 / 默认账号)
+show_access_info() {
+  print_access_box "$(get_server_ip)" "$(get_frontend_port)"
+  local d
+  d="$(current_domain)"
+  [ -n "$d" ] && echo "🌐 已配置域名,也可以用: https://$d"
 }
 
 # 彻底清理 / 完整卸载:容器、镜像、数据卷、网络、配置、管理命令 全部删除,不依赖任何文件
@@ -281,9 +295,10 @@ purge_panel() {
       docker compose down -v --rmi all --remove-orphans 2>/dev/null \
         || docker-compose down -v --rmi all --remove-orphans 2>/dev/null || true
     fi
-    # 不依赖任何文件,按名字强制删干净
-    docker rm -f gost-mysql springboot-backend vite-frontend 2>/dev/null || true
-    docker volume rm mysql_data backend_logs 2>/dev/null || true
+    # 不依赖任何文件,按名字强制删干净。
+    # caddy 也要一起清:它连着 gost-network,不删的话后面 network rm 一定失败
+    docker rm -f gost-mysql springboot-backend vite-frontend tms-caddy 2>/dev/null || true
+    docker volume rm mysql_data backend_logs tms_caddy_data tms_caddy_config 2>/dev/null || true
     docker network rm gost-network 2>/dev/null || true
     docker rmi -f ghcr.io/teminuosi/springboot-backend:latest ghcr.io/teminuosi/vite-frontend:latest mysql:5.7 2>/dev/null || true
     # 只清悬空镜像(不动其他应用),回收磁盘
@@ -296,6 +311,7 @@ purge_panel() {
   fi
   # 删管理命令自身
   rm -f /usr/local/bin/tms /usr/local/bin/tms-panel.sh 2>/dev/null || true
+  rm -rf /etc/tms 2>/dev/null || true
   echo "✅ 已彻底清理完成,系统恢复到未安装状态。"
   echo "ℹ️  这只清了【面板】。转发机上的 gost / sing-box 节点程序不在此列,"
   echo "    要卸载节点请到对应机器上单独执行节点卸载(见 README)。"
@@ -1231,6 +1247,200 @@ export_migration_sql() {
 }
 
 
+# ============================================================
+# 域名 + HTTPS(Caddy 自动申请/续期 Let's Encrypt 证书)
+#
+# 刻意【不写进 docker-compose.yml】,而是独立跑一个 caddy 容器:
+#   - 改 compose 里的 YAML 靠 shell 很脆,而且 tms update 会重写它
+#   - 独立容器生命周期自己管,面板重启期间 caddy 还在,少一次 502
+#   - 它加入 gost-network,直接用容器名 frontend:80 访问前端
+# ============================================================
+
+CADDY_CONTAINER="tms-caddy"
+CADDY_FILE="/etc/tms/Caddyfile"
+
+# 当前配的域名(没配返回空)。
+# 不能直接取第一行 —— 生成的 Caddyfile 第一行是注释,要找第一个「非注释且带 {」的站点块。
+current_domain() {
+  [ -f "$CADDY_FILE" ] || return 0
+  grep -m1 -E '^[^#[:space:]][^{]*\{' "$CADDY_FILE" 2>/dev/null | sed 's/[[:space:]]*{.*//' | tr -d ' '
+}
+
+show_domain_status() {
+  local d
+  d="$(current_domain)"
+  if [ -z "$d" ]; then
+    echo "ℹ️  当前未配置域名,面板走 http://IP:$(get_frontend_port)"
+    echo "   配置方法: tms domain 你的域名.com"
+    return 0
+  fi
+  echo "🌐 当前域名: $d"
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CADDY_CONTAINER"; then
+    echo "   Caddy 状态: ✅ 运行中"
+    echo "   访问地址:   https://$d"
+  else
+    echo "   Caddy 状态: ❌ 未运行(试试 tms domain $d 重新配置)"
+  fi
+}
+
+# 关掉域名,回到 IP:端口访问
+domain_off() {
+  echo "🧹 关闭域名访问..."
+  docker rm -f "$CADDY_CONTAINER" 2>/dev/null || true
+  rm -f "$CADDY_FILE" 2>/dev/null || true
+  echo "✅ 已关闭。面板回到 http://$(get_server_ip):$(get_frontend_port)"
+  echo "ℹ️  证书数据还留在 docker 卷 tms_caddy_data 里,下次开同一域名不用重新申请。"
+}
+
+setup_domain() {
+  local domain="$1"
+
+  if [ -z "$domain" ]; then
+    show_domain_status
+    return 0
+  fi
+  if [ "$domain" = "off" ] || [ "$domain" = "关闭" ]; then
+    domain_off
+    return 0
+  fi
+
+  # 基本格式校验:必须像个域名,别把 http:// 或 IP 填进来
+  if ! echo "$domain" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$'; then
+    echo "❌ 域名格式不对: $domain"
+    echo "   只填域名本身,别带 http:// 和端口。例: tms domain panel.example.com"
+    return 1
+  fi
+  if echo "$domain" | grep -qE '^[0-9.]+$'; then
+    echo "❌ 这是个 IP 不是域名。Let's Encrypt 不给 IP 发证书。"
+    return 1
+  fi
+
+  if ! command -v docker &>/dev/null; then
+    echo "❌ 没装 docker,先装面板"
+    return 1
+  fi
+  if ! docker ps --format '{{.Names}}' | grep -qx "vite-frontend"; then
+    echo "❌ 面板没在运行(找不到 vite-frontend 容器),先把面板起来再配域名"
+    return 1
+  fi
+
+  echo "🌐 开始为面板配置域名: $domain"
+  echo ""
+
+  # ---- 1. 解析检查(不阻断,只警告:有人用 CDN 或者刚改完还没生效) ----
+  echo "[1/5] 检查域名解析..."
+  local server_ip resolved
+  server_ip="$(get_server_ip)"
+  resolved="$(getent hosts "$domain" 2>/dev/null | awk '{print $1}' | head -n1)"
+  if [ -z "$resolved" ]; then
+    echo "   ⚠️  解析不到 $domain,证书大概率申请不下来。"
+    echo "      先去域名后台加一条 A 记录指向 $server_ip,等生效再来。"
+    read -p "      仍然继续? (y/N): " go
+    [[ "$go" == "y" || "$go" == "Y" ]] || { echo "已取消"; return 1; }
+  elif [ "$resolved" != "$server_ip" ]; then
+    echo "   ⚠️  $domain 解析到 $resolved,本机是 $server_ip,对不上。"
+    echo "      套了 CDN(比如 Cloudflare 橙云)的话这是正常的,但证书要 CDN 那边发。"
+    read -p "      仍然继续? (y/N): " go
+    [[ "$go" == "y" || "$go" == "Y" ]] || { echo "已取消"; return 1; }
+  else
+    echo "   ✔ 解析正确 → $resolved"
+  fi
+
+  # ---- 2. 端口检查(80/443 被宝塔、nginx 占着的情况很常见) ----
+  echo "[2/5] 检查 80 / 443 端口..."
+  local occupied=""
+  local p line who
+  for p in 80 443; do
+    line="$(ss -lntp 2>/dev/null | grep -E "[:.]${p}[[:space:]]" | head -n1)"
+    [ -z "$line" ] && continue
+    # docker-proxy 监听的多半就是 caddy 自己(重配同一域名时它本来就在听),不算冲突
+    echo "$line" | grep -q "docker-proxy" && continue
+    who="$(echo "$line" | sed -n 's/.*users:(("\([^"]*\)".*/\1/p')"
+    [ -z "$who" ] && who="未知进程"
+    occupied="${occupied} ${p}(${who})"
+  done
+  if [ -n "$occupied" ]; then
+    echo "   ⚠️  这些端口已被占用:$occupied"
+    echo "      Caddy 需要 80(证书验证)和 443(HTTPS)。装了宝塔/nginx 的话先停掉或改端口。"
+    read -p "      仍然继续? (y/N): " go
+    [[ "$go" == "y" || "$go" == "Y" ]] || { echo "已取消"; return 1; }
+  else
+    echo "   ✔ 端口可用"
+  fi
+
+  # ---- 3. 写 Caddyfile ----
+  echo "[3/5] 写入配置..."
+  mkdir -p "$(dirname "$CADDY_FILE")"
+  cat > "$CADDY_FILE" <<EOF
+# TMS 面板 · 由 tms domain 生成,别手改(下次执行会覆盖)
+$domain {
+    encode gzip
+    reverse_proxy frontend:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+EOF
+  echo "   ✔ $CADDY_FILE"
+
+  # ---- 4. 起 caddy ----
+  echo "[4/5] 启动 Caddy..."
+  docker rm -f "$CADDY_CONTAINER" 2>/dev/null || true
+  if ! docker run -d \
+      --name "$CADDY_CONTAINER" \
+      --restart unless-stopped \
+      --network gost-network \
+      -p 80:80 -p 443:443 \
+      -v "$CADDY_FILE":/etc/caddy/Caddyfile:ro \
+      -v tms_caddy_data:/data \
+      -v tms_caddy_config:/config \
+      caddy:2-alpine >/dev/null; then
+    echo "   ❌ Caddy 启动失败。常见原因:80/443 被占、镜像拉不下来。"
+    echo "      看日志: docker logs $CADDY_CONTAINER"
+    return 1
+  fi
+  echo "   ✔ 容器已启动"
+
+  # ---- 5. 等证书 ----
+  echo "[5/5] 等 Let's Encrypt 签发证书(最多 60 秒)..."
+  local ok=0 i
+  for i in $(seq 1 30); do
+    sleep 2
+    if curl -fsS --max-time 5 -o /dev/null "https://$domain/" 2>/dev/null; then
+      ok=1
+      break
+    fi
+    # 容器要是挂了就别干等
+    if ! docker ps --format '{{.Names}}' | grep -qx "$CADDY_CONTAINER"; then
+      echo "   ❌ Caddy 容器退出了"
+      docker logs --tail 30 "$CADDY_CONTAINER" 2>&1 | sed 's/^/      /'
+      return 1
+    fi
+    printf "."
+  done
+  echo ""
+
+  echo ""
+  echo "==============================================="
+  if [ "$ok" = "1" ]; then
+    echo "  ✅ 域名配置完成"
+    echo "==============================================="
+    echo "  访问地址: https://$domain"
+  else
+    echo "  ⚠️  证书还没下来"
+    echo "==============================================="
+    echo "  Caddy 已在运行,证书可能还在申请(慢的话要几分钟)。"
+    echo "  看进度: docker logs -f $CADDY_CONTAINER"
+    echo "  常见原因:80 端口不通、域名没解析到本机、被云厂商安全组挡了。"
+  fi
+  echo "  原来的 http://$server_ip:$(get_frontend_port) 仍然可用(留作备用入口)"
+  echo ""
+  echo "  ⚠️  订阅链接会跟着变成 https://$domain/...,"
+  echo "     已经发出去的旧订阅(IP 版)要让车友重新拉一次。"
+  echo "==============================================="
+}
+
 # 卸载功能(交互确认后走彻底清理,保证卸干净)
 uninstall_panel() {
   echo "🗑️ 开始卸载面板..."
@@ -1257,6 +1467,7 @@ main() {
     export)    export_migration_sql; delete_self ;;
     status)    show_status ;;
     info)      show_access_info ;;
+    domain)    setup_domain "$2" ;;
     menu)      menu_loop ;;
     *)         install_panel; delete_self ;;
   esac
@@ -1276,6 +1487,12 @@ menu_loop() {
       5) show_status ;;
       6) show_access_info ;;
       7) export_migration_sql ;;
+      8)
+        show_domain_status
+        echo ""
+        read -p "输入域名(直接回车取消,输 off 关闭域名): " d
+        [ -n "$d" ] && setup_domain "$d"
+        ;;
       0) echo "👋 退出"; break ;;
       *) echo "❌ 无效选项，请重新输入" ;;
     esac
