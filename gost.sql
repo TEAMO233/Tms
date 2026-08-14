@@ -60,6 +60,7 @@ CREATE TABLE `node` (
   `secret` varchar(100) NOT NULL,
   `ip` longtext,
   `server_ip` varchar(100) NOT NULL,
+  `domain` varchar(255) DEFAULT NULL COMMENT '连接域名(可选,留空用 server_ip)',
   `port_sta` int(10) NOT NULL,
   `port_end` int(10) NOT NULL,
   `version` varchar(100) DEFAULT NULL,

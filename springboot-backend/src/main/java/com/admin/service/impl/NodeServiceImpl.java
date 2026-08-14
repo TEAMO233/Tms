@@ -253,6 +253,7 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         node.setName(nodeUpdateDto.getName());
         node.setIp(nodeUpdateDto.getIp());
         node.setServerIp(nodeUpdateDto.getServerIp());
+        node.setDomain(nodeUpdateDto.getDomain());
         node.setPortSta(nodeUpdateDto.getPortSta());
         node.setPortEnd(nodeUpdateDto.getPortEnd());
         node.setHttp(nodeUpdateDto.getHttp());

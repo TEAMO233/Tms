@@ -28,6 +28,7 @@ interface Node {
   name: string;
   ip: string;
   serverIp: string;
+  domain?: string;
   portSta: number;
   portEnd: number;
   version?: string;
@@ -53,6 +54,7 @@ interface NodeForm {
   name: string;
   ipString: string;
   serverIp: string;
+  domain: string;
   portSta: number;
   portEnd: number;
   http: number; // 0 关 1 开
@@ -77,6 +79,7 @@ export default function NodePage() {
     name: '',
     ipString: '',
     serverIp: '',
+    domain: '',
     portSta: 1000,
     portEnd: 65535,
     http: 0,
@@ -397,7 +400,17 @@ export default function NodePage() {
     } else if (!validateIp(form.serverIp.trim())) {
       newErrors.serverIp = '请输入有效的IPv4、IPv6地址或域名';
     }
-    
+
+    // 连接域名是可选的:留空表示用 IP,填了才校验格式(且必须是域名,填 IP 没意义)
+    const domain = form.domain.trim();
+    if (domain) {
+      if (/^[\d.]+$/.test(domain) || domain.includes(':') || domain.includes('/')) {
+        newErrors.domain = '这里只填域名,别填 IP、端口或带 http://';
+      } else if (!validateIp(domain)) {
+        newErrors.domain = '域名格式不对,如 hk.example.com';
+      }
+    }
+
     if (!form.portSta || form.portSta < 1 || form.portSta > 65535) {
       newErrors.portSta = '端口范围必须在1-65535之间';
     }
@@ -431,6 +444,7 @@ export default function NodePage() {
       name: node.name,
       ipString: node.ip ? node.ip.split(',').map(ip => ip.trim()).join('\n') : '',
       serverIp: node.serverIp || '',
+      domain: node.domain || '',
       portSta: node.portSta,
       portEnd: node.portEnd,
       http: typeof node.http === 'number' ? node.http : 1,
@@ -542,6 +556,7 @@ export default function NodePage() {
         name: form.name, 
         ip: ipString,
         serverIp: form.serverIp,
+        domain: form.domain.trim(),
         portSta: form.portSta,
         portEnd: form.portEnd,
         http: form.http,
@@ -561,6 +576,7 @@ export default function NodePage() {
               name: form.name,
               ip: ipString,
               serverIp: form.serverIp,
+              domain: form.domain.trim(),
               portSta: form.portSta,
               portEnd: form.portEnd,
               http: form.http,
@@ -588,6 +604,7 @@ export default function NodePage() {
       name: '',
       ipString: '',
       serverIp: '',
+      domain: '',
       portSta: 1000,
       portEnd: 65535,
       http: 0,
@@ -869,6 +886,17 @@ export default function NodePage() {
                   isInvalid={!!errors.serverIp}
                   errorMessage={errors.serverIp}
                   variant="bordered"
+                />
+
+                <Input
+                  label="连接域名(可选)"
+                  placeholder="如 hk.example.com,留空则给车友显示上面的 IP"
+                  value={form.domain}
+                  onChange={(e) => setForm(prev => ({ ...prev, domain: e.target.value }))}
+                  isInvalid={!!errors.domain}
+                  errorMessage={errors.domain}
+                  variant="bordered"
+                  description="填了之后,车友订阅里的节点地址显示成这个域名,看不到你的服务器 IP。需要先把域名解析(A 记录)到上面那个 IP。注意:域名只是不直接显示 IP,对方 ping 一下还是查得到"
                 />
 
                 <Textarea

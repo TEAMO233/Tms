@@ -590,7 +590,10 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         String remark = (in.getRemark() != null && !in.getRemark().isEmpty()) ? in.getRemark() : in.getTag();
         String uuid = iu.getUuid();
         String password = iu.getPassword();
-        String ip = node.getServerIp();
+        // 转发机配了域名就用域名 —— 车友在客户端里看到的是 hk.example.com 而不是车主的 IP
+        String ip = (node.getDomain() != null && !node.getDomain().trim().isEmpty())
+                ? node.getDomain().trim()
+                : node.getServerIp();
         Integer port = forward.getInPort();
         switch (in.getProtocol() == null ? "" : in.getProtocol()) {
             case "shadowsocks": {
