@@ -60,7 +60,10 @@ CREATE TABLE `node` (
   `secret` varchar(100) NOT NULL,
   `ip` longtext,
   `server_ip` varchar(100) NOT NULL,
-  `domain` varchar(255) DEFAULT NULL COMMENT '连接域名(可选,留空用 server_ip)',
+  -- 注意:domain / cert_mode / cert_path / key_path 由本文件后半段的
+  -- 「合体面板 schema」用 ALTER TABLE 添加,别在这里重复定义 ——
+  -- MySQL 5.7 的 ADD COLUMN 没有 IF NOT EXISTS,重复了会报 1060,
+  -- 而 initdb 脚本一报错就整个中断,后面的 inbound 等表全都建不出来。
   `port_sta` int(10) NOT NULL,
   `port_end` int(10) NOT NULL,
   `version` varchar(100) DEFAULT NULL,
