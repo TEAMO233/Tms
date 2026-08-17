@@ -1,5 +1,11 @@
 # 多阶段构建 - 构建阶段
-FROM node:20.19.0 AS builder
+#
+# --platform=$BUILDPLATFORM 很关键:CI 是 amd64+arm64 双架构构建,不加这个的话
+# arm64 那一路会在 QEMU 模拟里跑完整个 npm install + vite build —— 慢 3~5 倍,
+# 而且经常直接挂(内存、原生模块编译)。
+# 而前端产物就是一堆 HTML/JS/CSS 静态文件,跟 CPU 架构毫无关系,
+# 只有下面的 nginx 运行阶段才需要分架构。
+FROM --platform=$BUILDPLATFORM node:20.19.0 AS builder
 
 WORKDIR /app
 
