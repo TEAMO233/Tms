@@ -63,6 +63,37 @@ function isTokenExpired(response: ApiResponse) {
           response.msg === '无法获取用户权限信息');
 }
 
+/**
+ * 慢接口的超时。
+ *
+ * 这些接口要跟【节点】来回通信:一台机器 6 个协议,每个协议都要下发 gost 服务、
+ * 推限速器,而每次节点往返最多等 10 秒(后端 WebSocketServer.send_msg 的设定)。
+ * 节点稍微慢一点,累加起来就轻松超过 30 秒 —— 用户看到的就是
+ * "一点分配就卡住,过一会儿报 timeout of 30000ms exceeded"。
+ *
+ * 这里只放宽超时,不改变任何业务逻辑;真正减少往返次数的优化在后端做。
+ */
+const SLOW_PATHS = [
+  '/inbound/assign-all',
+  '/inbound/assign-self',
+  '/inbound/assign',
+  '/inbound/one-click',
+  '/inbound/one-click-relay',
+  '/inbound/delete-by-node',
+  '/landing/test',
+  '/node/install',
+  '/forward/create',
+  '/forward/update',
+  '/tunnel/diagnose',
+  '/forward/diagnose',
+];
+const DEFAULT_TIMEOUT = 30000;
+const SLOW_TIMEOUT = 180000;
+
+function timeoutFor(path: string): number {
+  return SLOW_PATHS.some((p) => path.startsWith(p)) ? SLOW_TIMEOUT : DEFAULT_TIMEOUT;
+}
+
 const Network = {
   get: function<T = any>(path: string = '', data: any = {}): Promise<ApiResponse<T>> {
     return new Promise(function(resolve) {
@@ -74,7 +105,7 @@ const Network = {
 
       axios.get(path, {
         params: data,
-        timeout: 30000,
+        timeout: timeoutFor(path),
         headers: {
           "Authorization": window.localStorage.getItem('token')
         }
@@ -110,7 +141,7 @@ const Network = {
       }
 
       axios.post(path, data, {
-        timeout: 30000,
+        timeout: timeoutFor(path),
         headers: {
           "Authorization": window.localStorage.getItem('token'),
           "Content-Type": "application/json"
