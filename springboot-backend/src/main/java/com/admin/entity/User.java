@@ -59,5 +59,12 @@ public class User extends BaseEntity {
 
     private Long flowResetTime;
 
+    /**
+     * 「全部线路」聚合订阅的 token(可空,第一次取订阅时才生成)。
+     * 车友有几条线路就有几条独立订阅,发起来麻烦;这条一次包含他所有未停用的线路,
+     * 以后给他新开线路也不用重发链接 —— 客户端更新订阅就自动出现。
+     */
+    private String allSubToken;
+
 
 }

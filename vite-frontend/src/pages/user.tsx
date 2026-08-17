@@ -175,13 +175,17 @@ export default function UserPage() {
   // 订阅线路模态框(合体面板:车友的每台机器一条订阅,直连/中转各一条)
   const { isOpen: isSubModalOpen, onOpen: onSubModalOpen, onClose: onSubModalClose } = useDisclosure();
   const [subLines, setSubLines] = useState<any[]>([]);
+  const [subAllToken, setSubAllToken] = useState<string>('');
   const [subUserName, setSubUserName] = useState<string>('');
   const subUrl = (token: string) => `${window.location.origin}/api/v1/open_api/sub?token=${token}`;
 
   const handleShowSub = async (user: User) => {
     try {
       const res = await getUserLines(user.id);
-      const lines = res.code === 0 ? (res.data || []) : [];
+      // 后端返回结构从数组改成了 {lines, allSubToken},两种都认(版本不同步也不炸)
+      const d: any = res.code === 0 ? res.data : null;
+      const lines = Array.isArray(d) ? d : (d?.lines || []);
+      setSubAllToken(!Array.isArray(d) && d?.allSubToken ? d.allSubToken : '');
       if (!lines.length) {
         toast.error('该车友还没分配任何线路,先去「协议管理」或「中转」分配');
         return;
@@ -1514,6 +1518,42 @@ export default function UserPage() {
             <div className="text-small text-default-500">
               每台机器一条订阅(直连 / 中转各一条)。发对应的一条给车友:v2rayN → 订阅 → 添加 → 粘贴 → 更新。
             </div>
+
+            {subAllToken && subLines.length > 1 && (
+              <div className="border border-primary/40 bg-primary/5 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Chip size="sm" color="primary" variant="flat">⭐ 全部线路</Chip>
+                  <span className="text-sm">一条链接包含他所有线路,推荐发这条</span>
+                  <Chip size="sm" variant="flat">
+                    {subLines.reduce((n: number, l: any) => n + (l.protocolCount || 0), 0)} 协议
+                  </Chip>
+                </div>
+                <Input
+                  readOnly
+                  size="sm"
+                  value={subUrl(subAllToken)}
+                  onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
+                />
+                <div className="flex gap-2 items-start">
+                  <Button
+                    size="sm"
+                    color="primary"
+                    onPress={async () => {
+                      (await copyTextToClipboard(subUrl(subAllToken)))
+                        ? toast.success('已复制聚合订阅')
+                        : toast.error('复制失败,点框内已全选,按 Ctrl+C');
+                    }}
+                  >
+                    复制这条
+                  </Button>
+                  <SubQrToggle url={subUrl(subAllToken)} />
+                </div>
+                <div className="text-tiny text-default-400">
+                  节点名自带线路标识。以后给他新开线路不用再发链接,他更新订阅就有了。
+                  线路到期或跑满流量会自动从这条订阅里消失。
+                </div>
+              </div>
+            )}
             {subLines.map((ln: any, idx: number) => {
               const url = subUrl(ln.subToken);
               const isRelay = ln.type === 'relay';

@@ -595,9 +595,102 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return R.ok(iu);
     }
 
+    /**
+     * 「全部线路」聚合订阅:把该车友所有【未停用线路】的节点拼成一条订阅。
+     *
+     * 两个刻意的取舍:
+     * 1. 节点名带线路前缀([机器名] / [机器名→落地名]),否则十几个节点混在一起
+     *    根本分不清哪个是哪条线路的出口。
+     * 2. 停用的线路直接不出现在订阅里,而不是留着让人连不上 —— 车友更新订阅
+     *    发现少了一组,配合前缀能立刻知道是哪条到期/跑满了。
+     *
+     * 不返回 subscription-userinfo 流量头:多条线路各有各的配额,只能报一组数字,
+     * 报哪条都是误导。用量按线路看面板的「我的订阅」,那里是准的。
+     */
+    private String buildAggregateSubscription(User u) {
+        List<InboundUser> ius = inboundUserMapper.selectList(
+                new QueryWrapper<InboundUser>().eq("user_id", u.getId()));
+        List<String> links = new java.util.ArrayList<>();
+        java.util.Map<String, Boolean> lineStopped = new HashMap<>();
+        java.util.Map<Long, Node> nodeCache = new HashMap<>();
+        java.util.Map<Long, String> landingNames = new HashMap<>();
+
+        for (InboundUser iu : ius) {
+            if (iu.getStatus() != null && iu.getStatus() == 0) {
+                continue;
+            }
+            Inbound in = this.getById(iu.getInboundId());
+            if (in == null || iu.getGostForwardId() == null) {
+                continue;
+            }
+            Long lid = in.getLandingId();
+            String lineKey = in.getNodeId() + "|" + (lid == null ? 0L : lid);
+            Boolean stopped = lineStopped.get(lineKey);
+            if (stopped == null) {
+                InboundLine line = getLine(u.getId(), in.getNodeId(), lid);
+                stopped = (line != null && line.getStatus() != null && line.getStatus() == 0);
+                lineStopped.put(lineKey, stopped);
+            }
+            if (stopped) {
+                continue;
+            }
+            Node node = nodeCache.get(in.getNodeId());
+            if (node == null) {
+                node = nodeMapper.selectById(in.getNodeId());
+                if (node == null) {
+                    continue;
+                }
+                nodeCache.put(in.getNodeId(), node);
+            }
+            Forward forward = forwardMapper.selectById(iu.getGostForwardId());
+            if (forward == null) {
+                continue;
+            }
+            StringBuilder prefix = new StringBuilder("[").append(node.getName());
+            if (lid != null) {
+                String ln = landingNames.get(lid);
+                if (ln == null) {
+                    com.admin.entity.Landing l = landingMapper.selectById(lid);
+                    ln = (l != null && l.getName() != null) ? l.getName() : ("落地#" + lid);
+                    landingNames.put(lid, ln);
+                }
+                prefix.append("→").append(ln);
+            }
+            prefix.append("] ");
+
+            String link = buildClientLink(in, iu, node, forward, prefix.toString());
+            if (link != null && !link.isEmpty()) {
+                links.add(link);
+            }
+        }
+        String joined = String.join("
+", links);
+        return java.util.Base64.getEncoder()
+                .encodeToString(joined.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    /** 取(必要时生成)该车友的「全部线路」聚合订阅 token */
+    private String ensureAllSubToken(User u) {
+        if (u.getAllSubToken() != null && !u.getAllSubToken().isEmpty()) {
+            return u.getAllSubToken();
+        }
+        String t = UUID.randomUUID().toString().replace("-", "");
+        u.setAllSubToken(t);
+        userMapper.updateById(u);
+        return t;
+    }
+
     /** 按协议为某个入站用户拼客户端链接(assignUser 与订阅共用) */
     private String buildClientLink(Inbound in, InboundUser iu, Node node, Forward forward) {
+        return buildClientLink(in, iu, node, forward, "");
+    }
+
+    /** namePrefix:聚合订阅里用来标注这个节点属于哪条线路,单条线路订阅传空串 */
+    private String buildClientLink(Inbound in, InboundUser iu, Node node, Forward forward, String namePrefix) {
         String remark = (in.getRemark() != null && !in.getRemark().isEmpty()) ? in.getRemark() : in.getTag();
+        if (namePrefix != null && !namePrefix.isEmpty()) {
+            remark = namePrefix + remark;
+        }
         String uuid = iu.getUuid();
         String password = iu.getPassword();
         // 转发机配了域名就用域名 —— 车友在客户端里看到的是 hk.example.com 而不是车主的 IP
@@ -629,6 +722,12 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     public String buildSubscription(String token) {
         if (token == null || token.isEmpty()) {
             return "";
+        }
+        // 「全部线路」聚合订阅:一条链接给出该车友所有未停用线路的节点
+        User aggUser = userMapper.selectOne(
+                new QueryWrapper<User>().eq("all_sub_token", token).last("limit 1"));
+        if (aggUser != null) {
+            return buildAggregateSubscription(aggUser);
         }
         List<InboundUser> ius = inboundUserMapper.selectList(
                 new QueryWrapper<InboundUser>().eq("sub_token", token));
@@ -670,7 +769,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
     public R getUserLines(Long userId) {
         com.alibaba.fastjson.JSONArray lines = new com.alibaba.fastjson.JSONArray();
         if (userId == null) {
-            return R.ok(lines);
+            JSONObject empty = new JSONObject();
+            empty.put("lines", lines);
+            return R.ok(empty);
         }
         List<InboundUser> ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("user_id", userId));
         // 按【线路】= 机器 × 落地组 分组:同一台机器的直连、每个落地各算一条订阅
@@ -735,7 +836,17 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             line.put("subToken", token);
             lines.add(line);
         }
-        return R.ok(lines);
+        // 返回结构从「数组」变成「对象」是为了带上聚合订阅 token。
+        // 前端做了两种格式的兼容,老前端配新后端也不会白屏。
+        JSONObject result = new JSONObject();
+        result.put("lines", lines);
+        if (!lines.isEmpty()) {
+            User u = userMapper.selectById(userId);
+            if (u != null) {
+                result.put("allSubToken", ensureAllSubToken(u));
+            }
+        }
+        return R.ok(result);
     }
 
     /** 只读:取这条线路的记录(没有返回 null) */

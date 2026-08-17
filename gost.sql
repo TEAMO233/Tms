@@ -151,6 +151,7 @@ CREATE TABLE `user` (
   `out_flow` bigint(20) NOT NULL DEFAULT '0',
   `flow_reset_time` bigint(20) NOT NULL,
   `num` int(10) NOT NULL,
+  `all_sub_token` varchar(64) DEFAULT NULL COMMENT '全部线路聚合订阅token',
   `created_time` bigint(20) NOT NULL,
   `updated_time` bigint(20) DEFAULT NULL,
   `status` int(10) NOT NULL

@@ -36,6 +36,10 @@ public class SchemaMigration implements ApplicationRunner {
         // 转发机的「连接域名」:填了就用它生成节点链接,车友看到的是域名而不是车主的 IP
         addColumnIfMissing("node", "domain",
                 "ALTER TABLE `node` ADD COLUMN `domain` VARCHAR(255) NULL COMMENT '连接域名(可选,留空用 server_ip)'");
+
+        // 「全部线路」聚合订阅 token:一条链接包含该车友所有未停用线路的节点
+        addColumnIfMissing("user", "all_sub_token",
+                "ALTER TABLE `user` ADD COLUMN `all_sub_token` VARCHAR(64) NULL COMMENT '全部线路聚合订阅token'");
     }
 
     /** 列不存在才执行 ddl;任何异常都吞掉(只记日志),不能因为迁移失败导致面板起不来 */

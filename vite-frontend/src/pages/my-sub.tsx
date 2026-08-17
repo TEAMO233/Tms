@@ -15,6 +15,8 @@ import { SubQrToggle } from "@/components/sub-qr";
  */
 export default function MySubPage() {
   const [lines, setLines] = useState<any[]>([]);
+  // 「全部线路」聚合订阅:一条链接包含他所有线路,以后新开线路也不用重发
+  const [allSubToken, setAllSubToken] = useState<string>("");
   const [account, setAccount] = useState<any>(null); // 只用来判断账号是否被停用/到期
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,13 @@ export default function MySubPage() {
   const load = async () => {
     try {
       const [ln, pkg] = await Promise.all([getMyLines(), getUserPackageInfo()]);
-      if (ln.code === 0) setLines(ln.data || []);
+      if (ln.code === 0) {
+        // 后端返回结构从数组改成了 {lines, allSubToken},这里两种都认,
+        // 万一前后端镜像版本不同步也不会白屏
+        const d: any = ln.data;
+        setLines(Array.isArray(d) ? d : (d?.lines || []));
+        if (!Array.isArray(d) && d?.allSubToken) setAllSubToken(d.allSubToken);
+      }
       if (pkg.code === 0) setAccount(pkg.data?.userInfo || null);
     } catch (e) {
       toast.error("加载失败");
@@ -56,6 +64,44 @@ export default function MySubPage() {
         <Card className="border border-danger/40 bg-danger/5">
           <CardBody className="text-sm text-danger">
             ⚠️ 你的账号{accountExpired ? "已到期" : "已被停用"},所有线路暂时不可用,请联系管理员。
+          </CardBody>
+        </Card>
+      )}
+
+      {!loading && allSubToken && lines.length > 1 && (
+        <Card className="border border-primary/40 bg-primary/5">
+          <CardBody className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Chip size="sm" color="primary" variant="flat">⭐ 全部线路</Chip>
+              <span className="text-sm text-default-600">一条链接包含下面所有线路,推荐用这条</span>
+              <Chip size="sm" variant="flat" className="ml-auto">
+                {lines.reduce((n: number, l: any) => n + (l.protocolCount || 0), 0)} 协议
+              </Chip>
+            </div>
+            <Input
+              readOnly
+              size="sm"
+              value={subUrl(allSubToken)}
+              onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
+            />
+            <div className="flex gap-2 items-start">
+              <Button
+                size="sm"
+                color="primary"
+                onPress={async () => {
+                  (await copyTextToClipboard(subUrl(allSubToken)))
+                    ? toast.success("已复制,去客户端粘贴")
+                    : toast.error("复制失败,点框内已全选,按 Ctrl+C");
+                }}
+              >
+                复制订阅链接
+              </Button>
+              <SubQrToggle url={subUrl(allSubToken)} />
+            </div>
+            <div className="text-xs text-default-400">
+              节点名前面带线路标识(如「[香港机器] VLESS」),方便区分从哪出口。
+              以后管理员给你新开线路,更新一下订阅就自动出现,不用再要新链接。
+            </div>
           </CardBody>
         </Card>
       )}
