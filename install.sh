@@ -162,50 +162,12 @@ if [ "$COUNTRY" = "CN" ]; then
 fi
 
 # 安装功能
-# 确保系统时间准确。
-#
-# VMess 协议拿时间戳做认证(防重放),服务端和客户端差超过 ~90 秒就直接拒绝,
-# 日志里报 "bad timestamp",表现是【只有 VMess 连不上、其它协议全正常】——
-# 因为 Reality / Hysteria2 / TUIC 都不依赖时间戳,所以极难联想到是时钟问题。
-# 很多小 VPS 出厂就没开时间同步,这里主动兜一下。
-ensure_time_sync() {
-  echo "🕐 检查系统时间同步..."
-
-  if command -v timedatectl &>/dev/null; then
-    if timedatectl status 2>/dev/null | grep -qiE "NTP service: active|System clock synchronized: yes"; then
-      echo "   ✔ 时间同步已开启"
-      return 0
-    fi
-    timedatectl set-ntp true 2>/dev/null && echo "   ✔ 已开启 NTP 自动同步"
-    systemctl restart systemd-timesyncd 2>/dev/null || true
-  fi
-
-  # timedatectl 不可用或开不起来时,退回装 chrony
-  local synced=0
-  if command -v timedatectl &>/dev/null; then
-    timedatectl status 2>/dev/null | grep -qiE "NTP service: active|System clock synchronized: yes" && synced=1
-  fi
-  if [ "$synced" != "1" ]; then
-    if command -v apt-get &>/dev/null; then
-      apt-get install -y chrony >/dev/null 2>&1 && systemctl enable --now chrony >/dev/null 2>&1
-    elif command -v yum &>/dev/null; then
-      yum install -y chrony >/dev/null 2>&1 && systemctl enable --now chronyd >/dev/null 2>&1
-    fi
-  fi
-
-  echo "   当前时间(UTC): $(date -u '+%Y-%m-%d %H:%M:%S')"
-  echo "   ⚠️ 如果这个时间明显不对,VMess 会连不上(报 bad timestamp),其它协议不受影响"
-}
-
 install_gost() {
   echo "🚀 开始安装 GOST..."
   get_config_params
 
     # 检查并安装 tcpkill
   check_and_install_tcpkill
-
-  # 时间不同步会让 VMess 报 bad timestamp(其它协议看不出来),装的时候先兜住
-  ensure_time_sync
   
 
   mkdir -p "$INSTALL_DIR"
@@ -303,10 +265,7 @@ update_gost() {
   
   # 检查并安装 tcpkill
   check_and_install_tcpkill
-
-  # 老节点当初装的时候没有这段检查,更新时补上 —— 时钟不准只有 VMess 会挂
-  ensure_time_sync
-
+  
   # 先下载新版本
   echo "⬇️ 下载最新版本..."
   curl -L "$DOWNLOAD_URL" -o "$INSTALL_DIR/gost.new"
