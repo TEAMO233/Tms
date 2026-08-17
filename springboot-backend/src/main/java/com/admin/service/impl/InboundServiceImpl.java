@@ -663,8 +663,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 links.add(link);
             }
         }
-        String joined = String.join("
-", links);
+        String joined = String.join("\n", links);
         return java.util.Base64.getEncoder()
                 .encodeToString(joined.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
