@@ -450,6 +450,10 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         Integer userLimiter = (dto.getSpeedId() != null) ? perUserLimiterName(user.getId()) : null;
         java.util.Set<Long> affectedNodes = new java.util.HashSet<>();
         java.util.Set<Long> limiterPushedNodes = new java.util.HashSet<>();
+        // 本次分配里已确认「机器上被别的程序占了」的端口,按节点分开记。
+        // 一台机 6 个协议逐个分配,不共享的话每个协议都要把同一批被占端口重新踩一遍,
+        // 而每踩一次就是一个最多 10 秒的节点往返 —— 分配卡死主要卡在这。
+        java.util.Map<Long, java.util.Set<Integer>> busyPortsByNode = new java.util.HashMap<>();
         int assigned = 0, skipped = 0, updated = 0;
         String firstError = null;
         for (Inbound in : inbounds) {
@@ -513,7 +517,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             // 这条线路(机器×落地组)的记录:承载订阅 token + 该线路的流量配额/到期;该组所有协议共享
             String subToken = lineTokens.computeIfAbsent(node.getId(),
                     nid -> getOrCreateLine(user.getId(), nid, groupLanding, dto.getFlow(), dto.getExpTime()).getSubToken());
-            R r = assignOneNoPush(in, node, user, userLimiter, dto.getExpTime(), subToken);
+            R r = assignOneNoPush(in, node, user, userLimiter, dto.getExpTime(), subToken,
+                    busyPortsByNode.computeIfAbsent(node.getId(), k -> new java.util.HashSet<>()));
             if (r.getCode() != 0) {
                 if (firstError == null) firstError = r.getMsg();
                 skipped++;
@@ -554,6 +559,11 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
 
     /** 给某用户在某入站上建凭证+转发,但不推 sing-box(批量分配时最后统一推)。limiterName=车友专属限速器名(调用方已推好) */
     private R assignOneNoPush(Inbound in, Node node, User user, Integer limiterName, Long expTime, String subToken) {
+        return assignOneNoPush(in, node, user, limiterName, expTime, subToken, new java.util.HashSet<>());
+    }
+
+    private R assignOneNoPush(Inbound in, Node node, User user, Integer limiterName, Long expTime, String subToken,
+                              java.util.Set<Integer> knownBusyPorts) {
         Tunnel tunnel = ensurePortForwardTunnel(node.getId());
         if (tunnel == null) {
             return R.err("创建入站转发隧道失败");
@@ -567,7 +577,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         fdto.setStrategy("fifo");
         fdto.setSpeedId(limiterName); // 转发引用车友专属限速器
         fdto.setExpTime(expTime);
-        R fr = createForwardAutoPort(fdto, user, node.getId()); // 端口被占自动上移
+        R fr = createForwardAutoPort(fdto, user, node.getId(), knownBusyPorts); // 端口被占自动上移
         if (fr.getCode() != 0 || fr.getData() == null) {
             return R.err("建转发失败:" + fr.getMsg());
         }
@@ -910,23 +920,49 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
      * 建 hybrid 转发,端口被占(DB 里占了 / 或节点 OS 层被残留服务占了)就自动往上找下一个可用,直到成功。
      * createForwardForUser 失败时会自己 removeById 清理,所以重试很干净。
      */
+    /** 一次分配里最多试几个端口。每试一个都是一次节点往返(最多 10 秒),
+     *  不设上限的话最坏要试两万次 —— 用户看到的就是面板卡死、CPU 打满。 */
+    private static final int MAX_PORT_TRIES = 25;
+
     private R createForwardAutoPort(ForwardDto fdto, User user, Long nodeId) {
+        return createForwardAutoPort(fdto, user, nodeId, new java.util.HashSet<>());
+    }
+
+    /**
+     * 自动挑端口建转发。
+     *
+     * knownBusy:本次分配过程中已经确认「机器上被别的程序占了」的端口。
+     * allocateHybridPort 只查得到数据库里的占用,查不到 OS 层的,所以那些端口
+     * 每个协议都会重新踩一遍 —— 一台机 6 个协议就是 6 倍的无效往返。
+     * 把踩过的坑记下来传给后面的协议,同一个端口只吃一次亏。
+     */
+    private R createForwardAutoPort(ForwardDto fdto, User user, Long nodeId, java.util.Set<Integer> knownBusy) {
         Integer start = allocateHybridPort(nodeId);
         int from = (start != null) ? start : 20000;
-        for (int p = from; p <= 39999; p++) {
+        int tried = 0;
+        int lastTried = from;
+        for (int p = from; p <= 39999 && tried < MAX_PORT_TRIES; p++) {
+            if (knownBusy.contains(p)) {
+                continue; // 本次分配里已经确认被占,不用再问节点一次
+            }
+            tried++;
+            lastTried = p;
             fdto.setInPort(p);
             R fr = forwardService.createForwardForUser(fdto, user.getId().intValue(), user.getUser());
             if (fr.getCode() == 0 && fr.getData() != null) {
                 return fr;
             }
             String msg = fr.getMsg() == null ? "" : fr.getMsg();
-            // 端口被占(DB 已用 / OS 已用 / 不在范围)→ 换下一个;其他错误直接返回
+            // 端口被占(DB 已用 / OS 已用 / 不在范围)→ 记下来换下一个;其他错误直接返回
             if (msg.contains("already in use") || msg.contains("已被占用") || msg.contains("不在允许范围")) {
+                knownBusy.add(p);
                 continue;
             }
             return fr;
         }
-        return R.err("20000-39999 端口都被占,无法分配");
+        return R.err("连续试了 " + tried + " 个端口(" + from + "-" + lastTried
+                + ")都被占用,分配中止。请检查这台机器上是否有其它程序占着这段端口,"
+                + "或在转发机设置里把端口范围调开。");
     }
 
     /** 确保节点有一条端口转发隧道(入口机=该节点),没有则建 */
