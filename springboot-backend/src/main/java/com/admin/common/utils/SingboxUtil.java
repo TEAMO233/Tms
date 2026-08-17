@@ -328,7 +328,11 @@ public class SingboxUtil {
         v.put("port", String.valueOf(port));
         v.put("id", uuid);
         v.put("aid", "0");
-        v.put("scy", "auto");
+        // 必须写死 AEAD 算法,不能给 "auto"。
+        // "auto" 是让客户端自己挑,某些 Xray 版本/平台会退化成 aes-128-cfb(legacy VMess),
+        // 而 sing-box 服务端只认 AEAD,收到就解不开头,日志报 bad header ——
+        // 实测把客户端手动改成 aes-128-gcm 后头立刻能解开。
+        v.put("scy", "aes-128-gcm");
         v.put("net", "tcp");
         v.put("type", "none");
         v.put("host", "");
