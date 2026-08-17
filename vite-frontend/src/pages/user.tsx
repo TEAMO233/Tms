@@ -689,7 +689,8 @@ export default function UserPage() {
                         <span className="text-default-600">重置日期</span>
                         <span className="text-xs">{user.flowResetTime === 0 ? '不重置' : `每月${user.flowResetTime}号`}</span>
                       </div>
-                      {user.expTime && (
+                      {/* 用 > 0 而不是直接判真:expTime=0 是「永久」,`0 &&` 会把 0 渲染出来 */}
+                      {!!user.expTime && user.expTime > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-default-600">过期时间</span>
                           <div className="text-right">

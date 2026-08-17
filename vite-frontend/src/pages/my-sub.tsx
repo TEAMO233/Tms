@@ -40,8 +40,10 @@ export default function MySubPage() {
   const fmtDate = (ms: number) => new Date(ms).toLocaleDateString();
 
   // 账号级异常(被管理员停用 / 账号到期)才提示,平时不打扰
-  const accountDisabled = account && account.status !== undefined && account.status !== 1;
-  const accountExpired = account?.expTime && account.expTime <= Date.now();
+  // 必须转成真正的布尔值:exp_time = 0 表示「永久」,而 `0 && ...` 返回的是 0 不是 false,
+  // React 会把这个 0 原样渲染到页面上(标题下面凭空多出一个 "0")
+  const accountDisabled = !!account && account.status !== undefined && account.status !== 1;
+  const accountExpired = !!account?.expTime && account.expTime > 0 && account.expTime <= Date.now();
 
   return (
     <div className="p-4 space-y-4 max-w-4xl">
