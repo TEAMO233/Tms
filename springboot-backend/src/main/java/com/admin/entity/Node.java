@@ -34,6 +34,15 @@ public class Node extends BaseEntity {
      */
     private String domain;
 
+    /**
+     * 该节点上 sing-box 是否在运行(不入库,查询时从节点上报的实时状态填入)。
+     * gost 和 sing-box 是两个独立服务:sing-box 挂了 gost 照样在线,
+     * 面板不单独标出来的话,表现就是「节点显示在线但所有协议都连不上」。
+     * null = 节点还没上报过(老版本节点或刚连上)。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean singboxRunning;
+
     private String version;
 
     private Integer portSta;

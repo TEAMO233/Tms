@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync" // 新增：用于管理连接状态的互斥锁
@@ -31,6 +32,13 @@ type SystemInfo struct {
 	BytesTransmitted uint64  `json:"bytes_transmitted"` // 发送字节数
 	CPUUsage         float64 `json:"cpu_usage"`         // CPU使用率（百分比）
 	MemoryUsage      float64 `json:"memory_usage"`      // 内存使用率（百分比）
+
+	// SingboxRunning 报的是【本机 sing-box 服务是否在运行】。
+	// gost 和 sing-box 是两个独立服务:sing-box 挂了/被停了,gost 照样活着、
+	// 节点在面板里依然显示「在线」,但那台机上所有协议其实全都不可用 ——
+	// 排查时极难联想到,所以必须单独报出来让面板能识别。
+	// 该机没搭协议时 sing-box 本来就不该跑,是否异常由面板结合有无入站来判断。
+	SingboxRunning bool `json:"singbox_running"`
 }
 
 // NetworkStats 网络统计信息
@@ -306,7 +314,20 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 		BytesTransmitted: networkStats.BytesTransmitted,
 		CPUUsage:         cpuInfo.Usage,
 		MemoryUsage:      memoryInfo.Usage,
+		SingboxRunning:   isSingboxRunning(),
 	}
+}
+
+// isSingboxRunning 判断 sing-box 服务是否在运行。
+// 用 systemctl is-active,输出恰好是 "active" 才算跑着;
+// 没装 systemd 或没这个服务时命令会失败,一律当作没运行。
+func isSingboxRunning() bool {
+	out, err := exec.Command("systemctl", "is-active", "sing-box").Output()
+	if err != nil {
+		// is-active 对非 active 状态会返回非零退出码,这里不区分,统一视为未运行
+		return strings.TrimSpace(string(out)) == "active"
+	}
+	return strings.TrimSpace(string(out)) == "active"
 }
 
 // sendSystemInfo 发送系统信息

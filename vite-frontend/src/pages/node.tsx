@@ -29,6 +29,8 @@ interface Node {
   ip: string;
   serverIp: string;
   domain?: string;
+  /** 该机 sing-box 是否在运行(节点上报);null/undefined = 还没上报过 */
+  singboxRunning?: boolean;
   portSta: number;
   portEnd: number;
   version?: string;
@@ -233,6 +235,10 @@ export default function NodePage() {
             return {
               ...node,
               connectionStatus: 'online',
+              // 节点在系统信息里顺带上报 sing-box 状态,这里实时更新
+              singboxRunning: typeof systemInfo.singbox_running === 'boolean'
+                ? systemInfo.singbox_running
+                : node.singboxRunning,
               systemInfo: {
                 cpuUsage: parseFloat(systemInfo.cpu_usage) || 0,
                 memoryUsage: parseFloat(systemInfo.memory_usage) || 0,
@@ -685,6 +691,16 @@ export default function NodePage() {
                 </CardHeader>
 
                 <CardBody className="pt-0 pb-3">
+                  {/* 「在线」只代表 gost 活着。sing-box 是另一个服务,它挂了这里照样绿,
+                      但那台机上的协议全都用不了 —— 必须单独标出来 */}
+                  {node.connectionStatus === 'online' && node.singboxRunning === false && (
+                    <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-2">
+                      <div className="text-xs font-semibold text-danger">⚠️ sing-box 未运行</div>
+                      <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
+                        这台机上的协议全部不可用。执行 <code className="font-mono">systemctl enable --now sing-box</code> 恢复
+                      </div>
+                    </div>
+                  )}
                   {/* 基础信息 */}
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between items-center text-sm min-w-0">

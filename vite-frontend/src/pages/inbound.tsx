@@ -243,6 +243,21 @@ export default function InboundPage() {
                   <Chip size="sm" variant="flat" color="primary" className="ml-auto">{nodeInbounds.length} 协议</Chip>
                 </div>
                 {firstIp && <div className="text-xs text-default-500 font-mono">{firstIp}</div>}
+
+                {/* 节点在线 ≠ 协议可用:gost 和 sing-box 是两个服务,sing-box 挂了
+                    这里照样显示「在线」,但这台机上所有协议全都连不上。必须单独标出来 —— 
+                    不然只会以为是协议参数配错了,往那个方向查很久都查不出来 */}
+                {online && n.singboxRunning === false && nodeInbounds.length > 0 && (
+                  <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
+                    <div className="text-sm font-semibold text-danger">
+                      ⚠️ sing-box 未运行,这台机的协议全部不可用
+                    </div>
+                    <div className="text-xs text-default-500">
+                      节点本身在线(gost 正常),但跑协议的 sing-box 没起来。到这台机上执行:
+                      <code className="font-mono bg-default-200 px-1 rounded ml-1">systemctl enable --now sing-box</code>
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1">
                   {nodeInbounds.map((ib) => (
                     <Chip key={ib.id} size="sm" variant="flat" color="secondary">{protoLabel(ib.protocol)}</Chip>

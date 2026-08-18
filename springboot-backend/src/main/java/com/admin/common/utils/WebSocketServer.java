@@ -36,6 +36,23 @@ public class WebSocketServer extends TextWebSocketHandler {
     
     // 存储节点ID和对应的WebSocket session映射
     private static final ConcurrentHashMap<Long, WebSocketSession> nodeSessions = new ConcurrentHashMap<>();
+
+    /**
+     * nodeId -> 该节点上的 sing-box 是否在运行(节点随系统信息一起上报)。
+     *
+     * gost 和 sing-box 是两个独立服务:sing-box 被停掉后 gost 照样活着、节点在面板里
+     * 仍显示「在线」,但那台机上所有协议其实全都不可用 —— 这种状态不单独标出来,
+     * 排查时会一直往协议参数上找原因(实战踩过,查了十几轮才发现服务根本没跑)。
+     *
+     * 只存内存:它是实时状态,面板重启后等节点下次上报即可(几秒到十几秒),
+     * 没必要为此写库。null = 还没收到过上报(老节点或刚连上)。
+     */
+    private static final ConcurrentHashMap<Long, Boolean> singboxRunning = new ConcurrentHashMap<>();
+
+    /** 取某节点的 sing-box 运行状态;null 表示未知(该节点还没上报过) */
+    public static Boolean getSingboxRunning(Long nodeId) {
+        return nodeId == null ? null : singboxRunning.get(nodeId);
+    }
     
     // 为每个session提供锁对象，防止并发发送消息
     private static final ConcurrentHashMap<String, Object> sessionLocks = new ConcurrentHashMap<>();
@@ -120,6 +137,15 @@ public class WebSocketServer extends TextWebSocketHandler {
 
                 // 如果是节点类型，转发消息给其他会话
                 if (Objects.equals(type, "1")) {
+                    // 顺手记下 sing-box 运行状态(节点在系统信息里带上来的)
+                    try {
+                        JSONObject info = JSON.parseObject(decryptedPayload);
+                        if (info != null && info.containsKey("singbox_running")) {
+                            singboxRunning.put(Long.valueOf(id), info.getBooleanValue("singbox_running"));
+                        }
+                    } catch (Exception ignored) {
+                        // 上报格式不对不影响广播,忽略
+                    }
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("id", id);
                     jsonObject.put("type", "info");
