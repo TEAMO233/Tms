@@ -165,6 +165,14 @@ curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o
 
 ### 二、卸载节点机(转发机)
 
+> 🚨 **面板机同时也当转发机用的话,千万别在它上面跑这段。**
+> 很多人把面板和第一台转发机装在同一台机器上,这段命令会把**本机的节点服务一起停掉并 disable**
+> —— 所有协议瞬间全部失效,而面板里节点还显示「在线」(gost 是另一个服务,它还活着),
+> 极难联想到是刚才那条命令干的。只想卸载**其它**转发机时,请 SSH 到那台机器上执行。
+>
+> 万一误跑了,恢复:`systemctl enable --now sing-box`
+> ——必须带 `enable`,因为它被 `disable` 过,只 `start` 的话重启机器又会消失。
+
 **每台转发机都要单独执行**,直接复制这段:
 
 ```bash
