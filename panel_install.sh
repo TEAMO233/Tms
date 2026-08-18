@@ -320,12 +320,60 @@ purge_panel() {
 
 
 # 获取用户输入的配置参数
+# 端口被占就往后找一个空闲的。
+#
+# TMS 默认用 6365/6366,同机再装 s-ui(2095/2096)或 3x-ui 通常不冲突,
+# 但装过两次 TMS、或机器上跑着别的服务时照样会撞。撞了的表现是容器起不来
+# 或者反复重启,日志里只有 "address already in use" 一行,不看仔细很难发现。
+#
+# 整行匹配「:端口 + 空白/行尾」而不是按 ss 输出的第几列取 —— 不同版本 ss 的
+# 列数不一样,按列取会悄悄失效,而失效表现是「误判端口空闲」,比报错更难查。
+# 末尾的边界防止 16366 这种包含关系被误判成 6366。
+port_in_use() {
+  local port="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -lnt 2>/dev/null | grep -qE "[:.]${port}([[:space:]]|$)" && return 0
+    return 1
+  fi
+  if command -v netstat >/dev/null 2>&1; then
+    netstat -lnt 2>/dev/null | grep -qE "[:.]${port}([[:space:]]|$)" && return 0
+    return 1
+  fi
+  return 1
+}
+
+pick_free_port() {
+  # 三个变量必须分开声明:挤在一个 local 里时算术展开拿不到值,
+  # limit 会是空字符串,while 直接报 integer expression expected 并退出 ——
+  # 表现是端口检测【静默失效】,永远返回默认端口(实测踩到)
+  local start="$1"
+  local p="$start"
+  local limit=$((start + 100))
+  while [ "$p" -lt "$limit" ]; do
+    if ! port_in_use "$p"; then
+      echo "$p"
+      return 0
+    fi
+    p=$((p + 1))
+  done
+  echo "$start"
+}
+
 get_config_params() {
   echo "🔧 自动配置参数（全自动安装，无需交互）..."
 
   # 端口可用环境变量覆盖(FRONTEND_PORT=xxx BACKEND_PORT=xxx),否则用默认值,不再交互
   FRONTEND_PORT=${FRONTEND_PORT:-6366}
   BACKEND_PORT=${BACKEND_PORT:-6365}
+
+  # 端口被别的服务占着的话自动往后挪,免得容器起不来只在日志里留一行
+  # "address already in use" —— 那种失败看着像面板装坏了,其实只是端口冲突
+  local want_f="$FRONTEND_PORT" want_b="$BACKEND_PORT"
+  FRONTEND_PORT=$(pick_free_port "$FRONTEND_PORT")
+  BACKEND_PORT=$(pick_free_port "$BACKEND_PORT")
+  [ "$FRONTEND_PORT" != "$want_f" ] && echo "   ⚠️ 端口 $want_f 被占用,前端改用 $FRONTEND_PORT"
+  [ "$BACKEND_PORT" != "$want_b" ] && echo "   ⚠️ 端口 $want_b 被占用,后端改用 $BACKEND_PORT"
+
   echo "   前端端口：$FRONTEND_PORT   后端端口：$BACKEND_PORT"
 
   DB_NAME=$(generate_random)
