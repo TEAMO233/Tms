@@ -300,6 +300,35 @@ export default function IndexPage() {
               </div>
             </CardBody>
           </Card>
+
+          {/* 站长入口。放登录页是因为这是所有人(车主和车友)都必然看到的一页,
+              而面板内部的页面车友多半只开「我的订阅」那一个。 */}
+          <div className="mt-4 text-center space-y-1.5">
+            <a
+              href="https://3yuedaohang.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-xs text-gray-400 dark:text-gray-500 hover:text-primary transition-colors"
+            >
+              🌐 站长博客 · 3yuedaohang.com
+            </a>
+            <a
+              href="https://www.youtube.com/@zhanzhang3yue"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-xs text-gray-400 dark:text-gray-500 hover:text-primary transition-colors"
+            >
+              📺 YouTube · @zhanzhang3yue
+            </a>
+            <a
+              href="https://3yuedaohang.com/cn2/banwagong"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-xs text-gray-400 dark:text-gray-500 hover:text-primary transition-colors"
+            >
+              🖥️ 机器推荐 · CN2 / 搬瓦工
+            </a>
+          </div>
         </div>
 
 
