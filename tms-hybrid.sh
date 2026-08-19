@@ -15,7 +15,9 @@ PANEL_DIR="${TMS_DIR:-$(pwd)}"
 COMPOSE_FILE="docker-compose-hybrid.yml"
 BRANCH="${TMS_BRANCH:-main}"
 
-cd "$PANEL_DIR" 2>/dev/null || { echo "❌ 面板目录不存在: $PANEL_DIR"; exit 1; }
+# cd 失败不退出:面板目录已被删/改名时,恰恰是最需要能跑 purge 的时候。
+# 其余命令由 need_panel 挡住,不会误操作。
+cd "$PANEL_DIR" 2>/dev/null || echo "⚠️  面板目录不存在: $PANEL_DIR(仅 purge 仍可执行)"
 
 dc() { docker compose -f "$COMPOSE_FILE" --env-file .env "$@"; }
 
@@ -40,6 +42,39 @@ cmd_update() {
   dc up -d --build || { echo "❌ 构建失败"; exit 1; }
   echo "✅ 更新完成"
   cmd_status
+}
+
+# 彻底清理:容器、本地构建的镜像、数据卷、网络、管理命令 全删。
+# 刻意不调 need_panel —— 卸载正是在「面板已经不完整」时最需要能用,
+# 再加一道「必须像面板目录」的检查,就成了装坏了反而卸不掉的死锁。
+cmd_purge() {
+  echo "🧨 彻底清理 TMS 面板(合体 / 源码版)"
+  echo "   会删除:容器、本地构建的镜像、数据卷(含数据库数据)、网络、tms 命令"
+  read -rp "确认吗? (y/N): " c
+  if [ "$c" != "y" ] && [ "$c" != "Y" ]; then
+    echo "❌ 已取消"
+    return 0
+  fi
+
+  if [ -f "$PANEL_DIR/$COMPOSE_FILE" ]; then
+    dc down -v --rmi local --remove-orphans 2>/dev/null || true
+  fi
+
+  # 兜底:compose 文件丢了也要能清干净,按容器名再来一遍
+  docker rm -f gost-mysql springboot-backend vite-frontend tms-caddy 2>/dev/null || true
+
+  # 卷名会被 compose 加上项目名前缀(项目名 = 目录名),写死 mysql_data 删不掉。
+  # 按后缀匹配才能把 xxx_mysql_data 这种一并带走。
+  docker volume ls -q 2>/dev/null     | grep -E '(^|_)(mysql_data|backend_logs|tms_caddy_data|tms_caddy_config)$'     | xargs -r docker volume rm 2>/dev/null || true
+
+  docker network ls -q --filter name=gost-network 2>/dev/null | xargs -r docker network rm 2>/dev/null || true
+  docker image prune -f 2>/dev/null || true
+
+  rm -f /usr/local/bin/tms 2>/dev/null || true
+
+  echo "✅ 面板已清理干净。"
+  echo "ℹ️  源码目录保留在:$PANEL_DIR(确认不要了可以自己 rm -rf)"
+  echo "ℹ️  本机若也装了节点(gost / sing-box),要单独卸载 —— 见 README。"
 }
 
 cmd_status() {
@@ -98,6 +133,7 @@ cmd_menu() {
     echo " 4) 重启"
     echo " 5) 停止"
     echo " 6) 启动"
+    echo " 7) 彻底卸载(删容器/镜像/数据卷,含数据库数据)"
     echo " 0) 退出"
     echo "------------------------------"
     read -rp "请选择: " choice
@@ -108,6 +144,7 @@ cmd_menu() {
       4) cmd_restart ;;
       5) cmd_stop ;;
       6) cmd_start ;;
+      7) cmd_purge ;;
       0) exit 0 ;;
       *) echo "无效选择" ;;
     esac
@@ -122,6 +159,7 @@ case "${1:-menu}" in
   restart) cmd_restart ;;
   stop)    cmd_stop ;;
   start)   cmd_start ;;
+  purge|uninstall) cmd_purge ;;
   menu|"") cmd_menu ;;
-  *) echo "用法: tms [menu|update|status|logs|restart|stop|start]" ;;
+  *) echo "用法: tms [menu|update|status|logs|restart|stop|start|purge]" ;;
 esac

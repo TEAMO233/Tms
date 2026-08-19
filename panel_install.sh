@@ -285,6 +285,17 @@ is_tms_compose() {
 
 purge_panel() {
   echo "🧨 彻底清理 TMS 面板(删除所有容器/镜像/数据卷/网络/配置和 tms 管理命令)..."
+
+  # 用 curl 一键跑 purge 时,当前目录多半不是面板安装目录 —— 那样容器能清掉,
+  # 但 docker-compose.yml / .env / gost.sql 这些会原地留下,下次安装还会被复用。
+  # 安装目录当时写进了 /usr/local/bin/tms 的 TMS_DIR,这里读回来切过去。
+  if ! is_tms_compose && [ -f /usr/local/bin/tms ]; then
+    recorded_dir="$(grep -m1 '^TMS_DIR=' /usr/local/bin/tms 2>/dev/null | cut -d'"' -f2)"
+    if [ -n "$recorded_dir" ] && [ -d "$recorded_dir" ]; then
+      cd "$recorded_dir" 2>/dev/null && echo "📁 已切到记录的面板目录: $recorded_dir"
+    fi
+  fi
+
   if [ -f docker-compose.yml ] && ! is_tms_compose; then
     echo "⚠️  当前目录的 docker-compose.yml 不是 TMS 的,已跳过 compose 清理和配置文件删除,"
     echo "    只按名字清 TMS 自己的容器/镜像。要清面板请先 cd 到面板安装目录。"
@@ -298,7 +309,11 @@ purge_panel() {
     # 不依赖任何文件,按名字强制删干净。
     # caddy 也要一起清:它连着 gost-network,不删的话后面 network rm 一定失败
     docker rm -f gost-mysql springboot-backend vite-frontend tms-caddy 2>/dev/null || true
+    # 卷名会被 compose 加上项目名前缀(项目名 = 安装目录名),写死名字删不掉
+    # xxx_mysql_data 这种。上面的 compose down -v 能处理,但 compose 文件丢了就只剩这里,
+    # 所以按后缀匹配再兜一次 —— 否则数据卷留着,重装时会拿到上一次的旧数据库。
     docker volume rm mysql_data backend_logs tms_caddy_data tms_caddy_config 2>/dev/null || true
+    docker volume ls -q 2>/dev/null       | grep -E '(^|_)(mysql_data|backend_logs|tms_caddy_data|tms_caddy_config)$'       | xargs -r docker volume rm 2>/dev/null || true
     docker network rm gost-network 2>/dev/null || true
     docker rmi -f ghcr.io/teminuosi/springboot-backend:latest ghcr.io/teminuosi/vite-frontend:latest mysql:5.7 2>/dev/null || true
     # 只清悬空镜像(不动其他应用),回收磁盘
@@ -1517,7 +1532,13 @@ main() {
     info)      show_access_info ;;
     domain)    setup_domain "$2" ;;
     menu)      menu_loop ;;
-    *)         install_panel; delete_self ;;
+    *)
+      # 打错命令不能默认去装面板 —— `tms uninstal`(少个 l)、`tms purge2` 这类
+      # 手滑会变成一次重装,把正在跑的面板覆盖掉。无参数仍走安装(见上面的 :-install)。
+      echo "❌ 未知命令: $1"
+      echo "可用命令: install / update / uninstall / purge / export / status / info / domain / menu"
+      exit 1
+      ;;
   esac
 }
 
