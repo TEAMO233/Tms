@@ -5,6 +5,7 @@ import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/d
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/modal";
 import { Input } from "@heroui/input";
 import { toast } from 'react-hot-toast';
+import { copyTextToClipboard } from '@/utils/clipboard';
 
 import { Logo } from '@/components/icons';
 import { updatePassword, getVersionInfo } from '@/api';
@@ -36,6 +37,8 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  // 更新弹窗单独一个开关,别和改密码那个共用
+  const updateModal = useDisclosure();
 
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
@@ -364,13 +367,15 @@ export default function AdminLayout({
                    )}
                  </p>
                  {versionInfo?.updateAvailable && (
-                   <span
-                     className="flex items-center gap-1 text-[10px] text-warning cursor-help"
-                     title={`有新版本(${versionInfo.latest})\n在面板服务器上执行 tms update 即可更新`}
+                   <button
+                     type="button"
+                     onClick={updateModal.onOpen}
+                     className="flex items-center gap-1 text-[10px] text-warning hover:opacity-70 transition-opacity"
+                     title="点击查看怎么更新"
                    >
                      <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                      有更新
-                   </span>
+                   </button>
                  )}
                </div>
              </div>
@@ -547,6 +552,65 @@ export default function AdminLayout({
                 >
                   确定
                 </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* 更新说明弹窗。
+          这里刻意不做「点一下自动更新」:面板跑在容器里,而 tms update 是宿主机
+          命令(docker compose pull + up),容器内执行不了。要能执行只能把
+          /var/run/docker.sock 挂进来 —— 那等于把宿主机 root 交给一个公网可访问
+          的 Web 应用,面板一旦有 RCE 整台机器就没了。何况更新会重启 backend
+          容器自己,执行更新的线程当场被杀,反而容易卡在半路。
+          所以这里只把命令递到手边:告诉他敲什么、敲完会发生什么。 */}
+      <Modal isOpen={updateModal.isOpen} onOpenChange={updateModal.onOpenChange} size="md">
+        <ModalContent>
+          {(onClose: () => void) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">发现新版本</ModalHeader>
+              <ModalBody>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-default-500">当前版本</span>
+                    <span className="font-mono">
+                      v{versionInfo?.panelVersion || siteConfig.version}
+                      {versionInfo?.commit && versionInfo.commit !== 'dev' && `-${versionInfo.commit}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-default-500">最新版本</span>
+                    <span className="font-mono text-warning">{versionInfo?.latest || '-'}</span>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-default-500 mb-2">在面板服务器上执行:</p>
+                    <div className="flex items-center gap-2 bg-default-100 rounded-lg px-3 py-2">
+                      <code className="flex-1 font-mono text-sm select-all">tms update</code>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onPress={async () => {
+                          (await copyTextToClipboard('tms update'))
+                            ? toast.success('已复制')
+                            : toast.error('复制失败,请手动选中命令');
+                        }}
+                      >
+                        复制
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-default-500 space-y-1">
+                    <p>· 更新过程面板会重启,大约 1-2 分钟</p>
+                    <p>· 节点和转发跑在各自的机器上,不受面板重启影响</p>
+                    <p>· 车友的订阅链接不变,不用重新分发</p>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="primary" onPress={onClose}>知道了</Button>
               </ModalFooter>
             </>
           )}
