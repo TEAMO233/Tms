@@ -646,7 +646,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             if (forward == null) {
                 continue;
             }
-            StringBuilder prefix = new StringBuilder("[").append(node.getName());
+            // 不加方括号:名字最终要显示在手机客户端一行里,中转的还要再带一个
+            // 「→落地名」,方括号纯占位置。空格分隔已经够读了。
+            StringBuilder prefix = new StringBuilder(node.getName());
             if (lid != null) {
                 String ln = landingNames.get(lid);
                 if (ln == null) {
@@ -656,7 +658,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 }
                 prefix.append("→").append(ln);
             }
-            prefix.append("] ");
+            prefix.append(" ");
 
             String link = buildClientLink(in, iu, node, forward, prefix.toString());
             if (link != null && !link.isEmpty()) {
@@ -684,9 +686,31 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return buildClientLink(in, iu, node, forward, "");
     }
 
+    /**
+     * 协议在客户端里显示的名字。
+     * 没填备注时拿它当节点名 —— 原来兜底用的是 tag(in-1-40001 这种),
+     * 占了十个字符还看不出是什么协议,单条线路订阅里六个节点全长一个样。
+     */
+    private static String protocolDisplayName(String protocol) {
+        if (protocol == null) {
+            return "VLESS";
+        }
+        switch (protocol) {
+            case "shadowsocks": return "Shadowsocks";
+            case "vmess":       return "VMess";
+            case "trojan":      return "Trojan";
+            case "hysteria2":   return "Hysteria2";
+            case "tuic":        return "TUIC";
+            case "anytls":      return "AnyTLS";
+            default:            return "VLESS";
+        }
+    }
+
     /** namePrefix:聚合订阅里用来标注这个节点属于哪条线路,单条线路订阅传空串 */
     private String buildClientLink(Inbound in, InboundUser iu, Node node, Forward forward, String namePrefix) {
-        String remark = (in.getRemark() != null && !in.getRemark().isEmpty()) ? in.getRemark() : in.getTag();
+        String remark = (in.getRemark() != null && !in.getRemark().isEmpty())
+                ? in.getRemark()
+                : protocolDisplayName(in.getProtocol());
         if (namePrefix != null && !namePrefix.isEmpty()) {
             remark = namePrefix + remark;
         }
