@@ -755,12 +755,29 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         List<InboundUser> ius = inboundUserMapper.selectList(
                 new QueryWrapper<InboundUser>().eq("sub_token", token));
         List<String> links = new java.util.ArrayList<>();
+        // 线路停用状态查一次缓存起来:一条订阅里六个协议同属一条线路,
+        // 挨个去查线路表纯属浪费。
+        java.util.Map<String, Boolean> lineStopped = new HashMap<>();
         for (InboundUser iu : ius) {
             if (iu.getStatus() != null && iu.getStatus() == 0) {
                 continue;
             }
             Inbound in = this.getById(iu.getInboundId());
             if (in == null || iu.getGostForwardId() == null) {
+                continue;
+            }
+            // 线路被停用时这条订阅也要空掉。聚合订阅早就这么做了,单条这边一直没查 ——
+            // 结果车主停用之后,对方更新订阅照样看得到节点,只是连不上(转发已暂停),
+            // 反而像是节点坏了。
+            Long lid = in.getLandingId();
+            String lineKey = in.getNodeId() + "|" + (lid == null ? 0L : lid);
+            Boolean stopped = lineStopped.get(lineKey);
+            if (stopped == null) {
+                InboundLine line = getLine(iu.getUserId(), in.getNodeId(), lid);
+                stopped = (line != null && line.getStatus() != null && line.getStatus() == 0);
+                lineStopped.put(lineKey, stopped);
+            }
+            if (stopped) {
                 continue;
             }
             Node node = nodeMapper.selectById(in.getNodeId());
@@ -847,6 +864,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             JSONObject line = new JSONObject();
             line.put("nodeId", nodeId);
             line.put("nodeName", node != null ? node.getName() : ("机器#" + nodeId));
+            // landingId 要发给前端:线路的身份是「机器 × 落地」,只有名字的话
+            // 两个同名落地就分不开,前端也没法指定要停哪一条。
+            line.put("landingId", landingId);
             line.put("type", landingId != null ? "relay" : "direct");
             line.put("landingName", landingName);
             line.put("flow", lineFlow); // 该线路已用流量(字节)
@@ -988,6 +1008,103 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             pushNodeSingbox(in.getNodeId());
         }
         return R.ok();
+    }
+
+    /**
+     * 停用 / 恢复某个车友的一条线路(机器 × 落地)。
+     *
+     * 停用不删数据:该线路的转发停掉、订阅里不再出现,流量和到期原样留着,
+     * 想恢复就恢复。车主临时不想给某人用某台机器时用这个 —— 比删掉再重新
+     * 分配安全得多,重分配会换掉 UUID 和端口,等于让对方重新导一次订阅。
+     *
+     * 注意和「账号总闸」的区别:User.status 一关是这个人所有线路一起停,
+     * 这里只动一条。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R setLineStatus(Long userId, Long nodeId, Long landingId, Integer status) {
+        if (userId == null || nodeId == null || status == null) {
+            return R.err("参数不全");
+        }
+        InboundLine line = getLine(userId, nodeId, landingId);
+        if (line == null) {
+            return R.err("线路不存在");
+        }
+        line.setStatus(status);
+        inboundLineMapper.updateById(line);
+
+        // 转发跟着一起停/起:光改线路标记的话订阅里是没了,但对方手上已经导入的
+        // 旧链接还能连 —— 端口还开着,gost 照转不误。
+        for (InboundUser iu : lineInboundUsers(userId, nodeId, landingId)) {
+            if (iu.getGostForwardId() == null) {
+                continue;
+            }
+            try {
+                if (status != null && status == 0) {
+                    forwardService.pauseForward(iu.getGostForwardId());
+                } else {
+                    forwardService.resumeForward(iu.getGostForwardId());
+                }
+            } catch (Exception e) {
+                log.warn("线路[{}/{}/{}] 转发[{}] 状态切换失败: {}",
+                        userId, nodeId, landingId, iu.getGostForwardId(), e.getMessage());
+            }
+        }
+        return R.ok();
+    }
+
+    /**
+     * 彻底收回某个车友的一条线路:删掉该线路下所有协议的分配记录和对应转发,
+     * 端口一并释放。和停用不同,这个不可逆 —— 之后要再给他用,得重新分配,
+     * UUID 和端口都会是新的。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R deleteLine(Long userId, Long nodeId, Long landingId) {
+        if (userId == null || nodeId == null) {
+            return R.err("参数不全");
+        }
+        List<InboundUser> ius = lineInboundUsers(userId, nodeId, landingId);
+        if (ius.isEmpty()) {
+            return R.err("线路不存在");
+        }
+        for (InboundUser iu : ius) {
+            if (iu.getGostForwardId() != null) {
+                try {
+                    forwardService.deleteForward(iu.getGostForwardId());
+                } catch (Exception e) {
+                    // 转发可能早就被手工删了。这里不能中断:剩下的分配记录不清掉的话,
+                    // 线路会半死不活地卡在订阅里。
+                    log.warn("删除转发[{}]失败(继续清理): {}", iu.getGostForwardId(), e.getMessage());
+                }
+            }
+            inboundUserMapper.deleteById(iu.getId());
+        }
+        InboundLine line = getLine(userId, nodeId, landingId);
+        if (line != null) {
+            inboundLineMapper.deleteById(line.getId());
+        }
+        pushNodeSingbox(nodeId);
+        return R.ok();
+    }
+
+    /** 该车友在这条线路(机器 × 落地)下的所有协议分配记录 */
+    private List<InboundUser> lineInboundUsers(Long userId, Long nodeId, Long landingId) {
+        List<InboundUser> all = inboundUserMapper.selectList(
+                new QueryWrapper<InboundUser>().eq("user_id", userId));
+        List<InboundUser> hit = new java.util.ArrayList<>();
+        for (InboundUser iu : all) {
+            Inbound in = this.getById(iu.getInboundId());
+            if (in == null || !nodeId.equals(in.getNodeId())) {
+                continue;
+            }
+            Long lid = in.getLandingId();
+            boolean same = (landingId == null) ? (lid == null) : landingId.equals(lid);
+            if (same) {
+                hit.add(iu);
+            }
+        }
+        return hit;
     }
 
     // -------- helpers --------

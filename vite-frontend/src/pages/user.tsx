@@ -47,7 +47,9 @@ import {
   updateUserTunnel,
   getSpeedLimitList,
   resetUserFlow,
-  getUserLines
+  getUserLines,
+  setLineStatus,
+  deleteLine
 } from '@/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { SubQrToggle } from '@/components/sub-qr';
@@ -191,12 +193,21 @@ export default function UserPage() {
         return;
       }
       setSubUserName(user.user);
+      setSubUserId(user.id);
       setSubLines(lines);
       onSubModalOpen();
     } catch (e) {
       toast.error('获取订阅失败');
     }
   };
+  // 停用/恢复/删除之后重新拉一次,让弹窗里的状态跟着变,不用关掉重开
+  const reloadSubLines = async (userId: number) => {
+    const res = await getUserLines(userId);
+    const d: any = res.code === 0 ? res.data : null;
+    setSubLines(Array.isArray(d) ? d : (d?.lines || []));
+  };
+  const [subUserId, setSubUserId] = useState<number | null>(null);
+
   const [tunnelToReset, setTunnelToReset] = useState<UserTunnel | null>(null);
   const [resetTunnelFlowLoading, setResetTunnelFlowLoading] = useState(false);
 
@@ -1565,6 +1576,9 @@ export default function UserPage() {
                     </Chip>
                     <span className="font-medium truncate">{ln.nodeName}</span>
                     <Chip size="sm" variant="flat">{ln.protocolCount} 协议</Chip>
+                    {ln.lineStatus === 0 && (
+                      <Chip size="sm" variant="flat" color="danger">已停用</Chip>
+                    )}
                   </div>
                   <Input
                     readOnly
@@ -1585,6 +1599,50 @@ export default function UserPage() {
                       复制这条
                     </Button>
                     <SubQrToggle url={url} />
+                    <div className="flex-1" />
+                    {/* 收回这条线路的入口。停用是可逆的:UUID 和端口都留着,
+                        恢复之后对方手上的订阅原样能用;删除会把端口也释放掉,
+                        以后要再给他用就得重新分配、重新发链接。 */}
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color={ln.lineStatus === 0 ? 'success' : 'warning'}
+                      onPress={async () => {
+                        if (subUserId == null) return;
+                        const to = ln.lineStatus === 0 ? 1 : 0;
+                        if (to === 0 && !confirm(`停用「${ln.nodeName}」这条线路?
+对方立刻就连不上了,流量和到期都留着,随时可以恢复。`)) return;
+                        const res = await setLineStatus(subUserId, ln.nodeId, ln.landingId ?? null, to);
+                        if (res.code === 0) {
+                          toast.success(to === 0 ? '已停用这条线路' : '已恢复这条线路');
+                          await reloadSubLines(subUserId);
+                        } else {
+                          toast.error(res.msg || '操作失败');
+                        }
+                      }}
+                    >
+                      {ln.lineStatus === 0 ? '恢复' : '停用'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      onPress={async () => {
+                        if (subUserId == null) return;
+                        if (!confirm(`彻底删除「${ln.nodeName}」这条线路?
+该线路下 ${ln.protocolCount} 个协议的分配和转发会一并删掉,端口释放。
+这一步不可逆,以后要再给他用得重新分配。`)) return;
+                        const res = await deleteLine(subUserId, ln.nodeId, ln.landingId ?? null);
+                        if (res.code === 0) {
+                          toast.success('已收回这条线路');
+                          await reloadSubLines(subUserId);
+                        } else {
+                          toast.error(res.msg || '删除失败');
+                        }
+                      }}
+                    >
+                      删除
+                    </Button>
                   </div>
                 </div>
               );

@@ -41,6 +41,12 @@ public interface InboundService extends IService<Inbound> {
     /** 取消某个入站用户 */
     R unassignUser(Long inboundUserId);
 
+    /** 停用(status=0)/ 恢复(status=1)某车友的一条线路(机器 × 落地) */
+    R setLineStatus(Long userId, Long nodeId, Long landingId, Integer status);
+
+    /** 彻底删掉某车友的一条线路:分配记录 + 转发 + 线路本身,端口一并释放 */
+    R deleteLine(Long userId, Long nodeId, Long landingId);
+
     /** 按订阅 token 生成该用户所有协议链接的 base64 订阅内容(客户端订阅用) */
     String buildSubscription(String token);
 
