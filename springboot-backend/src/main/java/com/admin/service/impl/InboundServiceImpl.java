@@ -434,6 +434,12 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             qw.isNull("landing_id");             // 直连组:本机出网的协议
         }
         List<Inbound> inbounds = this.list(qw);
+        // 协议级分配:只保留选中的入站(同属这条线路);空=整条线路全部协议。
+        // 线路额度/到期照常在下面按 dto.flow/expTime 写 InboundLine,和整条分配完全一致。
+        if (dto.getInboundIds() != null && !dto.getInboundIds().isEmpty()) {
+            java.util.Set<Long> pick = new java.util.HashSet<>(dto.getInboundIds());
+            inbounds = inbounds.stream().filter(x -> pick.contains(x.getId())).collect(java.util.stream.Collectors.toList());
+        }
         if (inbounds.isEmpty()) {
             return R.err(relay ? "这条中转还没有协议" : "这台机器还没有直连协议,先去「一键添加」");
         }
