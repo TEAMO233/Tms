@@ -29,7 +29,7 @@
 
 **面板端**(中央管理面板,一台即可,全自动;需要 Docker,脚本会自动装):
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
+curl -L https://raw.githubusercontent.com/TEAMO233/Tms/main/panel_install.sh -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
 ```
 
 **节点端**(转发机,每台要做转发的机器都装;裸二进制,不需要 Docker):
@@ -43,7 +43,7 @@ curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o
 
 也可直接在机器上跑下面裸命令,它会 **交互式询问** 面板地址和密钥(密钥同样得先在面板「转发机监控」新增该转发机才有):
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+curl -L https://raw.githubusercontent.com/TEAMO233/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 </details>
 
@@ -52,7 +52,7 @@ curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o insta
 国内机器直连 GitHub 会超时(卡在下载那一步)。用 **ghfast.top 镜像 + `-c` 参数**(`-c` 强制内部下载 gost 也走国内镜像,不靠自动检测),把面板给你的「面板地址」「密钥」填进去:
 
 ```bash
-curl -L https://ghfast.top/https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh -c -a 面板地址:端口 -s 你的密钥
+curl -L https://ghfast.top/https://raw.githubusercontent.com/TEAMO233/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh -c -a 面板地址:端口 -s 你的密钥
 ```
 
 - 面板地址、密钥从面板「转发机监控 → 新增该机器 → 点安装」弹出的命令里拿;
@@ -158,7 +158,7 @@ tms purge
 如果 `tms` 命令不在了(比如当初就没装成功),用一次性脚本:
 
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o /tmp/tms.sh && bash /tmp/tms.sh purge
+curl -L https://raw.githubusercontent.com/TEAMO233/Tms/main/panel_install.sh -o /tmp/tms.sh && bash /tmp/tms.sh purge
 ```
 
 > 💡 最好 **cd 到当初安装面板的目录**再执行。不在那个目录时,脚本会从 `/usr/local/bin/tms` 里读回安装目录并自动切过去;
@@ -205,7 +205,7 @@ echo "✅ 节点已卸载(gost + sing-box + 配置 + 证书)"
 也可以重新下节点脚本走菜单(选 `3` 卸载):
 
 ```bash
-curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o /tmp/n.sh && chmod +x /tmp/n.sh && /tmp/n.sh
+curl -L https://raw.githubusercontent.com/TEAMO233/Tms/main/install.sh -o /tmp/n.sh && chmod +x /tmp/n.sh && /tmp/n.sh
 ```
 
 > 💡 **国内机器**(阿里云等)大概率下不动 GitHub,直接用上面那段命令。
@@ -264,5 +264,5 @@ ufw delete <编号>        # 逐条删
 
 ---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Teminuosi/Tms&type=Date)](https://www.star-history.com/#Teminuosi/Tms&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=TEAMO233/Tms&type=Date)](https://www.star-history.com/#TEAMO233/Tms&Date)
 
