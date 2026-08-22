@@ -169,6 +169,15 @@ public class InboundController extends BaseController {
                 asLong(body.get("landingId")));
     }
 
+    /** 给协议改显示名(写 Inbound.remark,车友订阅里的节点名随之变干净) */
+    @LogAnnotation
+    @RequireRole
+    @PostMapping("/rename")
+    public R rename(@RequestBody Map<String, Object> body) {
+        return inboundService.renameInbound(asLong(body.get("id")),
+                body.get("remark") == null ? "" : String.valueOf(body.get("remark")));
+    }
+
     /** null / 空串都当没传。直连线路的 landingId 本来就是空的,不能当成参数错误。 */
     private static Long asLong(Object v) {
         if (v == null) {

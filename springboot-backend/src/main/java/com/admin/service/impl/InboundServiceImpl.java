@@ -1095,6 +1095,21 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return R.ok();
     }
 
+    /** 给协议改显示名:只写 Inbound.remark。订阅链接按需从 remark 生成,不必重推 sing-box。 */
+    @Override
+    public R renameInbound(Long id, String remark) {
+        if (id == null) {
+            return R.err("参数不全");
+        }
+        Inbound in = this.getById(id);
+        if (in == null) {
+            return R.err("协议不存在");
+        }
+        in.setRemark(remark == null ? "" : remark.trim());
+        this.updateById(in);
+        return R.ok();
+    }
+
     /** 该车友在这条线路(机器 × 落地)下的所有协议分配记录 */
     private List<InboundUser> lineInboundUsers(Long userId, Long nodeId, Long landingId) {
         List<InboundUser> all = inboundUserMapper.selectList(
