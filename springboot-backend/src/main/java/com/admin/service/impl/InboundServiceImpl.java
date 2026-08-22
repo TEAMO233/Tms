@@ -30,6 +30,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -1052,8 +1053,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                     forwardService.resumeForward(iu.getGostForwardId());
                 }
             } catch (Exception e) {
-                log.warn("线路[{}/{}/{}] 转发[{}] 状态切换失败: {}",
-                        userId, nodeId, landingId, iu.getGostForwardId(), e.getMessage());
+                log.warn("线路[" + userId + "/" + nodeId + "/" + landingId + "] 转发["
+                        + iu.getGostForwardId() + "] 状态切换失败: " + e.getMessage());
             }
         }
         return R.ok();
@@ -1081,7 +1082,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 } catch (Exception e) {
                     // 转发可能早就被手工删了。这里不能中断:剩下的分配记录不清掉的话,
                     // 线路会半死不活地卡在订阅里。
-                    log.warn("删除转发[{}]失败(继续清理): {}", iu.getGostForwardId(), e.getMessage());
+                    log.warn("删除转发[" + iu.getGostForwardId() + "]失败(继续清理): " + e.getMessage());
                 }
             }
             inboundUserMapper.deleteById(iu.getId());
