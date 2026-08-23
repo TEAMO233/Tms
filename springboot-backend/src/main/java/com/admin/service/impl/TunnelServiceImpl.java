@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -330,8 +331,13 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
     }
 
     private boolean isReservedProtocolTunnelName(String tunnelName) {
-        return tunnelName != null
-                && tunnelName.trim().matches("(?i)" + PROTOCOL_TUNNEL_NAME_PREFIX + "[0-9]+");
+        if (tunnelName == null) {
+            return false;
+        }
+        String canonical = Normalizer.normalize(tunnelName.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT);
+        return canonical.matches(PROTOCOL_TUNNEL_NAME_PREFIX + "[0-9]+");
     }
 
     /**

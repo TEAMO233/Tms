@@ -22,13 +22,17 @@ DEALLOCATE PREPARE protocol_tunnel_schema_stmt;
 -- one generated protocol forward. Ordinary manual tunnels remain 0.
 UPDATE tunnel t
 SET t.protocol_managed = 1
-WHERE CONVERT(t.name USING utf8mb4) COLLATE utf8mb4_bin REGEXP '^inbound-tunnel-node[0-9]+$'
+WHERE CONVERT(t.name USING utf8mb4) COLLATE utf8mb4_bin = CONCAT('inbound-tunnel-node', t.in_node_id)
   AND t.type = 1
   AND EXISTS (
       SELECT 1
       FROM forward f
+      INNER JOIN inbound_user iu ON iu.gost_forward_id = f.id
+      INNER JOIN inbound i ON i.id = iu.inbound_id
       WHERE f.tunnel_id = t.id
-        AND f.name REGEXP '^inbound-[0-9]+-user-[0-9]+$'
+        AND i.node_id = t.in_node_id
+        AND CONVERT(f.name USING utf8mb4) COLLATE utf8mb4_bin =
+            CONCAT('inbound-', i.id, '-user-', iu.user_id)
   );
 
 -- Audit before enforcing uniqueness. Resolve any returned rows manually.
