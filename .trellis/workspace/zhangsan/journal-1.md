@@ -49,3 +49,24 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: 完成转发协议链接与聚合订阅
+
+**Date**: 2026-08-23
+**Task**: 完成转发协议链接与聚合订阅
+**Branch**: `main`
+
+### Summary
+
+为转发管理增加原始协议链接改写、单条客户端链接、当前用户聚合订阅和免登录订阅地址；补充数据库迁移、前端复制/二维码入口，并对请求日志中的协议凭证和订阅 token 做脱敏。前端构建及后端 Java 兼容编译通过，Maven 因本机仅有 JDK 8 无法执行 Java 21 构建。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `30dc395` | (see git log) |
+
+### Status
+
+[OK] **Completed**
