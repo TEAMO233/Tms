@@ -26,7 +26,8 @@
             t.in_ip AS inIp,
             t.out_ip AS outIp,
             t.type,
-            t.protocol
+            t.protocol,
+            t.protocol_managed AS protocolManaged
         FROM 
             forward f
         LEFT JOIN 
@@ -59,7 +60,8 @@
             t.in_ip AS inIp,
             t.out_ip AS outIp,
             t.type,
-            t.protocol
+            t.protocol,
+            t.protocol_managed AS protocolManaged
         FROM 
             forward f
         LEFT JOIN 

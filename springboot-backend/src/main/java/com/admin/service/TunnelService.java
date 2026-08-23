@@ -24,6 +24,9 @@ public interface TunnelService extends IService<Tunnel> {
      */
     R createTunnel(TunnelDto tunnelDto);
 
+    /** 创建协议管理专用隧道,仅供系统自动建协议管道使用 */
+    R createProtocolTunnel(TunnelDto tunnelDto);
+
     /**
      * 获取隧道列表
      * @return 结果

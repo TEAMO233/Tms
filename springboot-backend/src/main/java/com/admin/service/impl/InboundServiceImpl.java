@@ -30,6 +30,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -1124,28 +1125,50 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
      * 确保节点有一条协议专用的端口转发隧道(入口机=该节点),没有则建。
      * 不能复用任意手工隧道,否则协议管理会把用户自建隧道占用,导致手工隧道无法删除。
      */
-    private Tunnel ensurePortForwardTunnel(Long nodeId) {
+    private synchronized Tunnel ensurePortForwardTunnel(Long nodeId) {
+        String protocolTunnelName = "inbound-tunnel-node" + nodeId;
         Tunnel tunnel = tunnelMapper.selectOne(new QueryWrapper<Tunnel>()
-                .eq("name", "inbound-tunnel-node" + nodeId)
+                .apply("BINARY name = {0}", protocolTunnelName)
                 .eq("in_node_id", nodeId)
                 .eq("type", TUNNEL_TYPE_PORT_FORWARD)
+                .eq("protocol_managed", 1)
                 .last("limit 1"));
         if (tunnel != null) {
             return tunnel;
         }
         TunnelDto tdto = new TunnelDto();
-        tdto.setName("inbound-tunnel-node" + nodeId);
+        tdto.setName(protocolTunnelName);
         tdto.setInNodeId(nodeId);
         tdto.setType(TUNNEL_TYPE_PORT_FORWARD);
         tdto.setFlow(1);
         tdto.setTrafficRatio(BigDecimal.ONE);
         tdto.setProtocol("tls");
-        R r = tunnelService.createTunnel(tdto);
+        R r;
+        try {
+            r = tunnelService.createProtocolTunnel(tdto);
+        } catch (DuplicateKeyException e) {
+            // 另一实例可能已抢先创建,重新读取胜出的协议隧道,不要把它当成创建失败。
+            return tunnelMapper.selectOne(new QueryWrapper<Tunnel>()
+                    .apply("BINARY name = {0}", protocolTunnelName)
+                    .eq("in_node_id", nodeId)
+                    .eq("type", TUNNEL_TYPE_PORT_FORWARD)
+                    .eq("protocol_managed", 1)
+                    .last("limit 1"));
+        }
         if (r.getCode() != 0) {
-            return null;
+            return tunnelMapper.selectOne(new QueryWrapper<Tunnel>()
+                    .apply("BINARY name = {0}", protocolTunnelName)
+                    .eq("in_node_id", nodeId)
+                    .eq("type", TUNNEL_TYPE_PORT_FORWARD)
+                    .eq("protocol_managed", 1)
+                    .last("limit 1"));
         }
         return tunnelMapper.selectOne(new QueryWrapper<Tunnel>()
-                .eq("in_node_id", nodeId).eq("type", TUNNEL_TYPE_PORT_FORWARD).last("limit 1"));
+                .apply("BINARY name = {0}", protocolTunnelName)
+                .eq("in_node_id", nodeId)
+                .eq("type", TUNNEL_TYPE_PORT_FORWARD)
+                .eq("protocol_managed", 1)
+                .last("limit 1"));
     }
 
     /** 分配 sing-box 本机监听口(40000+,避开 gost 公网口段) */

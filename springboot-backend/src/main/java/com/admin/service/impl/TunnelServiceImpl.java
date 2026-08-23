@@ -58,6 +58,9 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
     
     /** 用户角色常量 */
     private static final int ADMIN_ROLE_ID = 0;             // 管理员角色ID
+
+    /** 协议管理自动隧道名称前缀,该名称空间不允许手工占用或改名 */
+    private static final String PROTOCOL_TUNNEL_NAME_PREFIX = "inbound-tunnel-node";
     
     /** 成功响应消息 */
     private static final String SUCCESS_CREATE_MSG = "隧道创建成功";
@@ -108,6 +111,25 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
      */
     @Override
     public R createTunnel(TunnelDto tunnelDto) {
+        if (isReservedProtocolTunnelName(tunnelDto.getName())) {
+            return R.err("该隧道名称为协议管理系统保留名称");
+        }
+        return createTunnelInternal(tunnelDto, false);
+    }
+
+    @Override
+    public R createProtocolTunnel(TunnelDto tunnelDto) {
+        if (tunnelDto.getType() == null
+                || tunnelDto.getType() != TUNNEL_TYPE_PORT_FORWARD
+                || !isProtocolTunnelName(tunnelDto.getName())
+                || tunnelDto.getInNodeId() == null
+                || !tunnelDto.getName().equals(PROTOCOL_TUNNEL_NAME_PREFIX + tunnelDto.getInNodeId())) {
+            return R.err("协议管理隧道名称无效");
+        }
+        return createTunnelInternal(tunnelDto, true);
+    }
+
+    private R createTunnelInternal(TunnelDto tunnelDto, boolean protocolManaged) {
         // 1. 验证隧道名称唯一性
         R nameValidationResult = validateTunnelNameUniqueness(tunnelDto.getName());
         if (nameValidationResult.getCode() != 0) {
@@ -130,6 +152,7 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
 
         // 4. 构建隧道实体
         Tunnel tunnel = buildTunnelEntity(tunnelDto, inNodeValidation.getNode());
+        tunnel.setProtocolManaged(protocolManaged);
 
         // 5. 根据隧道类型设置出口参数
         R outNodeSetupResult = setupOutNodeParameters(tunnel, tunnelDto, inNodeValidation.getNode().getServerIp());
@@ -154,8 +177,6 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
         List<Tunnel> tunnelList = this.list();
         // 打标:哪些是搭协议时自动建的隧道,好让前端默认收起来。
         // 命名由 InboundServiceImpl.ensurePortForwardTunnel 固定生成。
-        tunnelList.forEach(t -> t.setProtocolManaged(
-                t.getName() != null && t.getName().startsWith("inbound-tunnel-node")));
         return R.ok(tunnelList);
     }
 
@@ -171,6 +192,15 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
         Tunnel existingTunnel = this.getById(tunnelUpdateDto.getId());
         if (existingTunnel == null) {
             return R.err(ERROR_TUNNEL_NOT_FOUND);
+        }
+
+        if (Boolean.TRUE.equals(existingTunnel.getProtocolManaged())
+                && !Objects.equals(existingTunnel.getName(), tunnelUpdateDto.getName())) {
+            return R.err("协议管理隧道名称不能修改");
+        }
+        if (isReservedProtocolTunnelName(tunnelUpdateDto.getName())
+                && !Boolean.TRUE.equals(existingTunnel.getProtocolManaged())) {
+            return R.err("该隧道名称为协议管理系统保留名称");
         }
 
         // 2. 验证隧道名称唯一性（排除自身）
@@ -293,6 +323,15 @@ public class TunnelServiceImpl extends ServiceImpl<TunnelMapper, Tunnel> impleme
             return R.err(ERROR_TUNNEL_NAME_EXISTS);
         }
         return R.ok();
+    }
+
+    private boolean isProtocolTunnelName(String tunnelName) {
+        return tunnelName != null && tunnelName.matches(PROTOCOL_TUNNEL_NAME_PREFIX + "[0-9]+");
+    }
+
+    private boolean isReservedProtocolTunnelName(String tunnelName) {
+        return tunnelName != null
+                && tunnelName.trim().matches("(?i)" + PROTOCOL_TUNNEL_NAME_PREFIX + "[0-9]+");
     }
 
     /**

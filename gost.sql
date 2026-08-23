@@ -119,6 +119,7 @@ CREATE TABLE `statistics_flow` (
 CREATE TABLE `tunnel` (
   `id` int(10) NOT NULL,
   `name` varchar(100) NOT NULL,
+  `protocol_managed` tinyint(1) NOT NULL DEFAULT '0',
   `traffic_ratio` decimal(10,1) NOT NULL DEFAULT '1.0',
   `in_node_id` int(10) NOT NULL,
   `in_ip` varchar(100) NOT NULL,
@@ -238,7 +239,8 @@ ALTER TABLE `statistics_flow`
 -- 表的索引 `tunnel`
 --
 ALTER TABLE `tunnel`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_tunnel_name` (`name`);
 
 --
 -- 表的索引 `user`

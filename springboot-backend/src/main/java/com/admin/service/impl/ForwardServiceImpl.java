@@ -230,8 +230,8 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
             forwardList = baseMapper.selectAllForwardsWithTunnel();
         }
 
-        // 打标:哪些是搭协议/搭中转自动生成的管道,好让前端默认收起来
-        forwardList.forEach(f -> f.setProtocolManaged(isProtocolManaged(f.getName(), f.getTunnelName())));
+        // 仅使用隧道持久化标记判断,不再从可修改的名称推断来源。
+        forwardList.forEach(f -> f.setProtocolManaged(Boolean.TRUE.equals(f.getProtocolManaged())));
 
         return R.ok(forwardList);
     }
@@ -306,14 +306,6 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
 
         String joined = String.join("\n", links);
         return Base64.getEncoder().encodeToString(joined.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /** 协议转发命名固定 inbound-{入站id}-user-{用户id},隧道固定 inbound-tunnel-node{节点id} */
-    private static boolean isProtocolManaged(String forwardName, String tunnelName) {
-        if (forwardName != null && forwardName.matches("^inbound-\\d+-user-\\d+$")) {
-            return true;
-        }
-        return tunnelName != null && tunnelName.startsWith("inbound-tunnel-node");
     }
 
     @Override

@@ -72,11 +72,8 @@ public class Tunnel extends BaseEntity {
     private String interfaceName;
 
     /**
-     * 是否是搭协议时自动建的隧道(不入库,查询时现算)。
-     *
-     * 每台搭了协议的机器都会自动生成一条端口转发隧道,用来挂协议的 gost 转发。
-     * 用户没手工建过却在隧道管理里看到它们,容易困惑,所以前端默认折叠隐藏。
+     * 是否是搭协议时自动建的隧道。
+     * 该字段持久化,避免仅靠可修改的名称判断隧道来源。
      */
-    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Boolean protocolManaged;
 }
