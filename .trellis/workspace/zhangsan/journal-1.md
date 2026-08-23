@@ -70,3 +70,24 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 4: 完成手动转发协议自动匹配
+
+**Date**: 2026-08-23
+**Task**: 完成手动转发协议自动匹配
+**Branch**: `main`
+
+### Summary
+
+转发管理现在可按单个 loopback 目标端口自动匹配 TMS 入站和转发所属用户凭证，支持端口转发/隧道转发的正确入口节点，并让转发单条链接和聚合订阅无需手填原始协议链接；补充后端错误契约、任务设计和验收记录。前端构建与 Java 8 源码编译通过，Maven Java 21 构建受当前 JDK 8 环境限制。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c078f58` | (see git log) |
+
+### Status
+
+[OK] **Completed**
