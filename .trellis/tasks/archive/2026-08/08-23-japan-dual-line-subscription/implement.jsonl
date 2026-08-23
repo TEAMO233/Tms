@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "后端分层、接口、权限、R 响应和 JSON 约定"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "幂等查找、存量 schema 约束和禁止无计划迁移的数据库规范"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "跨层实现、构建和手工回归要求"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端页面、API 和类型联动的总规范"}
+{"file": ".trellis/spec/frontend/api-networking.md", "reason": "新增组合 POST 接口、慢请求路径和错误处理约定"}

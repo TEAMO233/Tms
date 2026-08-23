@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "检查后端接口、权限、R 信封和分层是否符合项目规范"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "检查幂等实现是否避免未计划的 schema 变更和数据破坏"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "检查后端构建、跨层回归和错误路径"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "检查 lint、build 和页面回归要求"}
+{"file": ".trellis/spec/frontend/api-networking.md", "reason": "检查 API 类型、慢请求、错误提示和刷新链路"}

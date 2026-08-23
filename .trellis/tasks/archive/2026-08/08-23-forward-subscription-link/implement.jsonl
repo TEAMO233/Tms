@@ -1,0 +1,8 @@
+{"file":".trellis/spec/backend/index.md","reason":"后端分层、端点、返回值和迁移的总规范。"}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"forward/user 新增字段、MySQL 5.7 迁移和 Mapper 约定。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"链接解析失败、权限失败和公开订阅接口的 R 错误契约。"}
+{"file":".trellis/spec/frontend/index.md","reason":"转发管理页、API 和构建验收的前端总规范。"}
+{"file":".trellis/spec/frontend/api-networking.md","reason":"新增转发订阅接口必须遵守 POST、Network 和慢接口约定。"}
+{"file":".trellis/tasks/08-23-forward-subscription-link/prd.md","reason":"已确认的用户目标、范围和验收标准。"}
+{"file":".trellis/tasks/08-23-forward-subscription-link/design.md","reason":"转发订阅的数据流、链接改写、安全和兼容设计。"}
+{"file":".trellis/tasks/08-23-forward-subscription-link/implement.md","reason":"实施顺序、验证命令和回滚风险点。"}
