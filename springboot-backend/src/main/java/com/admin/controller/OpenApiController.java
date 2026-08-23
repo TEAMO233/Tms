@@ -17,6 +17,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Objects;
 
 @RestController
@@ -37,10 +38,28 @@ public class OpenApiController extends BaseController {
     @GetMapping("/sub")
     public String sub(@RequestParam("token") String token, HttpServletResponse response) {
         // 单线路订阅供 Sub-Store 的 /flow 接口读取用量;聚合订阅没有唯一配额,不伪造流量头。
-        InboundUser line = inboundUserMapper.selectOne(new QueryWrapper<InboundUser>()
-                .eq("sub_token", token).last("limit 1"));
-        if (line != null && line.getUserId() != null) {
-            User userInfo = userService.getById(line.getUserId());
+        // 同一线路的多个协议会共享一个 sub_token,所以按匹配记录的【唯一用户】判断;
+        // 若异常地跨用户复用 token,直接不返回流量头,避免泄露错误用户的用量信息。
+        if (token == null || token.trim().isEmpty()) {
+            return "";
+        }
+        List<InboundUser> lines = inboundUserMapper.selectList(new QueryWrapper<InboundUser>()
+                .eq("sub_token", token));
+        Long ownerUserId = null;
+        boolean ambiguousOwner = false;
+        for (InboundUser line : lines) {
+            if (line.getUserId() == null) {
+                continue;
+            }
+            if (ownerUserId == null) {
+                ownerUserId = line.getUserId();
+            } else if (!ownerUserId.equals(line.getUserId())) {
+                ambiguousOwner = true;
+                break;
+            }
+        }
+        if (!ambiguousOwner && ownerUserId != null) {
+            User userInfo = userService.getById(ownerUserId);
             if (userInfo != null) {
                 final long GIGA = 1024L * 1024L * 1024L;
                 response.setHeader("subscription-userinfo", buildSubscriptionHeader(
