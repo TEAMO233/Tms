@@ -517,7 +517,7 @@ export default function ForwardPage() {
   };
 
   const handleGenerateClientLink = async (forward: Forward) => {
-    // 来源判断统一交给后端:自动协议转发看 InboundUser 关系,手动转发看 sourceLink。
+    // 来源判断统一交给后端:先查协议分配关系,再按手工转发目标匹配协议,最后才用 sourceLink。
     // 列表上的 protocolManaged 只是展示折叠标记,不能作为协议来源的事实依据。
     setClientLinkForward(forward);
     setClientLink('');
@@ -1439,11 +1439,7 @@ export default function ForwardPage() {
               color="secondary"
               onPress={() => handleGenerateClientLink(forward)}
               className="flex-1 min-w-[5rem] min-h-8"
-              title={
-                forward.protocolManaged || forward.sourceLink?.trim()
-                  ? '生成客户端连接链接'
-                  : '未配置协议来源，点击查看提示'
-              }
+              title="优先自动匹配系统协议凭证，未匹配时使用原始分享链接"
               startContent={
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 010 5.656l-2 2a4 4 0 01-5.656-5.656l1-1m4-4l1-1a4 4 0 015.656 5.656l-2 2a4 4 0 01-5.656 0M8 12h8" />
@@ -1834,7 +1830,7 @@ export default function ForwardPage() {
                     {targetInbounds.length > 0 && (
                       <div className="flex flex-wrap items-center gap-2 -mt-1">
                         <span className="text-tiny text-default-400">
-                          {selectedTunnel?.type === 2 ? '出口机' : '这台机器'}上的协议:
+                          {selectedTunnel?.type === 2 ? '出口机' : '这台机器'}上的协议（自动读取已分配凭证）:
                         </span>
                         {targetInbounds.map((ib: any) => (
                           <Button
@@ -1873,14 +1869,14 @@ export default function ForwardPage() {
                   </div>
 
                   <Textarea
-                    label="原始协议分享链接（可选）"
+                    label="原始协议分享链接（未匹配时备用）"
                     placeholder="hysteria2://...@56.78.34.123:4001"
                     value={form.sourceLink || ''}
                     onChange={(e) => setForm(prev => ({ ...prev, sourceLink: e.target.value }))}
                     isInvalid={!!errors.sourceLink}
                     errorMessage={errors.sourceLink}
                     variant="bordered"
-                    description="只用于生成客户端连接链接，不改变 Gost 的目标地址。留空表示普通端口转发，无法生成协议链接"
+                    description="点上面的系统协议按钮填入本机目标端口后,已有启用凭证即可自动生成链接,无需填写原始链接。原始链接仅用于未匹配系统协议时的兼容兜底,不改变 Gost 的目标地址"
                     minRows={2}
                     maxRows={4}
                   />
@@ -2026,7 +2022,7 @@ export default function ForwardPage() {
                         <SubQr url={clientLink} size={220} />
                       </div>
                       <p className="text-xs text-default-400">
-                        这是替换为当前转发入口后的客户端链接，原始协议参数和凭证由后端保留。
+                        系统协议匹配成功时,参数和已分配凭证由后端生成;未匹配时才会改写你填写的原始链接入口。
                       </p>
                     </div>
                   ) : clientLinkError ? (

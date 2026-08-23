@@ -959,9 +959,9 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
     /**
      * 解析一条转发的协议来源并改写成客户端入口链接。
      *
-     * 自动协议转发必须从 InboundUser 关系取协议和凭证,手工转发才读取
-     * source_link。不能根据 remote_addr 的端口猜协议,因为 127.0.0.1:40000
-     * 只表达网络目标,没有任何凭证或 TLS/Reality 参数。
+     * 已由协议分配流程关联的转发继续优先从 InboundUser 关系取协议和凭证。
+     * 手工转发只有在 remote_addr 是单个本机协议目标时才按端口精确匹配
+     * TMS 入站;匹配不到或存在歧义时才兼容旧的 source_link 来源。
      */
     private String resolveForwardClientLink(Forward forward) {
         if (forward == null) {
@@ -1005,8 +1005,20 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
             throw new IllegalArgumentException("该转发关联的协议来源已停用");
         }
 
+        ManualForwardMatchResult manualMatch = matchManualForwardProtocol(forward, tunnel);
+        if (manualMatch.getStatus() == ManualForwardMatchStatus.MATCHED) {
+            return ClientLinkUtil.buildInboundLink(manualMatch.getInbound(),
+                    manualMatch.getInboundUser(), manualMatch.getEntryNode(), forward);
+        }
+        if (manualMatch.getStatus() == ManualForwardMatchStatus.CREDENTIAL_MISSING) {
+            throw new IllegalArgumentException(manualMatch.getErrorMessage());
+        }
+
         String sourceLink = ClientLinkUtil.normalizeSourceLink(forward.getSourceLink());
         if (sourceLink == null) {
+            if (manualMatch.getStatus() == ManualForwardMatchStatus.AMBIGUOUS) {
+                throw new IllegalArgumentException(manualMatch.getErrorMessage());
+            }
             throw new IllegalArgumentException("该转发未配置协议来源");
         }
 
@@ -1017,6 +1029,89 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         String endpointHost = ClientLinkUtil.resolveNodeEndpoint(entryNode);
         return ClientLinkUtil.rewriteSourceLink(sourceLink, endpointHost,
                 forward.getInPort(), forward.getName());
+    }
+
+    /**
+     * 手工转发的 TMS 协议匹配只接受一个 loopback 目标,避免把 Gost 的多目标
+     * 负载策略误当成某个协议的唯一来源。凭证查询必须使用转发归属用户,
+     * 不能因为当前请求来自管理员就拿到其它用户的凭证。
+     */
+    private ManualForwardMatchResult matchManualForwardProtocol(Forward forward, Tunnel tunnel) {
+        if (forward.getUserId() == null || tunnel == null) {
+            return ManualForwardMatchResult.noMatch();
+        }
+
+        String remoteAddr = forward.getRemoteAddr();
+        if (remoteAddr == null) {
+            return ManualForwardMatchResult.noMatch();
+        }
+        String[] addresses = remoteAddr.split("[,\\r\\n]", -1);
+        if (addresses.length != 1 || addresses[0].trim().isEmpty()) {
+            return ManualForwardMatchResult.noMatch();
+        }
+
+        String targetHost = extractIpFromAddress(addresses[0]);
+        int targetPort = extractPortFromAddress(addresses[0]);
+        if (!isLoopbackTarget(targetHost) || targetPort < 1 || targetPort > 65535) {
+            return ManualForwardMatchResult.noMatch();
+        }
+
+        Long targetNodeId;
+        if (Objects.equals(tunnel.getType(), TUNNEL_TYPE_PORT_FORWARD)) {
+            targetNodeId = tunnel.getInNodeId();
+        } else if (Objects.equals(tunnel.getType(), TUNNEL_TYPE_TUNNEL_FORWARD)) {
+            targetNodeId = tunnel.getOutNodeId();
+        } else {
+            return ManualForwardMatchResult.noMatch();
+        }
+        if (targetNodeId == null || tunnel.getInNodeId() == null) {
+            return ManualForwardMatchResult.noMatch();
+        }
+
+        QueryWrapper<Inbound> inboundQuery = new QueryWrapper<Inbound>()
+                .eq("node_id", targetNodeId)
+                .eq("listen_port", targetPort)
+                .and(status -> status.isNull("status").or().ne("status", 0));
+        List<Inbound> activeInbounds = inboundMapper.selectList(inboundQuery);
+        if (activeInbounds == null || activeInbounds.isEmpty()) {
+            return ManualForwardMatchResult.noMatch();
+        }
+        if (activeInbounds.size() > 1) {
+            return ManualForwardMatchResult.ambiguous("目标端口对应多个启用协议,无法唯一生成链接");
+        }
+
+        Inbound inbound = activeInbounds.get(0);
+        QueryWrapper<InboundUser> userQuery = new QueryWrapper<InboundUser>()
+                .eq("inbound_id", inbound.getId())
+                .eq("user_id", forward.getUserId())
+                .and(status -> status.isNull("status").or().ne("status", 0));
+        List<InboundUser> activeUsers = inboundUserMapper.selectList(userQuery);
+        if (activeUsers == null || activeUsers.isEmpty()) {
+            String protocol = ClientLinkUtil.protocolDisplayName(inbound.getProtocol());
+            return ManualForwardMatchResult.credentialMissing(
+                    "该转发对应的" + protocol + "协议没有启用的用户凭证,请先分配或启用该协议凭证");
+        }
+        if (activeUsers.size() > 1) {
+            String protocol = ClientLinkUtil.protocolDisplayName(inbound.getProtocol());
+            return ManualForwardMatchResult.ambiguous(
+                    "该转发对应的" + protocol + "协议存在多个启用凭证,无法唯一生成链接");
+        }
+
+        Node entryNode = nodeService.getNodeById(tunnel.getInNodeId());
+        if (entryNode == null) {
+            throw new IllegalArgumentException("入口节点不存在");
+        }
+        return ManualForwardMatchResult.matched(inbound, activeUsers.get(0), entryNode);
+    }
+
+    private boolean isLoopbackTarget(String host) {
+        if (host == null) {
+            return false;
+        }
+        String normalizedHost = host.trim();
+        return "127.0.0.1".equals(normalizedHost)
+                || "::1".equals(normalizedHost)
+                || "localhost".equalsIgnoreCase(normalizedHost);
     }
 
     /** 为当前用户生成一次并长期复用转发订阅 token。 */
@@ -1728,6 +1823,53 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
 
 
     // ========== 内部数据类 ==========
+
+    private enum ManualForwardMatchStatus {
+        MATCHED,
+        NO_MATCH,
+        AMBIGUOUS,
+        CREDENTIAL_MISSING
+    }
+
+    /** 手工转发匹配结果,状态之外不携带任何凭证内容到日志或接口。 */
+    @Data
+    private static class ManualForwardMatchResult {
+        private final ManualForwardMatchStatus status;
+        private final Inbound inbound;
+        private final InboundUser inboundUser;
+        private final Node entryNode;
+        private final String errorMessage;
+
+        private ManualForwardMatchResult(ManualForwardMatchStatus status, Inbound inbound,
+                                         InboundUser inboundUser, Node entryNode, String errorMessage) {
+            this.status = status;
+            this.inbound = inbound;
+            this.inboundUser = inboundUser;
+            this.entryNode = entryNode;
+            this.errorMessage = errorMessage;
+        }
+
+        private static ManualForwardMatchResult matched(Inbound inbound, InboundUser inboundUser,
+                                                        Node entryNode) {
+            return new ManualForwardMatchResult(ManualForwardMatchStatus.MATCHED,
+                    inbound, inboundUser, entryNode, null);
+        }
+
+        private static ManualForwardMatchResult noMatch() {
+            return new ManualForwardMatchResult(ManualForwardMatchStatus.NO_MATCH,
+                    null, null, null, null);
+        }
+
+        private static ManualForwardMatchResult ambiguous(String errorMessage) {
+            return new ManualForwardMatchResult(ManualForwardMatchStatus.AMBIGUOUS,
+                    null, null, null, errorMessage);
+        }
+
+        private static ManualForwardMatchResult credentialMissing(String errorMessage) {
+            return new ManualForwardMatchResult(ManualForwardMatchStatus.CREDENTIAL_MISSING,
+                    null, null, null, errorMessage);
+        }
+    }
 
     /**
      * 用户信息封装类

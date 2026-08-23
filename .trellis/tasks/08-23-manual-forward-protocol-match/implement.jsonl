@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/index.md", "reason": "后端分层、返回值、校验与构建约束"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "MyBatis-Plus 查询、裸列名与无 schema 变更边界"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "单条链接错误和聚合跳过的 R 契约"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "协议凭证和完整链接的日志脱敏要求"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "转发管理表单和 API 变更的前端约束"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端构建与质量检查命令"}
