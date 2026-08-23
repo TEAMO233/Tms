@@ -49,6 +49,7 @@ export default function InboundPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDate: null, flowGb: null });
   const [assignLoading, setAssignLoading] = useState(false);
+  const [clearLoading, setClearLoading] = useState<number | null>(null);
 
   // 「我自己用」:一键开给当前管理员自己,完事直接把订阅链接弹出来
   const [selfLoading, setSelfLoading] = useState<number | null>(null);
@@ -189,12 +190,20 @@ export default function InboundPage() {
 
   const handleClearNode = async (nodeId: number, nodeName: string) => {
     if (!window.confirm(`确定清空「${nodeName}」上的直连协议?(连带其转发/用户;中转协议不受影响)`)) return;
-    const res = await deleteInboundsByNode(nodeId, false);
-    if (res.code === 0) {
-      toast.success("已清空该机协议");
-      loadAll();
-    } else {
-      toast.error(res.msg || "清空失败");
+    if (clearLoading !== null) return;
+    setClearLoading(nodeId);
+    try {
+      const res = await deleteInboundsByNode(nodeId, false);
+      if (res.code === 0) {
+        toast.success("已清空该机协议");
+        loadAll();
+      } else {
+        toast.error(res.msg || "清空失败");
+      }
+    } catch (e) {
+      toast.error("清空请求超时,请刷新确认实际状态");
+    } finally {
+      setClearLoading(null);
     }
   };
 
@@ -280,7 +289,14 @@ export default function InboundPage() {
                   >
                     🔑 我自己用
                   </Button>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleClearNode(n.id, n.name)}>
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    isLoading={clearLoading === n.id}
+                    isDisabled={clearLoading !== null}
+                    onPress={() => handleClearNode(n.id, n.name)}
+                  >
                     清空该机
                   </Button>
                 </div>

@@ -278,7 +278,15 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         }
         List<Inbound> inbounds = this.list(qw);
         for (Inbound in : inbounds) {
-            deleteInbound(in.getId());
+            // 批量清空时禁止每个入站都重推一次 sing-box,全部删除后统一推送。
+            deleteInboundInternal(in.getId(), false);
+        }
+        // 只做一次节点通信和 sing-box 重载,避免 6 个协议产生 6 轮配置下发。
+        if (!inbounds.isEmpty()) {
+            R push = pushNodeSingbox(nodeId);
+            if (push.getCode() != 0) {
+                return R.err("协议已清空,但下发 sing-box 配置失败:" + push.getMsg());
+            }
         }
         return R.ok();
     }
@@ -297,6 +305,11 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
 
     @Override
     public R deleteInbound(Long id) {
+        return deleteInboundInternal(id, true);
+    }
+
+    /** 删除单个入站及其用户转发;批量清空时由调用方统一推送配置。 */
+    private R deleteInboundInternal(Long id, boolean pushConfig) {
         Inbound in = this.getById(id);
         if (in == null) {
             return R.err("入站不存在");
@@ -310,7 +323,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             inboundUserMapper.deleteById(u.getId());
         }
         this.removeById(id);
-        pushNodeSingbox(in.getNodeId());
+        if (pushConfig) {
+            pushNodeSingbox(in.getNodeId());
+        }
         return R.ok();
     }
 

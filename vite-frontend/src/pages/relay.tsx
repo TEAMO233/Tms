@@ -46,6 +46,7 @@ export default function RelayPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDate: null, flowGb: null });
   const [assignLoading, setAssignLoading] = useState(false);
+  const [clearLoading, setClearLoading] = useState<string | null>(null);
 
   // 「我自己用」:一键把这条中转开给当前管理员自己,完事直接弹订阅链接
   const [selfLoading, setSelfLoading] = useState<string | null>(null);
@@ -182,12 +183,21 @@ export default function RelayPage() {
 
   const handleClearNode = async (nodeId: number, nodeName: string, landingId: any, landingName: string) => {
     if (!window.confirm(`确定清空「${nodeName} → ${landingName}」这条中转?(连带其转发/用户;直连和其它落地不受影响)`)) return;
-    const res = await deleteInboundsByNode(nodeId, true, landingId);
-    if (res.code === 0) {
-      toast.success("已清空该条中转");
-      loadAll();
-    } else {
-      toast.error(res.msg || "清空失败");
+    const clearKey = `${nodeId}-${landingId}`;
+    if (clearLoading !== null) return;
+    setClearLoading(clearKey);
+    try {
+      const res = await deleteInboundsByNode(nodeId, true, landingId);
+      if (res.code === 0) {
+        toast.success("已清空该条中转");
+        loadAll();
+      } else {
+        toast.error(res.msg || "清空失败");
+      }
+    } catch (e) {
+      toast.error("清空请求超时,请刷新确认实际状态");
+    } finally {
+      setClearLoading(null);
     }
   };
 
@@ -261,7 +271,14 @@ export default function RelayPage() {
                   >
                     🔑 我自己用
                   </Button>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleClearNode(n.id, n.name, ln.landingId, landingName)}>
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    isLoading={clearLoading === `${n.id}-${ln.landingId}`}
+                    isDisabled={clearLoading !== null}
+                    onPress={() => handleClearNode(n.id, n.name, ln.landingId, landingName)}
+                  >
                     清空该条
                   </Button>
                 </div>
