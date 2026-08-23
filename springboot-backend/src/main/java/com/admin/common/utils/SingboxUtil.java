@@ -81,12 +81,7 @@ public class SingboxUtil {
      */
     public static String buildVlessRealityLink(String uuid, String serverIp, Integer port,
                                                String sni, String publicKey, String shortId, String remark) {
-        String frag;
-        try {
-            frag = java.net.URLEncoder.encode(remark == null ? "" : remark, "UTF-8");
-        } catch (Exception e) {
-            frag = "";
-        }
+        String frag = urlEncode(remark);
         return "vless://" + uuid + "@" + formatUriHost(serverIp) + ":" + port
                 + "?encryption=none&flow=xtls-rprx-vision&security=reality"
                 + "&sni=" + (sni == null ? "" : sni)
@@ -221,7 +216,10 @@ public class SingboxUtil {
 
     private static String urlEncode(String s) {
         try {
-            return java.net.URLEncoder.encode(s == null ? "" : s, "UTF-8");
+            // URLEncoder 是表单编码,会把 URI fragment 中的空格错误编码为 "+"。
+            // fragment 使用 %20 表示空格,真实加号则保留为 %2B。
+            return java.net.URLEncoder.encode(s == null ? "" : s, "UTF-8")
+                    .replace("+", "%20");
         } catch (Exception e) {
             return "";
         }
