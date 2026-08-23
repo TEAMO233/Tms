@@ -681,6 +681,24 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- user 表：添加转发聚合订阅 token（如果不存在）
+SET @sql = (
+  SELECT IF(
+    NOT EXISTS (
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE table_schema = DATABASE()
+        AND table_name = 'user'
+        AND column_name = 'forward_sub_token'
+    ),
+    'ALTER TABLE \`user\` ADD COLUMN \`forward_sub_token\` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT "转发聚合订阅token";',
+    'SELECT "Column \`forward_sub_token\` already exists in \`user\`";'
+  )
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- node 表：删除 port 字段、添加 server_ip 字段（如果不存在）
 SET @sql = (
   SELECT IF(
@@ -1118,6 +1136,24 @@ SET @sql = (
     ),
     'ALTER TABLE \`forward\` ADD COLUMN \`interface_name\` VARCHAR(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL;',
     'SELECT "Column \`interface_name\` already exists in \`forward\`";'
+  )
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- forward 表：添加原始协议来源链接（如果不存在）
+SET @sql = (
+  SELECT IF(
+    NOT EXISTS (
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE table_schema = DATABASE()
+        AND table_name = 'forward'
+        AND column_name = 'source_link'
+    ),
+    'ALTER TABLE \`forward\` ADD COLUMN \`source_link\` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT "原始客户端协议分享链接,仅用于生成转发客户端链接";',
+    'SELECT "Column \`source_link\` already exists in \`forward\`";'
   )
 );
 PREPARE stmt FROM @sql;

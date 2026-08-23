@@ -44,6 +44,10 @@ public class Forward extends BaseEntity{
 
     private Integer inx;
 
+    /** 可选的原始客户端协议分享链接,空值表示普通裸端口转发。 */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String sourceLink;
+
     /** 单条转发绑定的限速规则ID(功能B),为空则用用户隧道默认规则 */
     @TableField(updateStrategy = FieldStrategy.IGNORED)
     private Integer speedId;

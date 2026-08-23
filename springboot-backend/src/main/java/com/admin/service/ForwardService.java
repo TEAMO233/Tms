@@ -1,6 +1,7 @@
 package com.admin.service;
 
 import com.admin.common.dto.ForwardDto;
+import com.admin.common.dto.ForwardSubscriptionLinkDto;
 import com.admin.common.dto.ForwardUpdateDto;
 import com.admin.common.lang.R;
 import com.admin.entity.Forward;
@@ -92,4 +93,24 @@ public interface ForwardService extends IService<Forward> {
      * @return R.ok(Forward) 或 R.err
      */
     R createForwardForUser(ForwardDto forwardDto, Integer userId, String userName);
+
+    /**
+     * 生成单条转发对应的客户端协议链接。
+     * @param request 转发ID
+     * @return 客户端链接
+     */
+    R getForwardClientLink(ForwardSubscriptionLinkDto request);
+
+    /**
+     * 为当前登录用户生成(或复用)转发聚合订阅 token。
+     * @return token及本次可用/跳过数量
+     */
+    R createForwardSubscription();
+
+    /**
+     * 免登录读取转发聚合订阅内容。
+     * @param token 转发订阅 token
+     * @return Base64编码的逐行客户端链接
+     */
+    String buildForwardSubscription(String token);
 }

@@ -9,6 +9,7 @@ import com.admin.common.utils.Md5Util;
 import com.admin.entity.User;
 import com.admin.entity.UserTunnel;
 import com.admin.service.InboundService;
+import com.admin.service.ForwardService;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +25,19 @@ public class OpenApiController extends BaseController {
     @Autowired
     private InboundService inboundService;
 
+    @Autowired
+    private ForwardService forwardService;
+
     /** 订阅:按 token 返回该用户所有协议链接的 base64(客户端订阅用,免登录) */
     @GetMapping("/sub")
     public String sub(@RequestParam("token") String token) {
         return inboundService.buildSubscription(token);
+    }
+
+    /** 转发订阅:按 token 返回该用户当前可用转发的 Base64 客户端链接,免登录。 */
+    @GetMapping("/forward_sub")
+    public String forwardSub(@RequestParam("token") String token) {
+        return forwardService.buildForwardSubscription(token);
     }
 
     @LogAnnotation

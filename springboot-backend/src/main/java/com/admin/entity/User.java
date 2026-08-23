@@ -66,5 +66,8 @@ public class User extends BaseEntity {
      */
     private String allSubToken;
 
+    /** 当前用户「转发订阅」的稳定 token,与全部线路订阅分开。 */
+    private String forwardSubToken;
+
 
 }

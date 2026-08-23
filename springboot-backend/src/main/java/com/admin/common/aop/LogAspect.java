@@ -17,12 +17,23 @@ import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @Aspect
 @Slf4j
 public class LogAspect {
+
+    /**
+     * 请求/响应日志不能把协议凭证和免登录订阅 token 原样落盘。
+     * 业务响应仍返回真实值,这里只对 LogAspect 序列化出的副本做脱敏。
+     */
+    private static final Set<String> SENSITIVE_FIELDS = new HashSet<>(Arrays.asList(
+            "sourcelink", "link", "token", "subtoken", "allsubtoken", "forwardsubtoken",
+            "password", "pwd", "secret", "uuid"
+    ));
 
     @Pointcut("@annotation(com.admin.common.aop.LogAnnotation)")
     public void pt() {
@@ -71,10 +82,11 @@ public class LogAspect {
         
 
         // 获取请求参数
-        String requestParams = getRequestParams(joinPoint);
-        
+        String requestParams = maskSensitiveJson(getRequestParams(joinPoint));
+
         // 获取返回参数
-        String responseParams = returnValue != null ? JSON.toJSONString(returnValue) : "无返回值";
+        String responseParams = returnValue != null
+                ? maskSensitiveJson(JSON.toJSONString(returnValue)) : "无返回值";
         
         // 合并为一条完整的日志信息
         String logMessage = String.format(
@@ -126,8 +138,8 @@ public class LogAspect {
 
             
             // 获取请求参数
-            String requestParams = getRequestParams(joinPoint);
-            
+            String requestParams = maskSensitiveJson(getRequestParams(joinPoint));
+
             // 获取异常信息
             String exceptionMsg = ex != null ? ex.getMessage() : "未知异常";
             
@@ -189,5 +201,45 @@ public class LogAspect {
         } catch (Exception e) {
             return "获取参数失败: " + e.getMessage();
         }
+    }
+
+    /** 对日志副本递归脱敏,避免 sourceLink/link/token 嵌在 data/list 里漏出。 */
+    private String maskSensitiveJson(String json) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+        try {
+            Object parsed = JSON.parse(json);
+            if (!(parsed instanceof com.alibaba.fastjson.JSONObject)
+                    && !(parsed instanceof com.alibaba.fastjson.JSONArray)) {
+                return json;
+            }
+            maskSensitiveValue(parsed);
+            return JSON.toJSONString(parsed);
+        } catch (Exception e) {
+            // 非 JSON 文本(例如“无参数”)保持原样;不影响业务请求日志。
+            return json;
+        }
+    }
+
+    private void maskSensitiveValue(Object value) {
+        if (value instanceof com.alibaba.fastjson.JSONObject) {
+            com.alibaba.fastjson.JSONObject object = (com.alibaba.fastjson.JSONObject) value;
+            for (String key : new HashSet<>(object.keySet())) {
+                if (isSensitiveField(key)) {
+                    object.put(key, "[已脱敏]");
+                } else {
+                    maskSensitiveValue(object.get(key));
+                }
+            }
+        } else if (value instanceof com.alibaba.fastjson.JSONArray) {
+            for (Object item : (com.alibaba.fastjson.JSONArray) value) {
+                maskSensitiveValue(item);
+            }
+        }
+    }
+
+    private boolean isSensitiveField(String key) {
+        return key != null && SENSITIVE_FIELDS.contains(key.replace("_", "").toLowerCase(java.util.Locale.ROOT));
     }
 }

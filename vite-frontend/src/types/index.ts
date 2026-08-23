@@ -69,6 +69,56 @@ export interface Tunnel {
   flow?: number; // 流量计算类型
 }
 
+export interface Forward {
+  id: number;
+  name: string;
+  tunnelId: number;
+  tunnelName: string;
+  inIp: string;
+  inPort: number;
+  remoteAddr: string;
+  interfaceName?: string;
+  strategy: string;
+  status: number;
+  inFlow: number;
+  outFlow: number;
+  serviceRunning: boolean;
+  createdTime: string;
+  userName?: string;
+  userId?: number;
+  inx?: number;
+  expTime?: number;
+  speedId?: number;
+  /** 手动填写的原始协议分享链接；自动协议转发可能没有此字段 */
+  sourceLink?: string | null;
+  /** 搭协议/搭中转自动生成的内部管道,默认不显示在这一页 */
+  protocolManaged?: boolean;
+}
+
+export interface ForwardForm {
+  id?: number;
+  userId?: number;
+  name: string;
+  tunnelId: number | null;
+  inPort: number | null;
+  remoteAddr: string;
+  interfaceName?: string;
+  strategy: string;
+  expTime?: number | null;
+  speedId?: number | null;
+  sourceLink?: string;
+}
+
+export interface ForwardClientLinkResponse {
+  link: string;
+}
+
+export interface ForwardSubscriptionResponse {
+  subToken: string;
+  availableCount: number;
+  skippedCount: number;
+}
+
 export interface SpeedLimit {
   id: number;
   name: string;

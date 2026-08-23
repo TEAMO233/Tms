@@ -1,3 +1,5 @@
+import type { Forward, ForwardForm, ForwardSubscriptionResponse } from "@/types";
+
 import { useState, useEffect } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
@@ -13,6 +15,7 @@ import { Accordion, AccordionItem } from "@heroui/accordion";
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
 import toast from 'react-hot-toast';
+import { SubQr } from "@/components/sub-qr";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
   DndContext,
@@ -47,7 +50,9 @@ import {
   diagnoseForward,
   updateForwardOrder,
   getSpeedLimitList,
-  getInboundList
+  getInboundList,
+  getForwardClientLink,
+  createForwardSubscription,
 } from "@/api";
 import { JwtUtil } from "@/utils/jwt";
 
@@ -65,29 +70,8 @@ const endOfDayAfter = (days: number) => {
   return d.getTime();
 };
 
-interface Forward {
-  id: number;
-  name: string;
-  tunnelId: number;
-  tunnelName: string;
-  inIp: string;
-  inPort: number;
-  remoteAddr: string;
-  interfaceName?: string;
-  strategy: string;
-  status: number;
-  inFlow: number;
-  outFlow: number;
-  serviceRunning: boolean;
-  createdTime: string;
-  userName?: string;
-  userId?: number;
-  inx?: number;
-  expTime?: number;
-  speedId?: number;
-  /** 搭协议/搭中转自动生成的内部管道,默认不显示在这一页 */
-  protocolManaged?: boolean;
-}
+const getForwardSubscriptionUrl = (token: string): string =>
+  `${window.location.origin}/api/v1/open_api/forward_sub?token=${encodeURIComponent(token)}`;
 
 interface Tunnel {
   id: number;
@@ -99,19 +83,6 @@ interface Tunnel {
   protocol?: string;
   inNodeId?: number;
   outNodeId?: number;
-}
-
-interface ForwardForm {
-  id?: number;
-  userId?: number;
-  name: string;
-  tunnelId: number | null;
-  inPort: number | null;
-  remoteAddr: string;
-  interfaceName?: string;
-  strategy: string;
-  expTime?: number | null;
-  speedId?: number | null;
 }
 
 interface AddressItem {
@@ -200,6 +171,19 @@ export default function ForwardPage() {
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
   const [addressModalTitle, setAddressModalTitle] = useState('');
   const [addressList, setAddressList] = useState<AddressItem[]>([]);
+
+  // 单条客户端链接
+  const [clientLinkModalOpen, setClientLinkModalOpen] = useState(false);
+  const [clientLinkLoading, setClientLinkLoading] = useState(false);
+  const [clientLinkForward, setClientLinkForward] = useState<Forward | null>(null);
+  const [clientLink, setClientLink] = useState('');
+  const [clientLinkError, setClientLinkError] = useState('');
+
+  // 当前登录用户的转发聚合订阅
+  const [forwardSubscriptionModalOpen, setForwardSubscriptionModalOpen] = useState(false);
+  const [forwardSubscriptionLoading, setForwardSubscriptionLoading] = useState(false);
+  const [forwardSubscription, setForwardSubscription] = useState<ForwardSubscriptionResponse | null>(null);
+  const [forwardSubscriptionError, setForwardSubscriptionError] = useState('');
   
   // 导出相关状态
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -228,7 +212,8 @@ export default function ForwardPage() {
     interfaceName: '',
     strategy: 'fifo',
     expTime: null,
-    speedId: null
+    speedId: null,
+    sourceLink: ''
   });
   
   // 表单验证错误
@@ -493,7 +478,8 @@ export default function ForwardPage() {
       interfaceName: '',
       strategy: 'fifo',
       expTime: null,
-      speedId: null
+      speedId: null,
+      sourceLink: ''
     });
     setSelectedTunnel(null);
     setErrors({});
@@ -513,12 +499,79 @@ export default function ForwardPage() {
       interfaceName: forward.interfaceName || '',
       strategy: forward.strategy || 'fifo',
       expTime: forward.expTime ?? null,
-      speedId: forward.speedId ?? null
+      speedId: forward.speedId ?? null,
+      sourceLink: forward.sourceLink || ''
     });
     const tunnel = tunnels.find(t => t.id === forward.tunnelId);
     setSelectedTunnel(tunnel || null);
     setErrors({});
     setModalOpen(true);
+  };
+
+  const closeClientLinkModal = () => {
+    setClientLinkModalOpen(false);
+    setClientLinkLoading(false);
+    setClientLinkForward(null);
+    setClientLink('');
+    setClientLinkError('');
+  };
+
+  const handleGenerateClientLink = async (forward: Forward) => {
+    // 来源判断统一交给后端:自动协议转发看 InboundUser 关系,手动转发看 sourceLink。
+    // 列表上的 protocolManaged 只是展示折叠标记,不能作为协议来源的事实依据。
+    setClientLinkForward(forward);
+    setClientLink('');
+    setClientLinkError('');
+    setClientLinkModalOpen(true);
+    setClientLinkLoading(true);
+
+    try {
+      const response = await getForwardClientLink(forward.id);
+      if (response.code === 0 && response.data?.link) {
+        setClientLink(response.data.link);
+      } else {
+        const message = response.msg || '无法生成协议链接';
+        setClientLinkError(message);
+        toast.error(message);
+      }
+    } catch (error) {
+      console.error('生成协议链接失败:', error);
+      setClientLinkError('生成协议链接失败，请重试');
+      toast.error('生成协议链接失败，请重试');
+    } finally {
+      setClientLinkLoading(false);
+    }
+  };
+
+  const closeForwardSubscriptionModal = () => {
+    setForwardSubscriptionModalOpen(false);
+    setForwardSubscriptionLoading(false);
+    setForwardSubscription(null);
+    setForwardSubscriptionError('');
+  };
+
+  const handleGenerateForwardSubscription = async () => {
+    setForwardSubscriptionModalOpen(true);
+    setForwardSubscription(null);
+    setForwardSubscriptionError('');
+    setForwardSubscriptionLoading(true);
+
+    try {
+      const response = await createForwardSubscription();
+      if (response.code === 0 && response.data?.subToken) {
+        setForwardSubscription(response.data);
+      } else {
+        const message = response.msg || '生成转发订阅失败';
+        setForwardSubscriptionError(message);
+        toast.error(message);
+      }
+    } catch (error) {
+      console.error('生成转发订阅失败:', error);
+      setForwardSubscriptionError('生成转发订阅失败，请重试');
+      toast.error('生成转发订阅失败，请重试');
+    } finally {
+      setForwardSubscriptionLoading(false);
+    }
   };
 
   // 显示删除确认
@@ -619,7 +672,8 @@ export default function ForwardPage() {
           interfaceName: form.interfaceName,
           strategy: addressCount > 1 ? form.strategy : 'fifo',
           expTime: form.expTime,
-          speedId: form.speedId
+          speedId: form.speedId,
+          sourceLink: form.sourceLink?.trim() || ''
         };
         res = await updateForward(updateData);
       } else {
@@ -632,7 +686,8 @@ export default function ForwardPage() {
           interfaceName: form.interfaceName,
           strategy: addressCount > 1 ? form.strategy : 'fifo',
           expTime: form.expTime,
-          speedId: form.speedId
+          speedId: form.speedId,
+          sourceLink: form.sourceLink?.trim() || ''
         };
         res = await createForward(createData);
       }
@@ -1377,7 +1432,26 @@ export default function ForwardPage() {
             </div>
           </div>
           
-          <div className="flex gap-1.5 mt-3">
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            <Button
+              size="sm"
+              variant="flat"
+              color="secondary"
+              onPress={() => handleGenerateClientLink(forward)}
+              className="flex-1 min-w-[5rem] min-h-8"
+              title={
+                forward.protocolManaged || forward.sourceLink?.trim()
+                  ? '生成客户端连接链接'
+                  : '未配置协议来源，点击查看提示'
+              }
+              startContent={
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 010 5.656l-2 2a4 4 0 01-5.656-5.656l1-1m4-4l1-1a4 4 0 015.656 5.656l-2 2a4 4 0 01-5.656 0M8 12h8" />
+                </svg>
+              }
+            >
+              连接链接
+            </Button>
             <Button
               size="sm"
               variant="flat"
@@ -1468,7 +1542,7 @@ export default function ForwardPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-3 flex-wrap">
             {/* 显示模式切换按钮 */}
             <Button
               size="sm"
@@ -1488,6 +1562,18 @@ export default function ForwardPage() {
                   <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                 </svg>
               )}
+            </Button>
+
+            {/* 转发订阅只读取当前登录账号名下的转发,管理员列表里的其他用户不会混入 */}
+            <Button
+              size="sm"
+              variant="flat"
+              color="secondary"
+              onPress={handleGenerateForwardSubscription}
+              isLoading={forwardSubscriptionLoading}
+              title="只生成当前登录账号名下的转发订阅"
+            >
+              生成转发订阅
             </Button>
             
             {/* 导入按钮 */}
@@ -1786,6 +1872,19 @@ export default function ForwardPage() {
                     )}
                   </div>
 
+                  <Textarea
+                    label="原始协议分享链接（可选）"
+                    placeholder="hysteria2://...@56.78.34.123:4001"
+                    value={form.sourceLink || ''}
+                    onChange={(e) => setForm(prev => ({ ...prev, sourceLink: e.target.value }))}
+                    isInvalid={!!errors.sourceLink}
+                    errorMessage={errors.sourceLink}
+                    variant="bordered"
+                    description="只用于生成客户端连接链接，不改变 Gost 的目标地址。留空表示普通端口转发，无法生成协议链接"
+                    minRows={2}
+                    maxRows={4}
+                  />
+
                   {/* 套餐:限速 + 到期。跟上面的「这条转发通到哪」不是一类事,拉开距离单独成组 */}
                   <div className="space-y-4 pt-4 border-t border-divider">
                     <div className="text-xs font-medium text-default-500">套餐(可选)</div>
@@ -1885,6 +1984,143 @@ export default function ForwardPage() {
                 </ModalFooter>
               </>
             )}
+        </ModalContent>
+        </Modal>
+
+        {/* 单条客户端连接链接弹窗 */}
+        <Modal isOpen={clientLinkModalOpen} onClose={closeClientLinkModal} size="2xl" scrollBehavior="outside" backdrop="blur" placement="center">
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  <h2 className="text-xl font-bold">客户端连接链接</h2>
+                  {clientLinkForward && (
+                    <p className="text-small text-default-500 truncate">{clientLinkForward.name}</p>
+                  )}
+                </ModalHeader>
+                <ModalBody className="pb-6">
+                  {clientLinkLoading ? (
+                    <div className="flex items-center justify-center py-12 gap-3">
+                      <Spinner size="sm" />
+                      <span className="text-default-600">正在生成客户端链接...</span>
+                    </div>
+                  ) : clientLink ? (
+                    <div className="space-y-4">
+                      <Textarea
+                        readOnly
+                        value={clientLink}
+                        variant="bordered"
+                        minRows={3}
+                        maxRows={6}
+                        className="font-mono text-sm"
+                        classNames={{ input: "font-mono text-sm" }}
+                        onClick={(e) => e.currentTarget.select()}
+                      />
+                      <div className="flex flex-wrap items-start gap-3">
+                        <Button
+                          color="primary"
+                          onPress={() => copyToClipboard(clientLink, '连接链接')}
+                        >
+                          复制连接链接
+                        </Button>
+                        <SubQr url={clientLink} size={220} />
+                      </div>
+                      <p className="text-xs text-default-400">
+                        这是替换为当前转发入口后的客户端链接，原始协议参数和凭证由后端保留。
+                      </p>
+                    </div>
+                  ) : clientLinkError ? (
+                    <Alert
+                      color="danger"
+                      variant="flat"
+                      title="无法生成协议链接"
+                      description={clientLinkError}
+                    />
+                  ) : (
+                    <div className="text-center text-default-400 py-12">暂无链接</div>
+                  )}
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onClose}>
+                    关闭
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* 当前登录用户的转发聚合订阅弹窗 */}
+        <Modal isOpen={forwardSubscriptionModalOpen} onClose={closeForwardSubscriptionModal} size="2xl" scrollBehavior="outside" backdrop="blur" placement="center">
+          <ModalContent>
+            {(onClose) => {
+              const subscriptionUrl = forwardSubscription?.subToken
+                ? getForwardSubscriptionUrl(forwardSubscription.subToken)
+                : '';
+
+              return (
+                <>
+                  <ModalHeader className="flex flex-col gap-1">
+                    <h2 className="text-xl font-bold">转发订阅</h2>
+                    <p className="text-small text-default-500 font-normal">
+                      只生成当前登录账号名下的转发，管理员列表中的其他用户不会混入。
+                    </p>
+                  </ModalHeader>
+                  <ModalBody className="pb-6">
+                    {forwardSubscriptionLoading ? (
+                      <div className="flex items-center justify-center py-12 gap-3">
+                        <Spinner size="sm" />
+                        <span className="text-default-600">正在生成转发订阅...</span>
+                      </div>
+                    ) : subscriptionUrl ? (
+                      <div className="space-y-4">
+                        <Input
+                          readOnly
+                          label="订阅 URL"
+                          value={subscriptionUrl}
+                          variant="bordered"
+                          onClick={(e) => e.currentTarget.select()}
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip color="success" variant="flat">
+                            可用 {forwardSubscription?.availableCount ?? 0} 条
+                          </Chip>
+                          <Chip color="warning" variant="flat">
+                            跳过 {forwardSubscription?.skippedCount ?? 0} 条
+                          </Chip>
+                        </div>
+                        <div className="flex flex-wrap items-start gap-3">
+                          <Button
+                            color="primary"
+                            onPress={() => copyToClipboard(subscriptionUrl, '转发订阅链接')}
+                          >
+                            复制订阅链接
+                          </Button>
+                          <SubQr url={subscriptionUrl} size={220} />
+                        </div>
+                        <p className="text-xs text-default-400">
+                          暂停、到期、异常或没有协议来源的转发会被跳过；更新订阅即可同步最新入口端口。
+                        </p>
+                      </div>
+                    ) : forwardSubscriptionError ? (
+                      <Alert
+                        color="danger"
+                        variant="flat"
+                        title="无法生成转发订阅"
+                        description={forwardSubscriptionError}
+                      />
+                    ) : (
+                      <div className="text-center text-default-400 py-12">暂无订阅数据</div>
+                    )}
+                  </ModalBody>
+                  <ModalFooter>
+                    <Button variant="light" onPress={onClose}>
+                      关闭
+                    </Button>
+                  </ModalFooter>
+                </>
+              );
+            }}
           </ModalContent>
         </Modal>
 
@@ -1905,7 +2141,7 @@ export default function ForwardPage() {
                 </ModalHeader>
                 <ModalBody>
                   <p className="text-default-600">
-                    确定要删除转发 <span className="font-semibold text-foreground">"{forwardToDelete?.name}"</span> 吗？
+                    确定要删除转发 <span className="font-semibold text-foreground">&quot;{forwardToDelete?.name}&quot;</span> 吗？
                   </p>
                   <p className="text-small text-default-500 mt-2">
                     此操作无法撤销，删除后该转发将永久消失。
@@ -2370,4 +2606,4 @@ export default function ForwardPage() {
       </div>
     
   );
-} 
+}

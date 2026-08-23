@@ -1,3 +1,5 @@
+import type { ForwardClientLinkResponse, ForwardForm, ForwardSubscriptionResponse } from '@/types';
+
 import Network from './network';
 
 // 登陆相关接口
@@ -50,11 +52,13 @@ export const updateUserTunnel = (data: any) => Network.post("/tunnel/user/update
 export const userTunnel = () => Network.post("/tunnel/user/tunnel");
 
 // 转发CRUD操作 - 全部使用POST请求
-export const createForward = (data: any) => Network.post("/forward/create", data);
+export const createForward = (data: ForwardForm) => Network.post("/forward/create", data);
 export const getForwardList = () => Network.post("/forward/list");
-export const updateForward = (data: any) => Network.post("/forward/update", data);
+export const updateForward = (data: ForwardForm) => Network.post("/forward/update", data);
 export const deleteForward = (id: number) => Network.post("/forward/delete", { id });
 export const forceDeleteForward = (id: number) => Network.post("/forward/force-delete", { id });
+export const getForwardClientLink = (forwardId: number) => Network.post<ForwardClientLinkResponse>("/forward/subscription/link", { forwardId });
+export const createForwardSubscription = () => Network.post<ForwardSubscriptionResponse>("/forward/subscription");
 
 // 转发服务控制操作 - 通过Java后端接口
 export const pauseForwardService = (forwardId: number) => Network.post("/forward/pause", { id: forwardId });
@@ -114,4 +118,4 @@ export const updateConfig = (name: string, value: string) => Network.post("/conf
 // 验证码相关接口
 export const checkCaptcha = () => Network.post("/captcha/check");
 export const generateCaptcha = () => Network.post(`/captcha/generate`);
-export const verifyCaptcha = (data: { captchaId: string; trackData: string }) => Network.post("/captcha/verify", data); 
+export const verifyCaptcha = (data: { captchaId: string; trackData: string }) => Network.post("/captcha/verify", data);

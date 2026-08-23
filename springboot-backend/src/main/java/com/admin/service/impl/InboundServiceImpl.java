@@ -6,6 +6,7 @@ import com.admin.common.dto.InboundDto;
 import com.admin.common.dto.InboundUserDto;
 import com.admin.common.dto.TunnelDto;
 import com.admin.common.lang.R;
+import com.admin.common.utils.ClientLinkUtil;
 import com.admin.common.utils.SingboxUtil;
 import com.admin.entity.Forward;
 import com.admin.entity.Inbound;
@@ -738,38 +739,11 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
 
     /** namePrefix:聚合订阅里用来标注这个节点属于哪条线路,单条线路订阅传空串 */
     private String buildClientLink(Inbound in, InboundUser iu, Node node, Forward forward, String namePrefix) {
-        String remark = (in.getRemark() != null && !in.getRemark().isEmpty())
-                ? in.getRemark()
-                : protocolDisplayName(in.getProtocol());
-        if (namePrefix != null && !namePrefix.isEmpty()) {
-            remark = namePrefix + remark;
-        } else {
-            remark = countryPrefix(node) + remark;
-        }
-        String uuid = iu.getUuid();
-        String password = iu.getPassword();
-        // 转发机配了域名就用域名 —— 车友在客户端里看到的是 hk.example.com 而不是车主的 IP
-        String ip = (node.getDomain() != null && !node.getDomain().trim().isEmpty())
-                ? node.getDomain().trim()
-                : node.getServerIp();
-        Integer port = forward.getInPort();
-        switch (in.getProtocol() == null ? "" : in.getProtocol()) {
-            case "shadowsocks": {
-                JSONObject cfg = JSON.parseObject(in.getConfigJson() == null ? "{}" : in.getConfigJson());
-                return SingboxUtil.buildShadowsocksLink(ip, port, cfg.getString("method"), cfg.getString("password"), remark);
-            }
-            case "vmess":
-                return SingboxUtil.buildVmessLink(uuid, ip, port, remark);
-            case "trojan":
-                return SingboxUtil.buildTrojanRealityLink(password, ip, port, in.getSni(), in.getPublicKey(), in.getShortId(), remark);
-            case "hysteria2":
-                return SingboxUtil.buildHysteria2Link(password, ip, port, in.getSni(), remark);
-            case "tuic":
-                return SingboxUtil.buildTuicLink(uuid, password, ip, port, in.getSni(), remark);
-            case "anytls":
-                return SingboxUtil.buildAnyTlsLink(password, ip, port, in.getSni(), remark);
-            default: // vless
-                return SingboxUtil.buildVlessRealityLink(uuid, ip, port, in.getSni(), in.getPublicKey(), in.getShortId(), remark);
+        try {
+            return ClientLinkUtil.buildInboundLink(in, iu, node, forward, namePrefix);
+        } catch (IllegalArgumentException e) {
+            // 订阅里单条入站配置不完整时跳过该条,不要把一个坏链接发给客户端。
+            return "";
         }
     }
 

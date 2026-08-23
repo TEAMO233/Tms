@@ -3,6 +3,7 @@ package com.admin.controller;
 import com.admin.common.aop.LogAnnotation;
 import com.admin.common.annotation.RequireRole;
 import com.admin.common.dto.ForwardDto;
+import com.admin.common.dto.ForwardSubscriptionLinkDto;
 import com.admin.common.dto.ForwardUpdateDto;
 import com.admin.common.lang.R;
 import com.admin.service.ForwardService;
@@ -95,6 +96,20 @@ public class ForwardController extends BaseController {
     @PostMapping("/update-order")
     public R updateForwardOrder(@RequestBody Map<String, Object> params) {
         return forwardService.updateForwardOrder(params);
+    }
+
+    /** 生成单条转发替换入口后的客户端协议链接。 */
+    @LogAnnotation
+    @PostMapping("/subscription/link")
+    public R getForwardClientLink(@Validated @RequestBody ForwardSubscriptionLinkDto request) {
+        return forwardService.getForwardClientLink(request);
+    }
+
+    /** 生成当前登录用户自己的转发聚合订阅。 */
+    @LogAnnotation
+    @PostMapping("/subscription")
+    public R createForwardSubscription() {
+        return forwardService.createForwardSubscription();
     }
 
 }

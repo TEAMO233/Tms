@@ -87,7 +87,7 @@ public class SingboxUtil {
         } catch (Exception e) {
             frag = "";
         }
-        return "vless://" + uuid + "@" + serverIp + ":" + port
+        return "vless://" + uuid + "@" + formatUriHost(serverIp) + ":" + port
                 + "?encryption=none&flow=xtls-rprx-vision&security=reality"
                 + "&sni=" + (sni == null ? "" : sni)
                 + "&fp=chrome"
@@ -205,7 +205,7 @@ public class SingboxUtil {
     public static String buildShadowsocksLink(String serverIp, Integer port, String method, String password, String remark) {
         String userinfo = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString((method + ":" + password).getBytes(StandardCharsets.UTF_8));
-        return "ss://" + userinfo + "@" + serverIp + ":" + port + "#" + urlEncode(remark);
+        return "ss://" + userinfo + "@" + formatUriHost(serverIp) + ":" + port + "#" + urlEncode(remark);
     }
 
     private static JSONObject parseConfig(String configJson) {
@@ -342,7 +342,7 @@ public class SingboxUtil {
     /** Trojan + Reality 客户端链接 */
     public static String buildTrojanRealityLink(String password, String serverIp, Integer port,
                                                 String sni, String publicKey, String shortId, String remark) {
-        return "trojan://" + password + "@" + serverIp + ":" + port
+        return "trojan://" + password + "@" + formatUriHost(serverIp) + ":" + port
                 + "?security=reality"
                 + "&sni=" + (sni == null ? "" : sni)
                 + "&fp=chrome"
@@ -440,20 +440,32 @@ public class SingboxUtil {
 
     /** Hysteria2 客户端链接 */
     public static String buildHysteria2Link(String password, String serverIp, Integer port, String sni, String remark) {
-        return "hysteria2://" + password + "@" + serverIp + ":" + port
+        return "hysteria2://" + password + "@" + formatUriHost(serverIp) + ":" + port
                 + "?sni=" + (sni == null ? "" : sni) + "&insecure=1#" + urlEncode(remark);
     }
 
     /** TUIC 客户端链接 */
     public static String buildTuicLink(String uuid, String password, String serverIp, Integer port, String sni, String remark) {
-        return "tuic://" + uuid + ":" + password + "@" + serverIp + ":" + port
+        return "tuic://" + uuid + ":" + password + "@" + formatUriHost(serverIp) + ":" + port
                 + "?congestion_control=bbr&alpn=h3&sni=" + (sni == null ? "" : sni)
                 + "&allow_insecure=1#" + urlEncode(remark);
     }
 
     /** AnyTLS 客户端链接 */
     public static String buildAnyTlsLink(String password, String serverIp, Integer port, String sni, String remark) {
-        return "anytls://" + password + "@" + serverIp + ":" + port
+        return "anytls://" + password + "@" + formatUriHost(serverIp) + ":" + port
                 + "?insecure=1&sni=" + (sni == null ? "" : sni) + "#" + urlEncode(remark);
+    }
+
+    /** URI authority 中的 IPv6 必须带方括号,VMess JSON 的 add 则保持裸地址。 */
+    private static String formatUriHost(String serverIp) {
+        if (serverIp == null) {
+            return "";
+        }
+        String host = serverIp.trim();
+        if (host.startsWith("[") && host.endsWith("]")) {
+            return host;
+        }
+        return host.contains(":") ? "[" + host + "]" : host;
     }
 }

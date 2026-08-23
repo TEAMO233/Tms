@@ -22,7 +22,7 @@ services:
       - mysql_data:/var/lib/mysql
       # gost.sql 已包含全部 hybrid 表(协议/中转/线路),不要再挂 hybrid-schema-*.sql,
       # 否则里面的 ALTER TABLE 会二次执行报 1060,导致 MySQL 初始化中断。
-      # 那三个文件保留着,供【已有旧库】单独执行升级用。
+      # 这四个文件保留着,供【已有旧库】单独执行升级用。
       - ./gost.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     command: >
       --default-authentication-plugin=mysql_native_password

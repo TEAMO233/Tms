@@ -36,6 +36,7 @@ CREATE TABLE `forward` (
   `in_port` int(10) NOT NULL,
   `out_port` int(10) DEFAULT NULL,
   `remote_addr` longtext NOT NULL,
+  `source_link` longtext COMMENT '原始客户端协议分享链接,仅用于生成转发客户端链接',
   `strategy` varchar(100) NOT NULL DEFAULT 'fifo',
   `interface_name` varchar(200) DEFAULT NULL,
   `in_flow` bigint(20) NOT NULL DEFAULT '0',
@@ -152,6 +153,7 @@ CREATE TABLE `user` (
   `flow_reset_time` bigint(20) NOT NULL,
   `num` int(10) NOT NULL,
   `all_sub_token` varchar(64) DEFAULT NULL COMMENT '全部线路聚合订阅token',
+  `forward_sub_token` varchar(64) DEFAULT NULL COMMENT '转发聚合订阅token',
   `created_time` bigint(20) NOT NULL,
   `updated_time` bigint(20) DEFAULT NULL,
   `status` int(10) NOT NULL
@@ -316,8 +318,8 @@ COMMIT;
 
 -- ============================================================
 -- TMS 合体面板 schema(协议管理 / 中转 / 线路)
--- 新装时随本文件一次建好;老库升级请单独执行 hybrid-schema-v1/v2/v3.sql。
--- 注意:合并进来后,docker-compose 里不要再额外挂载那三个文件,
+-- 新装时随本文件一次建好;老库升级请单独执行 hybrid-schema-v1/v2/v3/v4.sql。
+-- 注意:合并进来后,docker-compose 里不要再额外挂载这四个文件,
 --       否则 ALTER TABLE 会重复执行报 1060 导致 MySQL 初始化中断。
 -- ============================================================
 

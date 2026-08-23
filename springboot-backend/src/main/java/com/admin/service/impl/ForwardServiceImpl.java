@@ -1,16 +1,22 @@
 package com.admin.service.impl;
 
 import com.admin.common.dto.ForwardDto;
+import com.admin.common.dto.ForwardSubscriptionLinkDto;
+import com.admin.common.dto.ForwardSubscriptionLinkResultDto;
+import com.admin.common.dto.ForwardSubscriptionResultDto;
 import com.admin.common.dto.ForwardUpdateDto;
 import com.admin.common.dto.ForwardWithTunnelDto;
 import com.admin.common.dto.GostDto;
 import com.admin.common.lang.R;
+import com.admin.common.utils.ClientLinkUtil;
 import com.admin.common.utils.GostUtil;
 import com.admin.common.utils.JwtUtil;
 import com.admin.common.utils.WebSocketServer;
 import com.admin.entity.*;
 import com.admin.mapper.ForwardMapper;
 import com.admin.mapper.InboundMapper;
+import com.admin.mapper.InboundUserMapper;
+import com.admin.mapper.UserMapper;
 import com.admin.service.*;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -23,6 +29,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -70,9 +77,20 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
     @Resource
     private InboundMapper inboundMapper;
 
+    @Resource
+    private InboundUserMapper inboundUserMapper;
+
+    @Resource
+    private UserMapper userMapper;
+
 
     @Override
     public R createForward(ForwardDto forwardDto) {
+        String sourceLinkError = ClientLinkUtil.validateSourceLink(forwardDto.getSourceLink());
+        if (sourceLinkError != null) {
+            return R.err(sourceLinkError);
+        }
+
         // 1. 获取当前用户信息
         UserInfo currentUser = getCurrentUserInfo();
 
@@ -146,6 +164,11 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
 
     @Override
     public R createForwardForUser(ForwardDto forwardDto, Integer userId, String userName) {
+        String sourceLinkError = ClientLinkUtil.validateSourceLink(forwardDto.getSourceLink());
+        if (sourceLinkError != null) {
+            return R.err(sourceLinkError);
+        }
+
         // 1. 校验隧道(该端口转发隧道由 InboundService 保证入口机=入站节点)
         Tunnel tunnel = validateTunnel(forwardDto.getTunnelId());
         if (tunnel == null) {
@@ -172,6 +195,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         forward.setOutPort(portAllocation.getOutPort());
         forward.setUserId(userId);
         forward.setUserName(userName);
+        forward.setSourceLink(ClientLinkUtil.normalizeSourceLink(forward.getSourceLink()));
         forward.setCreatedTime(System.currentTimeMillis());
         forward.setUpdatedTime(System.currentTimeMillis());
         if (!this.save(forward)) {
@@ -212,6 +236,78 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         return R.ok(forwardList);
     }
 
+    @Override
+    public R getForwardClientLink(ForwardSubscriptionLinkDto request) {
+        UserInfo currentUser = getCurrentUserInfo();
+        Forward forward = validateForwardExists(request.getForwardId(), currentUser);
+        if (forward == null) {
+            return R.err("转发不存在");
+        }
+
+        try {
+            return R.ok(new ForwardSubscriptionLinkResultDto(resolveForwardClientLink(forward)));
+        } catch (IllegalArgumentException e) {
+            return R.err(e.getMessage());
+        } catch (Exception e) {
+            log.error("生成转发{}的客户端链接失败", request.getForwardId(), e);
+            return R.err("生成协议链接失败,请稍后重试");
+        }
+    }
+
+    @Override
+    public R createForwardSubscription() {
+        UserInfo currentUser = getCurrentUserInfo();
+        User user = userService.getById(currentUser.getUserId());
+        if (user == null) {
+            return R.err("用户不存在");
+        }
+
+        String token = ensureForwardSubToken(user);
+        int availableCount = 0;
+        int skippedCount = 0;
+        List<Forward> forwards = this.list(new QueryWrapper<Forward>()
+                .eq("user_id", currentUser.getUserId()));
+        for (Forward forward : forwards) {
+            try {
+                resolveForwardClientLink(forward);
+                availableCount++;
+            } catch (Exception e) {
+                skippedCount++;
+                log.debug("转发{}未加入转发订阅: {}", forward.getId(), e.getMessage());
+            }
+        }
+
+        return R.ok(new ForwardSubscriptionResultDto(token, availableCount, skippedCount));
+    }
+
+    @Override
+    public String buildForwardSubscription(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return "";
+        }
+
+        User user = userMapper.selectOne(new QueryWrapper<User>()
+                .eq("forward_sub_token", token.trim())
+                .last("limit 1"));
+        if (user == null) {
+            return "";
+        }
+
+        List<String> links = new ArrayList<>();
+        List<Forward> forwards = this.list(new QueryWrapper<Forward>().eq("user_id", user.getId()));
+        for (Forward forward : forwards) {
+            try {
+                links.add(resolveForwardClientLink(forward));
+            } catch (Exception e) {
+                // 订阅是动态内容:某一条转发失效时跳过它,不能让其它正常节点一起消失。
+                log.debug("转发{}未加入公开转发订阅: {}", forward.getId(), e.getMessage());
+            }
+        }
+
+        String joined = String.join("\n", links);
+        return Base64.getEncoder().encodeToString(joined.getBytes(StandardCharsets.UTF_8));
+    }
+
     /** 协议转发命名固定 inbound-{入站id}-user-{用户id},隧道固定 inbound-tunnel-node{节点id} */
     private static boolean isProtocolManaged(String forwardName, String tunnelName) {
         if (forwardName != null && forwardName.matches("^inbound-\\d+-user-\\d+$")) {
@@ -235,6 +331,11 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         Forward existForward = validateForwardExists(forwardUpdateDto.getId(), currentUser);
         if (existForward == null) {
             return R.err("转发不存在");
+        }
+
+        String sourceLinkError = ClientLinkUtil.validateSourceLink(forwardUpdateDto.getSourceLink());
+        if (sourceLinkError != null) {
+            return R.err(sourceLinkError);
         }
 
         // 3. 检查隧道是否存在和可用
@@ -856,6 +957,80 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
     }
 
     /**
+     * 解析一条转发的协议来源并改写成客户端入口链接。
+     *
+     * 自动协议转发必须从 InboundUser 关系取协议和凭证,手工转发才读取
+     * source_link。不能根据 remote_addr 的端口猜协议,因为 127.0.0.1:40000
+     * 只表达网络目标,没有任何凭证或 TLS/Reality 参数。
+     */
+    private String resolveForwardClientLink(Forward forward) {
+        if (forward == null) {
+            throw new IllegalArgumentException("转发不存在");
+        }
+        if (!Objects.equals(forward.getStatus(), FORWARD_STATUS_ACTIVE)) {
+            throw new IllegalArgumentException("该转发当前未启用");
+        }
+        if (forward.getExpTime() != null && forward.getExpTime() > 0
+                && forward.getExpTime() <= System.currentTimeMillis()) {
+            throw new IllegalArgumentException("该转发已到期");
+        }
+        if (forward.getInPort() == null) {
+            throw new IllegalArgumentException("转发入口端口不存在");
+        }
+        Tunnel tunnel = validateTunnel(forward.getTunnelId());
+        if (tunnel == null) {
+            throw new IllegalArgumentException("隧道不存在");
+        }
+        if (!Objects.equals(tunnel.getStatus(), TUNNEL_STATUS_ACTIVE)) {
+            throw new IllegalArgumentException("隧道当前未启用");
+        }
+
+        List<InboundUser> managedUsers = inboundUserMapper.selectList(
+                new QueryWrapper<InboundUser>().eq("gost_forward_id", forward.getId()));
+        if (!managedUsers.isEmpty()) {
+            for (InboundUser inboundUser : managedUsers) {
+                if (inboundUser.getStatus() != null && inboundUser.getStatus() == 0) {
+                    continue;
+                }
+                Inbound inbound = inboundMapper.selectById(inboundUser.getInboundId());
+                if (inbound == null || (inbound.getStatus() != null && inbound.getStatus() == 0)) {
+                    continue;
+                }
+                Node entryNode = nodeService.getNodeById(inbound.getNodeId());
+                if (entryNode == null) {
+                    throw new IllegalArgumentException("协议入口节点不存在");
+                }
+                return ClientLinkUtil.buildInboundLink(inbound, inboundUser, entryNode, forward);
+            }
+            throw new IllegalArgumentException("该转发关联的协议来源已停用");
+        }
+
+        String sourceLink = ClientLinkUtil.normalizeSourceLink(forward.getSourceLink());
+        if (sourceLink == null) {
+            throw new IllegalArgumentException("该转发未配置协议来源");
+        }
+
+        Node entryNode = nodeService.getNodeById(tunnel.getInNodeId());
+        if (entryNode == null) {
+            throw new IllegalArgumentException("入口节点不存在");
+        }
+        String endpointHost = ClientLinkUtil.resolveNodeEndpoint(entryNode);
+        return ClientLinkUtil.rewriteSourceLink(sourceLink, endpointHost,
+                forward.getInPort(), forward.getName());
+    }
+
+    /** 为当前用户生成一次并长期复用转发订阅 token。 */
+    private String ensureForwardSubToken(User user) {
+        if (user.getForwardSubToken() != null && !user.getForwardSubToken().trim().isEmpty()) {
+            return user.getForwardSubToken();
+        }
+        String token = UUID.randomUUID().toString().replace("-", "");
+        user.setForwardSubToken(token);
+        userMapper.updateById(user);
+        return token;
+    }
+
+    /**
      * 获取所需的节点信息
      */
     private NodeInfo getRequiredNodes(Tunnel tunnel) {
@@ -1031,6 +1206,7 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
         forward.setStatus(FORWARD_STATUS_ACTIVE);
         forward.setInPort(portAllocation.getInPort());
         forward.setOutPort(portAllocation.getOutPort());
+        forward.setSourceLink(ClientLinkUtil.normalizeSourceLink(forward.getSourceLink()));
         forward.setUserId(currentUser.getUserId());
         forward.setUserName(currentUser.getUserName());
         forward.setCreatedTime(System.currentTimeMillis());
@@ -1044,6 +1220,10 @@ public class ForwardServiceImpl extends ServiceImpl<ForwardMapper, Forward> impl
     private Forward updateForwardEntity(ForwardUpdateDto forwardUpdateDto, Forward existForward, Tunnel tunnel) {
         Forward forward = new Forward();
         BeanUtils.copyProperties(forwardUpdateDto, forward);
+        // 旧版编辑请求不会带 sourceLink;此时必须保留原值。显式传空字符串才代表清空。
+        forward.setSourceLink(forwardUpdateDto.getSourceLink() == null
+                ? existForward.getSourceLink()
+                : ClientLinkUtil.normalizeSourceLink(forwardUpdateDto.getSourceLink()));
 
         // 处理端口分配逻辑
         boolean tunnelChanged = !existForward.getTunnelId().equals(forwardUpdateDto.getTunnelId());

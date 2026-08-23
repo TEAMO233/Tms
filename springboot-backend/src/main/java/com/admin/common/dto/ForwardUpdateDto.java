@@ -7,6 +7,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
+import javax.validation.constraints.Size;
 
 @Data
 public class ForwardUpdateDto {
@@ -43,4 +44,8 @@ public class ForwardUpdateDto {
 
     @TableField(updateStrategy = FieldStrategy.IGNORED)
     private Long expTime;
-} 
+
+    /** 传空字符串可清空;字段缺省时保留已有来源链接,兼容旧版编辑请求。 */
+    @Size(max = 4096, message = "协议链接不能超过4096个字符")
+    private String sourceLink;
+}

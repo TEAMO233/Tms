@@ -90,6 +90,9 @@ public class ForwardWithTunnelDto {
 
     private String interfaceName;
 
+    /** 登录后的转发管理接口可回显该来源供编辑,公开订阅接口不会返回原始值。 */
+    private String sourceLink;
+
     /**
      * 是否是「搭协议/搭中转」时自动生成的转发。
      *
