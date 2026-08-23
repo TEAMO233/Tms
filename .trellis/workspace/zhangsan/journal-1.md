@@ -28,3 +28,24 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 2: 节点订阅国家码与国旗前缀
+
+**Date**: 2026-08-23
+**Task**: 节点订阅国家码与国旗前缀
+**Branch**: `main`
+
+### Summary
+
+完成 node.country schema 双写、GeoIP 自动探测与手动覆盖、订阅名称国旗+国家码改造、前端节点展示与编辑表单；修复 GeoIP 地址变化判断及私网/保留网段降级。后端/前端构建分别受本机 JDK 8 和缺少 node_modules 阻塞。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `35db3d4` | (see git log) |
+
+### Status
+
+[OK] **Completed**

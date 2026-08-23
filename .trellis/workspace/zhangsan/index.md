@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-08-22
+- **Total Sessions**: 2
+- **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~30 | Active |
+| `journal-1.md` | ~51 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 2 | 2026-08-23 | 节点订阅国家码与国旗前缀 | `35db3d4` | `main` |
 | 1 | 2026-08-22 | Bootstrap: 填实四层开发规范 | `51a1552`, `ddab2b1`, `84ddfba` | `main` |
 <!-- @@@/auto:session-history -->
 
