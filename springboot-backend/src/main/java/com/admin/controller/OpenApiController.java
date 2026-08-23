@@ -8,6 +8,8 @@ import javax.servlet.http.HttpServletResponse;
 import com.admin.common.utils.Md5Util;
 import com.admin.entity.User;
 import com.admin.entity.UserTunnel;
+import com.admin.entity.InboundUser;
+import com.admin.mapper.InboundUserMapper;
 import com.admin.service.InboundService;
 import com.admin.service.ForwardService;
 import com.alibaba.fastjson.JSONObject;
@@ -28,9 +30,27 @@ public class OpenApiController extends BaseController {
     @Autowired
     private ForwardService forwardService;
 
+    @Autowired
+    private InboundUserMapper inboundUserMapper;
+
     /** 订阅:按 token 返回该用户所有协议链接的 base64(客户端订阅用,免登录) */
     @GetMapping("/sub")
-    public String sub(@RequestParam("token") String token) {
+    public String sub(@RequestParam("token") String token, HttpServletResponse response) {
+        // 单线路订阅供 Sub-Store 的 /flow 接口读取用量;聚合订阅没有唯一配额,不伪造流量头。
+        InboundUser line = inboundUserMapper.selectOne(new QueryWrapper<InboundUser>()
+                .eq("sub_token", token).last("limit 1"));
+        if (line != null && line.getUserId() != null) {
+            User userInfo = userService.getById(line.getUserId());
+            if (userInfo != null) {
+                final long GIGA = 1024L * 1024L * 1024L;
+                response.setHeader("subscription-userinfo", buildSubscriptionHeader(
+                        userInfo.getOutFlow() == null ? 0 : userInfo.getOutFlow(),
+                        userInfo.getInFlow() == null ? 0 : userInfo.getInFlow(),
+                        (userInfo.getFlow() == null ? 0 : userInfo.getFlow()) * GIGA,
+                        userInfo.getExpTime() == null ? 0 : userInfo.getExpTime() / 1000
+                ));
+            }
+        }
         return inboundService.buildSubscription(token);
     }
 
