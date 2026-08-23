@@ -25,6 +25,9 @@ public class NodeUpdateDto {
     /** 连接域名(可选):填了就用它替代 serverIp 生成给车友的节点链接 */
     private String domain;
 
+    /** 可选的 ISO 3166-1 alpha-2 国家码,留空时由服务端按 IP 自动探测。 */
+    private String country;
+
     @NotNull(message = "起始端口不能为空")
     @Min(value = 1, message = "起始端口必须大于0")
     @Max(value = 65535, message = "起始端口不能超过65535")
@@ -38,4 +41,4 @@ public class NodeUpdateDto {
     private Integer http;
     private Integer tls;
     private Integer socks;
-} 
+}

@@ -37,6 +37,10 @@ public class SchemaMigration implements ApplicationRunner {
         addColumnIfMissing("node", "domain",
                 "ALTER TABLE `node` ADD COLUMN `domain` VARCHAR(255) NULL COMMENT '连接域名(可选,留空用 server_ip)'");
 
+        // 节点国家码由 GeoIP 自动探测,允许为空以兼容内网地址和探测失败场景
+        addColumnIfMissing("node", "country",
+                "ALTER TABLE `node` ADD COLUMN `country` VARCHAR(8) NULL COMMENT 'ISO 3166-1 alpha-2 国家码,GeoIP自动探测'");
+
         // 「全部线路」聚合订阅 token:一条链接包含该车友所有未停用线路的节点
         addColumnIfMissing("user", "all_sub_token",
                 "ALTER TABLE `user` ADD COLUMN `all_sub_token` VARCHAR(64) NULL COMMENT '全部线路聚合订阅token'");

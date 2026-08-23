@@ -26,6 +26,10 @@ public class Node extends BaseEntity {
 
     private String serverIp;
 
+    /** ISO 3166-1 alpha-2 国家码,由 GeoIP 自动探测也支持管理员手动修正。 */
+    @com.baomidou.mybatisplus.annotation.TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
+    private String country;
+
     /**
      * 连接域名(可选)。填了就用它替代 server_ip 生成给车友的节点链接,
      * 这样车友在客户端里看到的是域名而不是车主的真实 IP。

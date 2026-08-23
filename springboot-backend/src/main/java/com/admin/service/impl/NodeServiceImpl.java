@@ -6,6 +6,7 @@ import com.admin.common.dto.GostDto;
 import com.admin.common.dto.NodeDto;
 import com.admin.common.dto.NodeUpdateDto;
 import com.admin.common.lang.R;
+import com.admin.common.utils.GeoIpUtil;
 import com.admin.common.utils.WebSocketServer;
 import com.admin.entity.Node;
 import com.admin.entity.Tunnel;
@@ -153,6 +154,19 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
 
         // 2. 构建更新对象并执行更新
         Node updateNode = buildUpdateNode(nodeUpdateDto);
+        String geoIpAddress = firstNonBlank(nodeUpdateDto.getServerIp(), nodeUpdateDto.getIp());
+        String previousGeoIpAddress = firstNonBlank(node.getServerIp(), node.getIp());
+        boolean geoIpAddressChanged = !Objects.equals(previousGeoIpAddress, geoIpAddress);
+        boolean shouldProbeCountry = !StrUtil.isBlank(geoIpAddress)
+                && (geoIpAddressChanged || StrUtil.isBlank(node.getCountry()));
+        if (updateNode.getCountry() != null) {
+            // 合法的手工国家码优先,避免 CDN/中转出口被自动判断覆盖。
+        } else if (shouldProbeCountry) {
+            updateNode.setCountry(GeoIpUtil.lookup(geoIpAddress));
+        } else {
+            // IP 未变且已有国家码时,空输入代表不修改手工修正值。
+            updateNode.setCountry(node.getCountry());
+        }
         boolean result = this.updateById(updateNode);
 
         // 更新隧道入口ip
@@ -236,6 +250,7 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         // 设置默认属性
         node.setSecret(IdUtil.simpleUUID());
         node.setStatus(NODE_STATUS_ACTIVE);
+        node.setCountry(GeoIpUtil.lookup(firstNonBlank(node.getServerIp(), node.getIp())));
         
         // 设置时间戳
         long currentTime = System.currentTimeMillis();
@@ -258,6 +273,7 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         node.setIp(nodeUpdateDto.getIp());
         node.setServerIp(nodeUpdateDto.getServerIp());
         node.setDomain(nodeUpdateDto.getDomain());
+        node.setCountry(normalizeCountry(nodeUpdateDto.getCountry()));
         node.setPortSta(nodeUpdateDto.getPortSta());
         node.setPortEnd(nodeUpdateDto.getPortEnd());
         node.setHttp(nodeUpdateDto.getHttp());
@@ -268,6 +284,19 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         
         node.setUpdatedTime(System.currentTimeMillis());
         return node;
+    }
+
+    /** 节点更新接口允许人工修正,但只接受标准的两位字母国家码。 */
+    private String normalizeCountry(String country) {
+        if (StrUtil.isBlank(country)) {
+            return null;
+        }
+        String normalized = country.trim().toUpperCase(java.util.Locale.ROOT);
+        return normalized.matches("[A-Z]{2}") ? normalized : null;
+    }
+
+    private String firstNonBlank(String first, String fallback) {
+        return !StrUtil.isBlank(first) ? first.trim() : (fallback == null ? null : fallback.trim());
     }
 
     /**

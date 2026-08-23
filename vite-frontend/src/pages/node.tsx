@@ -29,6 +29,7 @@ interface Node {
   ip: string;
   serverIp: string;
   domain?: string;
+  country?: string;
   /** 该机 sing-box 是否在运行(节点上报);null/undefined = 还没上报过 */
   singboxRunning?: boolean;
   portSta: number;
@@ -57,12 +58,30 @@ interface NodeForm {
   ipString: string;
   serverIp: string;
   domain: string;
+  country: string;
   portSta: number;
   portEnd: number;
   http: number; // 0 关 1 开
   tls: number;  // 0 关 1 开
   socks: number; // 0 关 1 开
 }
+
+// 国家码由后端保存,旗帜只在展示层按 regional indicator 算法即时推导。
+const flagOf = (country?: string): string => {
+  const normalized = country?.trim().toUpperCase();
+  if (!normalized || !/^[A-Z]{2}$/.test(normalized)) return '';
+
+  return String.fromCodePoint(
+    0x1f1e6 + normalized.charCodeAt(0) - 65,
+    0x1f1e6 + normalized.charCodeAt(1) - 65
+  );
+};
+
+const countryLabel = (country?: string): string => {
+  const normalized = country?.trim().toUpperCase();
+  const flag = flagOf(normalized);
+  return flag && normalized ? `${flag} ${normalized}` : '';
+};
 
 export default function NodePage() {
   const [nodeList, setNodeList] = useState<Node[]>([]);
@@ -82,6 +101,7 @@ export default function NodePage() {
     ipString: '',
     serverIp: '',
     domain: '',
+    country: '',
     portSta: 1000,
     portEnd: 65535,
     http: 0,
@@ -407,6 +427,10 @@ export default function NodePage() {
       newErrors.serverIp = '请输入有效的IPv4、IPv6地址或域名';
     }
 
+    if (form.country.trim() && !/^[A-Za-z]{2}$/.test(form.country.trim())) {
+      newErrors.country = '国家码必须是2位字母，例如 SG';
+    }
+
     // 连接域名是可选的:留空表示用 IP,填了才校验格式(且必须是域名,填 IP 没意义)
     const domain = form.domain.trim();
     if (domain) {
@@ -451,6 +475,7 @@ export default function NodePage() {
       ipString: node.ip ? node.ip.split(',').map(ip => ip.trim()).join('\n') : '',
       serverIp: node.serverIp || '',
       domain: node.domain || '',
+      country: node.country || '',
       portSta: node.portSta,
       portEnd: node.portEnd,
       http: typeof node.http === 'number' ? node.http : 1,
@@ -576,20 +601,8 @@ export default function NodePage() {
         setDialogVisible(false);
         
         if (isEdit) {
-          setNodeList(prev => prev.map(n => 
-            n.id === form.id ? {
-              ...n,
-              name: form.name,
-              ip: ipString,
-              serverIp: form.serverIp,
-              domain: form.domain.trim(),
-              portSta: form.portSta,
-              portEnd: form.portEnd,
-              http: form.http,
-              tls: form.tls,
-              socks: form.socks
-            } : n
-          ));
+          // 更新可能触发 GeoIP 探测,重新拉取以显示服务端最终落库的国家码。
+          loadNodes();
         } else {
           loadNodes();
         }
@@ -611,6 +624,7 @@ export default function NodePage() {
       ipString: '',
       serverIp: '',
       domain: '',
+      country: '',
       portSta: 1000,
       portEnd: 65535,
       http: 0,
@@ -675,6 +689,9 @@ export default function NodePage() {
                   <div className="flex justify-between items-start w-full">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground truncate text-sm">{node.name}</h3>
+                      {countryLabel(node.country) && (
+                        <p className="text-xs text-primary truncate">{countryLabel(node.country)}</p>
+                      )}
                       <p className="text-xs text-default-500 truncate">{node.serverIp}</p>
                     </div>
                     <div className="flex items-center gap-1.5 ml-2">
@@ -915,6 +932,19 @@ export default function NodePage() {
                   description="填了之后,车友订阅里的节点地址显示成这个域名,看不到你的服务器 IP。需要先把域名解析(A 记录)到上面那个 IP。注意:域名只是不直接显示 IP,对方 ping 一下还是查得到"
                 />
 
+                {isEdit && (
+                  <Input
+                    label="国家码(可选)"
+                    placeholder="留空自动探测,如 SG"
+                    value={form.country}
+                    onChange={(e) => setForm(prev => ({ ...prev, country: e.target.value }))}
+                    isInvalid={!!errors.country}
+                    errorMessage={errors.country}
+                    variant="bordered"
+                    description="更换服务器 IP 或原值为空时自动探测;也可填写 ISO 两位国家码手动修正"
+                  />
+                )}
+
                 <Textarea
                   label="入口IP"
                   placeholder="一行一个IP地址或域名，例如:&#10;192.168.1.100&#10;example.com"
@@ -1152,4 +1182,4 @@ export default function NodePage() {
       </div>
     
   );
-} 
+}

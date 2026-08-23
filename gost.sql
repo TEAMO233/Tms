@@ -339,6 +339,10 @@ ALTER TABLE `node`
   ADD COLUMN `cert_path` varchar(500) DEFAULT NULL COMMENT '有域名时证书路径',
   ADD COLUMN `key_path`  varchar(500) DEFAULT NULL COMMENT '有域名时私钥路径';
 
+-- node.country: GeoIP 自动探测的 ISO 3166-1 alpha-2 国家码,探测失败时为空。
+ALTER TABLE `node`
+  ADD COLUMN `country` varchar(8) DEFAULT NULL COMMENT 'ISO 3166-1 alpha-2 国家码,GeoIP自动探测';
+
 -- ------------------------------------------------------------
 -- 2) inbound：协议入站(一条 = 一个 sing-box 本机入站)
 --    listen_port 只在 127.0.0.1 监听,公网口由 gost 转发占用(限速)。

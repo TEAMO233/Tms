@@ -599,8 +599,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
      * 「全部线路」聚合订阅:把该车友所有【未停用线路】的节点拼成一条订阅。
      *
      * 两个刻意的取舍:
-     * 1. 节点名带线路前缀([机器名] / [机器名→落地名]),否则十几个节点混在一起
-     *    根本分不清哪个是哪条线路的出口。
+     * 1. 节点名带线路前缀([国家码] / [国家码→落地名]),否则十几个节点混在一起
+     *    根本分不清哪个是哪条线路的出口;没有国家码时回退到机器名。
      * 2. 停用的线路直接不出现在订阅里,而不是留着让人连不上 —— 车友更新订阅
      *    发现少了一组,配合前缀能立刻知道是哪条到期/跑满了。
      *
@@ -647,8 +647,11 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 continue;
             }
             // 不加方括号:名字最终要显示在手机客户端一行里,中转的还要再带一个
-            // 「→落地名」,方括号纯占位置。空格分隔已经够读了。
-            StringBuilder prefix = new StringBuilder(node.getName());
+            // 「→落地名」,方括号纯占位置。国家码存在时替代机器名,空值仍保留旧行为。
+            StringBuilder prefix = new StringBuilder(countryPrefix(node));
+            if (prefix.length() == 0) {
+                prefix.append(node.getName());
+            }
             if (lid != null) {
                 String ln = landingNames.get(lid);
                 if (ln == null) {
@@ -658,7 +661,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 }
                 prefix.append("→").append(ln);
             }
-            prefix.append(" ");
+            if (prefix.length() == 0 || prefix.charAt(prefix.length() - 1) != ' ') {
+                prefix.append(" ");
+            }
 
             String link = buildClientLink(in, iu, node, forward, prefix.toString());
             if (link != null && !link.isEmpty()) {
@@ -706,6 +711,31 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         }
     }
 
+    /** 根据 ISO alpha-2 国家码推导 regional indicator flag emoji,不落库存储。 */
+    private static String flagOf(String country) {
+        if (country == null) {
+            return null;
+        }
+        String normalized = country.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!normalized.matches("[A-Z]{2}")) {
+            return null;
+        }
+        return new String(Character.toChars(0x1F1E6 + normalized.charAt(0) - 'A'))
+                + new String(Character.toChars(0x1F1E6 + normalized.charAt(1) - 'A'));
+    }
+
+    /** 统一生成国家前缀,空码时返回空串以保持老节点订阅名不变。 */
+    private static String countryPrefix(Node node) {
+        if (node == null) {
+            return "";
+        }
+        String country = node.getCountry() == null
+                ? ""
+                : node.getCountry().trim().toUpperCase(java.util.Locale.ROOT);
+        String flag = flagOf(country);
+        return flag == null ? "" : flag + " " + country + " ";
+    }
+
     /** namePrefix:聚合订阅里用来标注这个节点属于哪条线路,单条线路订阅传空串 */
     private String buildClientLink(Inbound in, InboundUser iu, Node node, Forward forward, String namePrefix) {
         String remark = (in.getRemark() != null && !in.getRemark().isEmpty())
@@ -713,6 +743,8 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 : protocolDisplayName(in.getProtocol());
         if (namePrefix != null && !namePrefix.isEmpty()) {
             remark = namePrefix + remark;
+        } else {
+            remark = countryPrefix(node) + remark;
         }
         String uuid = iu.getUuid();
         String password = iu.getPassword();
