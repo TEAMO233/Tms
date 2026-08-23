@@ -1120,10 +1120,16 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 + "或在转发机设置里把端口范围调开。");
     }
 
-    /** 确保节点有一条端口转发隧道(入口机=该节点),没有则建 */
+    /**
+     * 确保节点有一条协议专用的端口转发隧道(入口机=该节点),没有则建。
+     * 不能复用任意手工隧道,否则协议管理会把用户自建隧道占用,导致手工隧道无法删除。
+     */
     private Tunnel ensurePortForwardTunnel(Long nodeId) {
         Tunnel tunnel = tunnelMapper.selectOne(new QueryWrapper<Tunnel>()
-                .eq("in_node_id", nodeId).eq("type", TUNNEL_TYPE_PORT_FORWARD).last("limit 1"));
+                .eq("name", "inbound-tunnel-node" + nodeId)
+                .eq("in_node_id", nodeId)
+                .eq("type", TUNNEL_TYPE_PORT_FORWARD)
+                .last("limit 1"));
         if (tunnel != null) {
             return tunnel;
         }
