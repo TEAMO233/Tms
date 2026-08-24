@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端页面、组件和构建的项目级约束"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "HeroUI 组件复用、按钮交互和布局规范"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "页面状态与异步 loading 的保留边界"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "TransparentRelay 派生数据和 TS 类型安全要求"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端 lint/build 与页面质量门禁"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "确认仅修改现有页面文件，不扩散到其他层"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "优先复用现有页面处理函数、组件和设计语言"}

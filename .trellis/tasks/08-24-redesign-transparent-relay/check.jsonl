@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "页面改版范围和前端质量检查"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "响应式布局、HeroUI 组件和可访问交互检查"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "确认现有异步状态、错误和弹窗行为没有回归"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "确认派生分组和统计不引入类型错误"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "lint/build 与手动页面验收门禁"}
+{"file": ".trellis/spec/frontend/api-networking.md", "reason": "确认 API 调用契约与请求顺序未被改动"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "确认没有重复实现已有业务处理逻辑"}

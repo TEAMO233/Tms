@@ -41,7 +41,10 @@ import {
   resumeTransparentRelay,
   updateTransparentRelay,
 } from "@/api";
-import { buildTargetHostOptions, isUdpQuicProxyProtocol } from "@/utils/transparent-relay-options";
+import {
+  buildTargetHostOptions,
+  isUdpQuicProxyProtocol,
+} from "@/utils/transparent-relay-options";
 import { summarizeTransparentRelayStatus } from "@/utils/transparent-relay-status";
 import { JwtUtil } from "@/utils/jwt";
 
@@ -64,6 +67,9 @@ const emptyUdpQuicForm: UdpQuicRelayCreateForm = {
   targetNodeId: null,
   protocols: ["hysteria2", "tuic"],
 };
+
+const RELAY_GRID_CLASS =
+  "xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,.9fr)_minmax(0,.7fr)_minmax(0,2fr)]";
 
 const protocolText = (protocol: string) => {
   if (protocol === "hysteria2") return "Hysteria2";
@@ -118,6 +124,9 @@ type NodeLike = {
   serverIp?: string;
   country?: string;
 };
+
+const nodeOptionText = (node: NodeLike) =>
+  `${node.name || `节点 ${node.id}`}${node.country ? ` (${node.country})` : ""}`;
 
 type TunnelLike = {
   id: number;
@@ -348,7 +357,9 @@ export default function TransparentRelayPage() {
       entryPort: relay.entryPort,
       targetHost: relay.targetHost,
       targetPort: relay.targetPort,
-      protocol: (relay.protocol === "tcp" || relay.protocol === "udp" || relay.protocol === "tcp_udp"
+      protocol: (relay.protocol === "tcp" ||
+      relay.protocol === "udp" ||
+      relay.protocol === "tcp_udp"
         ? relay.protocol
         : "tcp_udp") as TransparentRelayForm["protocol"],
     });
@@ -709,7 +720,9 @@ export default function TransparentRelayPage() {
     );
 
     if (!targetHostOption) return relay.name;
-    const targetNode = nodes.find((node) => node.id === targetHostOption.nodeId);
+    const targetNode = nodes.find(
+      (node) => node.id === targetHostOption.nodeId,
+    );
     const targetPortOption = buildTargetPortOptions(
       targetHostOption.nodeId,
       tunnels,
@@ -726,6 +739,13 @@ export default function TransparentRelayPage() {
     return `${ingressName} -> ${targetName} ${protocol} ${relay.targetPort}`;
   };
 
+  const l4Relays = relays.filter((relay) => relay.relayType !== "udp_quic");
+  const udpQuicRelays = relays.filter(
+    (relay) => relay.relayType === "udp_quic",
+  );
+  const failedRelayCount = relays.filter((relay) => relay.status < 0).length;
+  const pausedRelayCount = relays.filter((relay) => relay.status === 0).length;
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -735,128 +755,364 @@ export default function TransparentRelayPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">透明中转</h1>
-          <p className="text-sm text-default-500 mt-1">
+    <div className="min-w-0 space-y-4 p-4 md:p-6">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">透明中转</h1>
+            <Chip color="primary" size="sm" variant="flat">
+              运维信号板
+            </Chip>
+          </div>
+          <p className="mt-1 max-w-3xl text-sm text-default-500">
             线路机模式:客户端连入口节点,入口机用 nftables DNAT+SNAT
             转到主服务器端口,真实出口仍是主服务器。
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="flat" onPress={loadData}>
+        <div className="flex flex-wrap gap-2 xl:justify-end">
+          <Button size="sm" variant="flat" onPress={loadData}>
             刷新
           </Button>
           <Button
             color="success"
             isLoading={aggregateSubscriptionLoading}
+            size="sm"
             variant="flat"
             onPress={handleCopyAggregateSubscription}
           >
             复制聚合订阅
           </Button>
-          <Button color="secondary" variant="flat" onPress={openBatchCreate}>
+          <Button
+            color="secondary"
+            size="sm"
+            variant="flat"
+            onPress={openBatchCreate}
+          >
             一键添加所有
           </Button>
-          <Button color="warning" variant="flat" onPress={openUdpQuicCreate}>
+          <Button
+            color="warning"
+            size="sm"
+            variant="flat"
+            onPress={openUdpQuicCreate}
+          >
             创建 HY2/TUIC 协议中转
           </Button>
-          <Button color="primary" onPress={openCreate}>
+          <Button color="primary" size="sm" onPress={openCreate}>
             新增透明中转
           </Button>
         </div>
       </div>
 
-      <Alert color="warning" variant="flat">
-        透明中转页会统一展示 L4 透明中转和 HY2/TUIC 协议中转；顶部“复制聚合订阅”会生成本页所有可用线路的一条独立订阅链接，和「我的订阅」互不影响。
+      <Alert className="px-4 py-2 text-sm" color="warning" variant="flat">
+        透明中转页会统一展示 L4 透明中转和 HY2/TUIC
+        协议中转；顶部“复制聚合订阅”会生成本页所有可用线路的一条独立订阅链接，和「我的订阅」互不影响。
       </Alert>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {relays.map((relay) => (
-          <Card key={`${relay.relayType || "l4"}-${relay.id}`}>
-            <CardHeader className="flex justify-between gap-3">
-              <div>
-                <div className="font-semibold text-lg">
-                  {relayDisplayName(relay)}
+      <Card className="overflow-hidden border border-default-200/70 bg-black/10 dark:bg-white/[0.03]">
+        <CardBody className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-4 sm:p-3">
+          <div className="min-w-0 border-l-2 border-primary px-3 py-2">
+            <div className="text-xs text-default-500">透明中转总数</div>
+            <div className="mt-1 text-2xl font-semibold leading-none">
+              {relays.length}
+            </div>
+          </div>
+          <div className="min-w-0 border-l-2 border-primary px-3 py-2">
+            <div className="text-xs text-default-500">L4 透明中转</div>
+            <div className="mt-1 text-2xl font-semibold leading-none text-primary">
+              {l4Relays.length}
+            </div>
+          </div>
+          <div className="min-w-0 border-l-2 border-warning px-3 py-2">
+            <div className="text-xs text-default-500">HY2/TUIC 协议中转</div>
+            <div className="mt-1 text-2xl font-semibold leading-none text-warning">
+              {udpQuicRelays.length}
+            </div>
+          </div>
+          <div className="min-w-0 border-l-2 border-danger px-3 py-2">
+            <div className="text-xs text-default-500">异常 / 已暂停</div>
+            <div className="mt-1 text-2xl font-semibold leading-none">
+              <span className="text-danger">{failedRelayCount}</span>
+              <span className="text-default-400"> / </span>
+              <span>{pausedRelayCount}</span>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {relays.length > 0 && (
+        <>
+          <Card className="overflow-hidden border border-default-200/70 bg-black/10 dark:bg-white/[0.03]">
+            <CardHeader className="flex-col items-start gap-1 border-b border-default-200/70 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold">L4 透明中转</h2>
+                  <Chip color="primary" size="sm" variant="flat">
+                    {l4Relays.length} 条
+                  </Chip>
                 </div>
-                <div className="text-xs text-default-500">
-                  {relay.inNodeName || `节点 ${relay.inNodeId}`} ·{" "}
-                  {protocolText(relay.protocol)}
-                </div>
-                <div className="mt-2">{relayTypeChip(relay)}</div>
+                <p className="mt-1 text-xs text-default-500">
+                  基于 L4（TCP/UDP）端口映射的透明中转。
+                </p>
               </div>
-              {statusChip(relay.status)}
+              <span className="text-xs text-default-500">
+                入口 → 目标 → 状态 → 操作
+              </span>
             </CardHeader>
-            <CardBody className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div className="p-3 rounded-lg bg-default-100">
-                  <div className="text-default-500">入口</div>
-                  <div className="font-mono">
-                    {relay.inNodeServerIp || relay.inNodeIp || relay.inNodeName}
-                    :{relay.entryPort}
+            <CardBody className="p-0">
+              {l4Relays.length > 0 ? (
+                <>
+                  <div
+                    className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500 dark:bg-white/[0.03] xl:grid ${RELAY_GRID_CLASS}`}
+                  >
+                    <div>名称</div>
+                    <div>来源节点（入口）</div>
+                    <div>目标节点（真实出口）</div>
+                    <div>协议 / 类型</div>
+                    <div>状态</div>
+                    <div className="text-right">操作</div>
                   </div>
-                </div>
-                <div className="p-3 rounded-lg bg-default-100">
-                  <div className="text-default-500">目标</div>
-                  <div className="font-mono">
-                    {relay.relayType === "udp_quic"
-                      ? relay.landingName || relay.targetName || "协议落地"
-                      : `${relay.targetHost}:${relay.targetPort}`}
+                  <div className="divide-y divide-default-200/60">
+                    {l4Relays.map((relay) => {
+                      const displayName = relayDisplayName(relay);
+                      const entryAddress = `${relay.inNodeServerIp || relay.inNodeIp || relay.inNodeName || `节点 ${relay.inNodeId}`}:${relay.entryPort}`;
+                      const targetAddress = `${relay.targetHost}:${relay.targetPort}`;
+
+                      return (
+                        <div
+                          key={`${relay.relayType || "l4"}-${relay.id}`}
+                          className={`grid min-w-0 gap-2 px-4 py-3 xl:items-center xl:gap-3 ${RELAY_GRID_CLASS}`}
+                        >
+                          <div className="min-w-0">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              名称
+                            </div>
+                            <div
+                              className="break-words font-semibold"
+                              title={displayName}
+                            >
+                              {displayName}
+                            </div>
+                          </div>
+                          <div className="min-w-0 text-sm">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              来源节点（入口）
+                            </div>
+                            <div className="break-words">
+                              {relay.inNodeName || `节点 ${relay.inNodeId}`}
+                            </div>
+                            <div
+                              className="mt-1 break-all font-mono text-xs text-default-500"
+                              title={entryAddress}
+                            >
+                              {entryAddress}
+                            </div>
+                          </div>
+                          <div className="min-w-0 text-sm">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              目标节点（真实出口）
+                            </div>
+                            <div
+                              className="break-all font-mono"
+                              title={targetAddress}
+                            >
+                              {targetAddress}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              协议 / 类型
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {relayTypeChip(relay)}
+                              <Chip size="sm" variant="flat">
+                                {protocolText(relay.protocol)}
+                              </Chip>
+                            </div>
+                          </div>
+                          <div className="flex min-w-0 items-center justify-between gap-2 xl:block">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              状态
+                            </div>
+                            {statusChip(relay.status)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              操作
+                            </div>
+                            <div className="flex flex-wrap gap-2 xl:justify-end">
+                              <Button
+                                size="sm"
+                                variant="flat"
+                                onPress={() => openEdit(relay)}
+                              >
+                                编辑
+                              </Button>
+                              <Button
+                                color={
+                                  relay.status === 1 ? "warning" : "success"
+                                }
+                                size="sm"
+                                variant="flat"
+                                onPress={() => handleToggle(relay)}
+                              >
+                                {relay.status === 1 ? "暂停" : "恢复"}
+                              </Button>
+                              <Button
+                                isLoading={statusLoading === relay.inNodeId}
+                                size="sm"
+                                variant="flat"
+                                onPress={() => handleStatus(relay.inNodeId)}
+                              >
+                                节点状态
+                              </Button>
+                              <Button
+                                color="danger"
+                                size="sm"
+                                variant="flat"
+                                onPress={() => handleDelete(relay)}
+                              >
+                                删除
+                              </Button>
+                            </div>
+                          </div>
+                          {relay.lastError && (
+                            <div className="col-span-full min-w-0 break-all text-sm text-danger xl:-mt-2">
+                              最近错误: {relay.lastError}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              </div>
-              {relay.lastError && (
-                <div className="text-sm text-danger break-all">
-                  最近错误: {relay.lastError}
+                </>
+              ) : (
+                <div className="px-4 py-8 text-sm text-default-500">
+                  暂无 L4 透明中转规则。
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
-                {relay.relayType !== "udp_quic" && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      onPress={() => openEdit(relay)}
-                    >
-                      编辑
-                    </Button>
-                    <Button
-                      color={relay.status === 1 ? "warning" : "success"}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => handleToggle(relay)}
-                    >
-                      {relay.status === 1 ? "暂停" : "恢复"}
-                    </Button>
-                    <Button
-                      isLoading={statusLoading === relay.inNodeId}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => handleStatus(relay.inNodeId)}
-                    >
-                      节点状态
-                    </Button>
-                    <Button
-                      color="danger"
-                      size="sm"
-                      variant="flat"
-                      onPress={() => handleDelete(relay)}
-                    >
-                      删除
-                    </Button>
-                  </>
-                )}
-                {relay.relayType === "udp_quic" && (
-                  <div className="text-xs text-default-500">
-                    协议中转的启停/清理请到「中转」或「协议管理」页面处理；订阅请使用本页顶部的聚合订阅。
-                  </div>
-                )}
-              </div>
             </CardBody>
           </Card>
-        ))}
-      </div>
+
+          <Card className="overflow-hidden border border-default-200/70 bg-black/10 dark:bg-white/[0.03]">
+            <CardHeader className="flex-col items-start gap-1 border-b border-default-200/70 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold">HY2/TUIC 协议中转</h2>
+                  <Chip color="warning" size="sm" variant="flat">
+                    {udpQuicRelays.length} 条
+                  </Chip>
+                </div>
+                <p className="mt-1 text-xs text-default-500">
+                  基于 HY2/TUIC 协议的专用中转通道。
+                </p>
+              </div>
+              <span className="text-xs text-default-500">
+                入口 → 落地 → 状态 → 指引
+              </span>
+            </CardHeader>
+            <CardBody className="p-0">
+              {udpQuicRelays.length > 0 ? (
+                <>
+                  <div
+                    className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500 dark:bg-white/[0.03] xl:grid ${RELAY_GRID_CLASS}`}
+                  >
+                    <div>名称</div>
+                    <div>来源节点（入口）</div>
+                    <div>目标节点（真实出口）</div>
+                    <div>协议 / 类型</div>
+                    <div>状态</div>
+                    <div className="text-right">当前指引</div>
+                  </div>
+                  <div className="divide-y divide-default-200/60">
+                    {udpQuicRelays.map((relay) => {
+                      const displayName = relayDisplayName(relay);
+                      const entryAddress = `${relay.inNodeServerIp || relay.inNodeIp || relay.inNodeName || `节点 ${relay.inNodeId}`}:${relay.entryPort}`;
+                      const landingName =
+                        relay.landingName || relay.targetName || "协议落地";
+
+                      return (
+                        <div
+                          key={`${relay.relayType || "udp_quic"}-${relay.id}`}
+                          className={`grid min-w-0 gap-2 px-4 py-3 xl:items-center xl:gap-3 ${RELAY_GRID_CLASS}`}
+                        >
+                          <div className="min-w-0">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              名称
+                            </div>
+                            <div
+                              className="break-words font-semibold"
+                              title={displayName}
+                            >
+                              {displayName}
+                            </div>
+                          </div>
+                          <div className="min-w-0 text-sm">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              来源节点（入口）
+                            </div>
+                            <div className="break-words">
+                              {relay.inNodeName || `节点 ${relay.inNodeId}`}
+                            </div>
+                            <div
+                              className="mt-1 break-all font-mono text-xs text-default-500"
+                              title={entryAddress}
+                            >
+                              {entryAddress}
+                            </div>
+                          </div>
+                          <div className="min-w-0 text-sm">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              目标节点（真实出口）
+                            </div>
+                            <div className="break-words" title={landingName}>
+                              {landingName}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              协议 / 类型
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {relayTypeChip(relay)}
+                              <Chip size="sm" variant="flat">
+                                {protocolText(relay.protocol)}
+                              </Chip>
+                            </div>
+                          </div>
+                          <div className="flex min-w-0 items-center justify-between gap-2 xl:block">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              状态
+                            </div>
+                            {statusChip(relay.status)}
+                          </div>
+                          <div className="min-w-0 text-sm text-default-500">
+                            <div className="text-xs text-default-500 xl:hidden">
+                              当前指引
+                            </div>
+                            <div className="break-words">
+                              协议中转的启停/清理请到「中转」或「协议管理」页面处理；订阅请使用本页顶部的聚合订阅。
+                            </div>
+                          </div>
+                          {relay.lastError && (
+                            <div className="col-span-full min-w-0 break-all text-sm text-danger xl:-mt-2">
+                              最近错误: {relay.lastError}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="px-4 py-8 text-sm text-default-500">
+                  暂无 HY2/TUIC 协议中转规则。
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </>
+      )}
 
       {relays.length === 0 && (
         <Card>
@@ -867,18 +1123,26 @@ export default function TransparentRelayPage() {
         </Card>
       )}
 
-      <Modal isOpen={batchModalOpen} size="2xl" onOpenChange={setBatchModalOpen}>
+      <Modal
+        isOpen={batchModalOpen}
+        scrollBehavior="inside"
+        size="2xl"
+        onOpenChange={setBatchModalOpen}
+      >
         <ModalContent>
           <ModalHeader>一键添加所有透明中转</ModalHeader>
           <ModalBody className="space-y-3">
             <Alert color="primary" variant="flat">
-              选择入口节点和目标 IPv4 后，只会把当前登录用户在该目标机器下适合 L4
-              的 TCP 类端口生成透明中转；Hysteria2/TUIC 属于 UDP/QUIC，默认跳过，建议改用“HY2/TUIC 协议中转”。
+              选择入口节点和目标 IPv4 后，只会把当前登录用户在该目标机器下适合
+              L4 的 TCP 类端口生成透明中转；Hysteria2/TUIC 属于
+              UDP/QUIC，默认跳过，建议改用“HY2/TUIC 协议中转”。
             </Alert>
             <Select
               label="入口节点 / 线路机"
               placeholder="选择要作为线路入口的节点"
-              selectedKeys={batchForm.inNodeId ? [String(batchForm.inNodeId)] : []}
+              selectedKeys={
+                batchForm.inNodeId ? [String(batchForm.inNodeId)] : []
+              }
               onSelectionChange={(k) =>
                 setBatchForm({
                   ...batchForm,
@@ -887,8 +1151,8 @@ export default function TransparentRelayPage() {
               }
             >
               {nodes.map((n) => (
-                <SelectItem key={n.id}>
-                  {n.name} {n.country ? `(${n.country})` : ""}
+                <SelectItem key={n.id} textValue={nodeOptionText(n)}>
+                  {nodeOptionText(n)}
                 </SelectItem>
               ))}
             </Select>
@@ -905,7 +1169,9 @@ export default function TransparentRelayPage() {
               ))}
             </Select>
             <div className="rounded-lg bg-default-100 p-3 space-y-2">
-              <div className="text-sm font-medium">当前用户将生成的目标端口</div>
+              <div className="text-sm font-medium">
+                当前用户将生成的目标端口
+              </div>
               {batchL4TargetPortOptions.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {batchL4TargetPortOptions.map((option) => (
@@ -916,7 +1182,8 @@ export default function TransparentRelayPage() {
                 </div>
               ) : (
                 <div className="text-sm text-default-500">
-                  请选择目标 IPv4；若这里为空，说明目标机器没有适合 L4 批量生成的已启用端口。
+                  请选择目标 IPv4；若这里为空，说明目标机器没有适合 L4
+                  批量生成的已启用端口。
                 </div>
               )}
               {batchSkippedQuicOptions.length > 0 && (
@@ -926,7 +1193,12 @@ export default function TransparentRelayPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {batchSkippedQuicOptions.map((option) => (
-                      <Chip key={`skip-${option.key}`} color="warning" size="sm" variant="flat">
+                      <Chip
+                        key={`skip-${option.key}`}
+                        color="warning"
+                        size="sm"
+                        variant="flat"
+                      >
                         {option.label}
                       </Chip>
                     ))}
@@ -962,8 +1234,9 @@ export default function TransparentRelayPage() {
           <ModalHeader>创建 HY2/TUIC 协议中转</ModalHeader>
           <ModalBody className="space-y-3">
             <Alert color="warning" variant="flat">
-              这条路径会新建“入口节点协议入站 → 目标节点 HY2/TUIC 出站”的协议中转；不会自动删除或暂停现有 L4
-              HY2/TUIC 透明中转，测试成功后再手动处理旧规则。
+              这条路径会新建“入口节点协议入站 → 目标节点 HY2/TUIC
+              出站”的协议中转；不会自动删除或暂停现有 L4 HY2/TUIC
+              透明中转，测试成功后再手动处理旧规则。
             </Alert>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Select
@@ -982,8 +1255,8 @@ export default function TransparentRelayPage() {
                 }
               >
                 {nodes.map((n) => (
-                  <SelectItem key={n.id}>
-                    {n.name} {n.country ? `(${n.country})` : ""}
+                  <SelectItem key={n.id} textValue={nodeOptionText(n)}>
+                    {nodeOptionText(n)}
                   </SelectItem>
                 ))}
               </Select>
@@ -1003,8 +1276,8 @@ export default function TransparentRelayPage() {
                 }
               >
                 {nodes.map((n) => (
-                  <SelectItem key={n.id}>
-                    {n.name} {n.country ? `(${n.country})` : ""}
+                  <SelectItem key={n.id} textValue={nodeOptionText(n)}>
+                    {nodeOptionText(n)}
                   </SelectItem>
                 ))}
               </Select>
@@ -1043,7 +1316,8 @@ export default function TransparentRelayPage() {
 
                   return (
                     <div key={protocol}>
-                      - {ingressName} -&gt; {targetName} {protoLabel(protocol)} 协议中转
+                      - {ingressName} -&gt; {targetName} {protoLabel(protocol)}{" "}
+                      协议中转
                     </div>
                   );
                 })}
@@ -1069,7 +1343,9 @@ export default function TransparentRelayPage() {
                         {protoLabel(item.protocol)}
                       </Chip>
                       <span className="text-sm text-default-500">
-                        {item.entryPort ? `入口端口 ${item.entryPort}` : "未生成入口端口"}
+                        {item.entryPort
+                          ? `入口端口 ${item.entryPort}`
+                          : "未生成入口端口"}
                       </span>
                     </div>
                     {item.skippedReason ? (
@@ -1112,7 +1388,12 @@ export default function TransparentRelayPage() {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={modalOpen} size="2xl" onOpenChange={setModalOpen}>
+      <Modal
+        isOpen={modalOpen}
+        scrollBehavior="inside"
+        size="2xl"
+        onOpenChange={setModalOpen}
+      >
         <ModalContent>
           <ModalHeader>{isEdit ? "编辑透明中转" : "新增透明中转"}</ModalHeader>
           <ModalBody className="space-y-3">
@@ -1131,8 +1412,8 @@ export default function TransparentRelayPage() {
               }
             >
               {nodes.map((n) => (
-                <SelectItem key={n.id}>
-                  {n.name} {n.country ? `(${n.country})` : ""}
+                <SelectItem key={n.id} textValue={nodeOptionText(n)}>
+                  {nodeOptionText(n)}
                 </SelectItem>
               ))}
             </Select>

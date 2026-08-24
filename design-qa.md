@@ -57,3 +57,74 @@ final result: passed
 - 生成视觉稿使用的是示例品牌名和示例数据；实现按项目既有 TMS 品牌、真实接口数据和现有全局导航呈现。若需要完全复刻生成稿的品牌标识，应另开全局品牌/导航任务。
 - 如后续需要更强的表格扫描效率，可在不改变本次结构的前提下继续微调列宽、行高和操作按钮图标化。
 
+---
+
+# 透明中转「运维信号板」设计 QA
+
+## Source visual truth
+
+- Selected visual direction: `/Users/teamo/.codex/generated_images/01a03280-dde0-7401-9fd0-ff402be5bd8f/exec-82a486a6-087e-494c-b929-ccacd010afd4.png`
+- Original product screenshot: `/var/folders/42/qjjlsl6156b_0744mv5sxbcm0000gn/T/codex-clipboard-bdd706ed-2ec9-4b6a-a5d0-1534e01b3c92.png`
+
+## Implementation evidence
+
+- Desktop screenshot: `/Users/teamo/.codex/visualizations/2026/08/24/01a03280-dde0-7401-9fd0-ff402be5bd8f/transparent-relay-desktop-final.png`
+- Mobile screenshot: `/Users/teamo/.codex/visualizations/2026/08/24/01a03280-dde0-7401-9fd0-ff402be5bd8f/transparent-relay-mobile-final.png`
+- Desktop viewport: `1600 x 707`
+- Mobile viewport: `390 x 844`
+- State: midnight/dark skin; six realistic mock relay records (four L4, two HY2/TUIC), including one paused rule and one application-failed rule; actual `TransparentRelayPage` and `AdminLayout` rendered with mocked API responses in an isolated local preview.
+
+## Comparison
+
+### Full-view comparison
+
+- The implementation keeps the TMS dark shell, fixed desktop navigation, top header, warning band, semantic blue/amber/danger accents, and rounded grouped surfaces from the selected direction.
+- The main hierarchy is visible in the expected order: page actions → warning → four derived summary values → L4 group → HY2/TUIC group.
+- L4 rows expose source, target, protocol/type, status and the stable edit/pause-status/delete action cluster. HY2/TUIC rows show the landing target, status and the existing guidance instead of L4-only actions.
+- The real page remains scrollable for longer rule sets; the 707px viewport intentionally shows the start of the L4 group while retaining the same visual rhythm as the reference.
+
+### Focused-region comparison
+
+- Header/action region: labels, action order, primary action emphasis and warning copy are present and readable.
+- Summary region: counts are derived from the rendered data (`6 / 4 / 2 / 1 / 1` in the QA state), with L4, HY2/TUIC and error semantics visually separated.
+- L4 error/action region: the failed rule exposes `lastError` inline and the paused rule changes its action from “暂停” to “恢复”.
+- Mobile region: the header actions wrap, the sidebar collapses through the existing AdminLayout behavior, and the rules become field-labeled vertical blocks. Measured `documentWidth=390`, `bodyWidth=375`, `viewport=390`; no horizontal overflow.
+- Modal region: “新增透明中转” and “节点透明状态” opened successfully; existing form fields, status details, scroll behavior and buttons remained available.
+
+## Required fidelity surfaces
+
+- Fonts and typography: uses the existing TMS/ HeroUI typography and weight hierarchy; monospace is retained for IP:port values; long names and errors wrap safely.
+- Spacing and layout rhythm: grouped surfaces replace the previous large repeated cards; compact rows use aligned desktop columns and smaller vertical gaps; mobile rows stack without clipping.
+- Colors and tokens: uses existing HeroUI semantic colors and skin background; no global theme or navigation token changed.
+- Image quality and asset fidelity: this page has no custom product imagery; existing logo/navigation assets remain supplied by AdminLayout. No new CSS art, placeholder imagery, or handcrafted SVG was added.
+- Copy and content: existing operational copy and action labels are preserved; new summaries and group descriptions are derived from current data and do not introduce filters or new business behavior.
+
+## Findings
+
+No actionable P0/P1/P2 visual or interaction findings remain.
+
+## Patches made during QA
+
+- Changed the desktop rule grid to fractional `minmax(0, ...)` tracks so it can use the wide layout without creating fixed-width overflow at smaller desktop sizes.
+- Tightened group header/row spacing and allocated more action-column width so the L4 action cluster stays on one line at the target desktop width.
+- Added `textValue` to node options via a shared page-local label helper to remove the HeroUI select accessibility warning when forms open.
+
+## Known external check blocker
+
+The repository-wide `npm run build` cannot reach Vite bundling because unrelated existing edits in `vite-frontend/src/pages/forward.tsx` and `vite-frontend/src/pages/node.tsx` contain syntax errors. Those files were not modified by this task. The target page passes ESLint and an isolated esbuild compile, and the page was rendered and exercised in the local visual preview above.
+
+## Implementation Checklist
+
+- [x] Header actions and warning hierarchy
+- [x] Derived summary strip
+- [x] L4 / HY2-TUIC grouped rule surfaces
+- [x] Inline error and paused states
+- [x] Existing modal and row-action behavior smoke checked
+- [x] Desktop and mobile overflow checks
+- [x] Target-page ESLint and isolated compile
+
+## Follow-up Polish
+
+- [ ] Re-run the repository-wide build after the unrelated `forward.tsx` and `node.tsx` syntax errors are resolved.
+
+final result: passed
