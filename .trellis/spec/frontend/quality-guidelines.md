@@ -50,3 +50,7 @@ npm run build    # tsc && vite build —— 类型错误在这里暴露，提交
 - UI 文案全部**硬编码中文**（含 toast、空状态、emoji 标题），无 i18n 框架。新文案照此风格。
 - 注释用中文，且本项目注释的house style是**解释为什么/踩过的坑**，不是复述代码——参考 `utils/clipboard.ts`（剪贴板 vs 弹窗 focus-trap）、`config/sni.ts`（Reality SNI 的坑，"已经踩过一次"）、`api/network.ts` 的 SLOW_PATHS 注释。
 - 写注释前先确认它说的是真的：`utils/logout.ts` 的 docblock 声称保留主题偏好、实现却是 `localStorage.clear()`——注释与实现不符比没注释更糟。
+
+## 响应式密集列表
+
+带固定侧栏的管理页面在使用多列列表或表格时，横向布局应从 `xl`（约 1280px）开始启用；`lg`（1024–1279px）优先使用纵向信息块，避免侧栏占宽后内容被裁剪。桌面列标题和移动端字段标签应由同一份数据渲染，操作入口在两种布局下都必须可触达。

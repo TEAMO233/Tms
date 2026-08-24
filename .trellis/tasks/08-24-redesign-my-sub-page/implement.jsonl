@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端页面、HeroUI 组件、路由和构建规范"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "确认 /my-sub 页面与布局的放置边界"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "确认页面本地状态、主题和现有 provider 约束"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "确认线路视图类型和 strict TypeScript 约束"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "确认 lint/build、样式和跨布局验证要求"}
+{"file": ".trellis/spec/guides/index.md", "reason": "共享跨层和复用思考指南"}
