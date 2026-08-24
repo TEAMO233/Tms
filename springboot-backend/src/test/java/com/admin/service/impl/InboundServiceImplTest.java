@@ -1,6 +1,8 @@
 package com.admin.service.impl;
 
 import com.admin.entity.Node;
+import com.admin.entity.Inbound;
+import com.admin.entity.Landing;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,10 +39,33 @@ class InboundServiceImplTest {
         assertEquals("vmiss日本 -> 本机 TUIC 协议中转", service.relayInboundRemark(ingress, target, "tuic"));
     }
 
+    @Test
+    void transparentRelayManagedInboundRequiresUdpQuicRelayLandingMarker() {
+        InboundServiceImpl service = new InboundServiceImpl();
+        Landing transparentRelayLanding = new Landing();
+        transparentRelayLanding.setRemark("udp-quic-relay:2:1:hysteria2");
+        Landing ordinaryRelayLanding = new Landing();
+        ordinaryRelayLanding.setRemark("manual-relay");
+
+        assertTrue(service.isTransparentRelayManagedInbound(inbound("hysteria2", 1L), transparentRelayLanding));
+        assertTrue(service.isTransparentRelayManagedInbound(inbound("tuic", 2L), transparentRelayLanding));
+        assertFalse(service.isTransparentRelayManagedInbound(inbound("vless", 1L), transparentRelayLanding));
+        assertFalse(service.isTransparentRelayManagedInbound(inbound("hysteria2", 1L), ordinaryRelayLanding));
+        assertFalse(service.isTransparentRelayManagedInbound(inbound("hysteria2", null), transparentRelayLanding));
+        assertFalse(service.isTransparentRelayManagedInbound(inbound("hysteria2", 1L), null));
+    }
+
     private Node node(Long id, String name) {
         Node node = new Node();
         node.setId(id);
         node.setName(name);
         return node;
+    }
+
+    private Inbound inbound(String protocol, Long landingId) {
+        Inbound inbound = new Inbound();
+        inbound.setProtocol(protocol);
+        inbound.setLandingId(landingId);
+        return inbound;
     }
 }
