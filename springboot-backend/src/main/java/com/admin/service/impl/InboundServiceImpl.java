@@ -59,6 +59,7 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
 
     private static final int TUNNEL_TYPE_PORT_FORWARD = 1;
     private static final int SINGBOX_LISTEN_BASE = 40000;
+    private static final String UDP_QUIC_RELAY_MARKER_PREFIX = "udp-quic-relay:";
 
     @Autowired
     private InboundUserMapper inboundUserMapper;
@@ -422,8 +423,26 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         return "hysteria2".equals(p) || "tuic".equals(p);
     }
 
+    boolean isTransparentRelayManagedInbound(Inbound inbound, Landing landing) {
+        if (inbound == null || inbound.getLandingId() == null || landing == null) {
+            return false;
+        }
+        String remark = landing.getRemark();
+        return isUdpQuicProtocol(inbound.getProtocol())
+                && remark != null
+                && remark.startsWith(UDP_QUIC_RELAY_MARKER_PREFIX);
+    }
+
+    private boolean isTransparentRelayManagedInbound(Inbound inbound) {
+        if (inbound == null || inbound.getLandingId() == null) {
+            return false;
+        }
+        Landing landing = landingMapper.selectById(inbound.getLandingId());
+        return isTransparentRelayManagedInbound(inbound, landing);
+    }
+
     String relayLandingMarker(Long ingressNodeId, Long targetNodeId, String protocol) {
-        return "udp-quic-relay:" + ingressNodeId + ":" + targetNodeId + ":" + normalizeUdpQuicProtocol(protocol);
+        return UDP_QUIC_RELAY_MARKER_PREFIX + ingressNodeId + ":" + targetNodeId + ":" + normalizeUdpQuicProtocol(protocol);
     }
 
     String relayInboundRemark(Node ingress, Node target, String protocol) {
@@ -856,6 +875,11 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             if (in == null || iu.getGostForwardId() == null) {
                 continue;
             }
+            if (isTransparentRelayManagedInbound(in)) {
+                // 透明中转页创建的 HY2/TUIC 协议托管中转有独立 transparent_relay_sub，
+                // 不混入「我的订阅/全部线路」普通聚合订阅。
+                continue;
+            }
             Long lid = in.getLandingId();
             String lineKey = in.getNodeId() + "|" + (lid == null ? 0L : lid);
             Boolean stopped = lineStopped.get(lineKey);
@@ -1001,6 +1025,10 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             if (in == null || iu.getGostForwardId() == null) {
                 continue;
             }
+            if (isTransparentRelayManagedInbound(in)) {
+                // 透明中转协议托管线路只通过 /open_api/transparent_relay_sub 暴露。
+                continue;
+            }
             Node node = nodeMapper.selectById(in.getNodeId());
             Forward forward = forwardMapper.selectById(iu.getGostForwardId());
             if (node == null || forward == null) {
@@ -1044,6 +1072,10 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             }
             Inbound in = this.getById(iu.getInboundId());
             if (in == null) {
+                continue;
+            }
+            if (isTransparentRelayManagedInbound(in)) {
+                // 不在「我的订阅」页面展示透明中转页创建的 HY2/TUIC 协议托管中转。
                 continue;
             }
             long lid = in.getLandingId() != null ? in.getLandingId() : 0L;
