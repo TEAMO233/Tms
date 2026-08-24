@@ -180,6 +180,9 @@ export default function UserPage() {
   const [subAllToken, setSubAllToken] = useState<string>('');
   const [subUserName, setSubUserName] = useState<string>('');
   const subUrl = (token: string) => `${window.location.origin}/api/v1/open_api/sub?token=${token}`;
+  // Clash / Mihomo 走独立路径:那边吃 YAML,和上面这条 base64 链接列表不通用,
+  // 贴错了客户端里是空的。
+  const clashUrl = (token: string) => `${window.location.origin}/api/v1/open_api/clash?token=${token}`;
 
   const handleShowSub = async (user: User) => {
     try {
@@ -1558,6 +1561,17 @@ export default function UserPage() {
                     复制这条
                   </Button>
                   <SubQrToggle url={subUrl(subAllToken)} />
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={async () => {
+                      (await copyTextToClipboard(clashUrl(subAllToken)))
+                        ? toast.success('已复制 Clash / Mihomo 订阅')
+                        : toast.error('复制失败');
+                    }}
+                  >
+                    复制 Clash 版
+                  </Button>
                 </div>
                 <div className="text-tiny text-default-400">
                   节点名自带线路标识。以后给他新开线路不用再发链接,他更新订阅就有了。
@@ -1599,6 +1613,17 @@ export default function UserPage() {
                       复制这条
                     </Button>
                     <SubQrToggle url={url} />
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      onPress={async () => {
+                        (await copyTextToClipboard(clashUrl(ln.subToken)))
+                          ? toast.success('已复制 Clash / Mihomo 订阅')
+                          : toast.error('复制失败');
+                      }}
+                    >
+                      Clash 版
+                    </Button>
                     <div className="flex-1" />
                     {/* 收回这条线路的入口。停用是可逆的:UUID 和端口都留着,
                         恢复之后对方手上的订阅原样能用;删除会把端口也释放掉,

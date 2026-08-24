@@ -677,6 +677,116 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 .encodeToString(joined.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
+    /**
+     * Clash / Mihomo 订阅(YAML)。
+     *
+     * 和 buildSubscription 走同一套数据,只是输出格式不同 —— Mihomo 系客户端
+     * (Clash Verge Rev、ClashMeta)不认 base64 链接列表,贴进去是空的。
+     * token 既可能是聚合订阅的,也可能是单条线路的,两种都支持。
+     */
+    @Override
+    public String buildClashSubscription(String token) {
+        if (token == null || token.isEmpty()) {
+            return "";
+        }
+        List<InboundUser> ius;
+        User aggUser = userMapper.selectOne(
+                new QueryWrapper<User>().eq("all_sub_token", token).last("limit 1"));
+        if (aggUser != null) {
+            ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("user_id", aggUser.getId()));
+        } else {
+            ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("sub_token", token));
+        }
+
+        List<java.util.Map<String, Object>> proxies = new java.util.ArrayList<>();
+        java.util.Set<String> usedNames = ClashUtil.newNameSet();
+        java.util.Map<String, Boolean> lineStopped = new HashMap<>();
+        java.util.Map<Long, Node> nodeCache = new HashMap<>();
+        java.util.Map<Long, String> landingNames = new HashMap<>();
+
+        for (InboundUser iu : ius) {
+            if (iu.getStatus() != null && iu.getStatus() == 0) {
+                continue;
+            }
+            Inbound in = this.getById(iu.getInboundId());
+            if (in == null || iu.getGostForwardId() == null) {
+                continue;
+            }
+            Long lid = in.getLandingId();
+            String lineKey = in.getNodeId() + "|" + (lid == null ? 0L : lid);
+            Boolean stopped = lineStopped.get(lineKey);
+            if (stopped == null) {
+                InboundLine line = getLine(iu.getUserId(), in.getNodeId(), lid);
+                stopped = (line != null && line.getStatus() != null && line.getStatus() == 0);
+                lineStopped.put(lineKey, stopped);
+            }
+            if (stopped) {
+                continue;
+            }
+            Node node = nodeCache.get(in.getNodeId());
+            if (node == null) {
+                node = nodeMapper.selectById(in.getNodeId());
+                if (node == null) {
+                    continue;
+                }
+                nodeCache.put(in.getNodeId(), node);
+            }
+            Forward forward = forwardMapper.selectById(iu.getGostForwardId());
+            if (forward == null) {
+                continue;
+            }
+
+            // 名字规则和链接订阅保持一致:聚合订阅带线路前缀,单条不带。
+            // 两种订阅里同一个节点应该叫同一个名字,不然车友对不上。
+            String remark = (in.getRemark() != null && !in.getRemark().isEmpty())
+                    ? in.getRemark()
+                    : protocolDisplayName(in.getProtocol());
+            if (aggUser != null) {
+                StringBuilder prefix = new StringBuilder(node.getName());
+                if (lid != null) {
+                    String ln = landingNames.get(lid);
+                    if (ln == null) {
+                        com.admin.entity.Landing l = landingMapper.selectById(lid);
+                        ln = (l != null && l.getName() != null) ? l.getName() : ("落地#" + lid);
+                        landingNames.put(lid, ln);
+                    }
+                    prefix.append("→").append(ln);
+                }
+                prefix.append(" ");
+                remark = prefix + remark;
+            }
+
+            String ip = (node.getDomain() != null && !node.getDomain().trim().isEmpty())
+                    ? node.getDomain().trim()
+                    : node.getServerIp();
+            String ssMethod = null;
+            if ("shadowsocks".equals(in.getProtocol())) {
+                JSONObject cfg = JSON.parseObject(in.getConfigJson() == null ? "{}" : in.getConfigJson());
+                ssMethod = cfg.getString("method");
+            }
+            java.util.Map<String, Object> proxy = ClashUtil.toProxy(
+                    in.getProtocol(),
+                    ClashUtil.uniqueName(remark, usedNames),
+                    ip, forward.getInPort(),
+                    iu.getUuid(), iu.getPassword(), in.getSni(),
+                    in.getPublicKey(), in.getShortId(), ssMethod);
+            if (proxy != null) {
+                proxies.add(proxy);
+            }
+        }
+        if (proxies.isEmpty()) {
+            // 空 proxies 的配置 Mihomo 会直接报错。给一条 DIRECT 占位,
+            // 至少订阅能导进去,车友看到的是「没有节点」而不是「订阅损坏」。
+            StringBuilder empty = new StringBuilder();
+            empty.append("proxies: []").append(System.lineSeparator());
+            empty.append("proxy-groups: []").append(System.lineSeparator());
+            empty.append("rules:").append(System.lineSeparator());
+            empty.append("  - MATCH,DIRECT").append(System.lineSeparator());
+            return empty.toString();
+        }
+        return ClashUtil.buildConfig(proxies);
+    }
+
     /** 取(必要时生成)该车友的「全部线路」聚合订阅 token */
     private String ensureAllSubToken(User u) {
         if (u.getAllSubToken() != null && !u.getAllSubToken().isEmpty()) {

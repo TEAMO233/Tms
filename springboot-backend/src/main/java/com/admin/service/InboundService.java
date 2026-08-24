@@ -47,6 +47,9 @@ public interface InboundService extends IService<Inbound> {
     /** 彻底删掉某车友的一条线路:分配记录 + 转发 + 线路本身,端口一并释放 */
     R deleteLine(Long userId, Long nodeId, Long landingId);
 
+    /** Clash / Mihomo 订阅(YAML)。和 buildSubscription 同源,只是格式不同 */
+    String buildClashSubscription(String token);
+
     /** 给协议改显示名(写 Inbound.remark);订阅链接按需生成,改完车友刷新订阅即见新名 */
     R renameInbound(Long id, String remark);
 

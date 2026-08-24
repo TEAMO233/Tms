@@ -21,6 +21,9 @@ export default function MySubPage() {
   const [loading, setLoading] = useState(true);
 
   const subUrl = (token: string) => `${window.location.origin}/api/v1/open_api/sub?token=${token}`;
+  // Clash / Mihomo 是另一套格式(YAML),和上面那条 base64 链接列表不通用。
+  // 用 Clash Verge、ClashMeta 的人贴上面那条会得到一个空订阅。
+  const clashUrl = (token: string) => `${window.location.origin}/api/v1/open_api/clash?token=${token}`;
 
   const load = async () => {
     try {
@@ -97,10 +100,26 @@ export default function MySubPage() {
                 复制订阅链接
               </Button>
               <SubQrToggle url={subUrl(allSubToken)} />
+              <Button
+                size="sm"
+                variant="flat"
+                onPress={async () => {
+                  (await copyTextToClipboard(clashUrl(allSubToken)))
+                    ? toast.success("已复制 Clash / Mihomo 版")
+                    : toast.error("复制失败,请手动选中");
+                }}
+              >
+                Clash / Mihomo 版
+              </Button>
             </div>
             <div className="text-xs text-default-400">
-              节点名前面带线路标识(如「[香港机器] VLESS」),方便区分从哪出口。
+              节点名前面带线路标识(如「香港机器 VLESS」),方便区分从哪出口。
               以后管理员给你新开线路,更新一下订阅就自动出现,不用再要新链接。
+            </div>
+            <div className="text-xs text-default-400">
+              用 <span className="text-default-500">v2rayN / 小火箭 / v2rayNG</span> 复制上面那条;
+              用 <span className="text-default-500">Clash Verge / ClashMeta / Mihomo</span> 复制「Clash / Mihomo 版」——
+              两种格式不通用,贴错了客户端里会是空的。
             </div>
           </CardBody>
         </Card>
