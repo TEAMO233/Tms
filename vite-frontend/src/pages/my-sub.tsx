@@ -3,17 +3,18 @@ import type { User } from "@/types";
 import { useEffect, useState } from "react";
 import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Input, Textarea } from "@heroui/input";
+import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import toast from "react-hot-toast";
 
-import { getMyLines, getUserPackageInfo } from "@/api";
+import { createTransparentRelaySubscription, getMyLines, getUserPackageInfo } from "@/api";
 import { SubQrToggle } from "@/components/sub-qr";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
-  buildTransparentGroups,
-  type TransparentForward,
-  type TransparentGroup,
+  buildTransparentRelaySubUrl,
+  shouldShowTransparentRelaySubscription,
+  toSafeCount,
+  type TransparentRelaySubscriptionSummary,
 } from "@/utils/my-sub";
 
 type LineFilter = "all" | "direct" | "relay";
@@ -40,7 +41,6 @@ type AccountInfo = Partial<Pick<User, "status" | "expTime">>;
 
 interface PackagePayload {
   userInfo?: AccountInfo | null;
-  forwards?: TransparentForward[] | null;
 }
 
 const GB = 1024 * 1024 * 1024;
@@ -69,7 +69,8 @@ export default function MySubPage() {
   // 「全部线路」聚合订阅:一条链接包含他所有线路,以后新开线路也不用重发
   const [allSubToken, setAllSubToken] = useState("");
   const [account, setAccount] = useState<AccountInfo | null>(null);
-  const [transparentGroups, setTransparentGroups] = useState<TransparentGroup[]>([]);
+  const [transparentSubscription, setTransparentSubscription] =
+    useState<TransparentRelaySubscriptionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [lineFilter, setLineFilter] = useState<LineFilter>("all");
   const [expandedLineKey, setExpandedLineKey] = useState<string | null>(null);
@@ -93,25 +94,13 @@ export default function MySubPage() {
     }
   };
 
-  const copyTransparentText = async (text: string) => {
-    if (!text) {
-      toast.error("暂无可复制的透明中转入口");
-
-      return;
-    }
-
-    const copied = await copyTextToClipboard(text);
-
-    if (copied) {
-      toast.success("已复制透明中转复合清单");
-    } else {
-      toast.error("复制失败,点框内已全选,按 Ctrl+C");
-    }
-  };
-
   const load = async () => {
     try {
-      const [ln, pkg] = await Promise.all([getMyLines(), getUserPackageInfo()]);
+      const [ln, pkg, transparentSub] = await Promise.all([
+        getMyLines(),
+        getUserPackageInfo(),
+        createTransparentRelaySubscription().catch(() => null),
+      ]);
 
       if (ln.code === 0) {
         // 后端返回结构从数组改成了 {lines, allSubToken},这里两种都认,
@@ -131,7 +120,12 @@ export default function MySubPage() {
         const payload = pkg.data as PackagePayload | null | undefined;
 
         setAccount(payload?.userInfo || null);
-        setTransparentGroups(buildTransparentGroups(payload?.forwards || []));
+      }
+
+      if (transparentSub?.code === 0 && transparentSub.data?.subToken) {
+        setTransparentSubscription(transparentSub.data);
+      } else {
+        setTransparentSubscription(null);
       }
     } catch {
       toast.error("加载失败");
@@ -169,11 +163,13 @@ export default function MySubPage() {
     { key: "direct", label: "直连", count: directCount },
     { key: "relay", label: "中转", count: relayCount },
   ];
-  const transparentEntryCount = transparentGroups.reduce(
-    (total, group) => total + group.entries.length,
-    0,
-  );
-  const hasAnySubscription = lines.length > 0 || transparentGroups.length > 0;
+  const transparentAvailableCount = toSafeCount(transparentSubscription?.availableCount);
+  const transparentSkippedCount = toSafeCount(transparentSubscription?.skippedCount);
+  const showTransparentSubscription = shouldShowTransparentRelaySubscription(transparentSubscription);
+  const transparentSubscriptionUrl = showTransparentSubscription
+    ? buildTransparentRelaySubUrl(window.location.origin, transparentSubscription!.subToken!)
+    : "";
+  const hasAnySubscription = lines.length > 0 || showTransparentSubscription;
   const hasAggregateSubscription =
     !loading && Boolean(allSubToken) && lines.length > 1;
 
@@ -187,8 +183,8 @@ export default function MySubPage() {
             </h1>
             <span className="text-sm text-default-500">
               共 {lines.length} 条协议线路
-              {transparentEntryCount > 0
-                ? `,透明中转 ${transparentEntryCount} 个入口`
+              {showTransparentSubscription
+                ? `,透明中转 ${transparentAvailableCount} 个节点`
                 : ""}
             </span>
           </div>
@@ -199,8 +195,8 @@ export default function MySubPage() {
         {!loading && hasAnySubscription && (
           <div className="rounded-full border border-default-200/70 bg-default-50/40 px-3 py-1.5 text-xs text-default-500 dark:bg-white/5">
             {protocolTotal > 0 && <span>共 {protocolTotal} 个协议可用</span>}
-            {protocolTotal > 0 && transparentEntryCount > 0 && <span> · </span>}
-            {transparentEntryCount > 0 && <span>{transparentEntryCount} 个透明入口</span>}
+            {protocolTotal > 0 && showTransparentSubscription && <span> · </span>}
+            {showTransparentSubscription && <span>{transparentAvailableCount} 个透明中转节点</span>}
           </div>
         )}
       </div>
@@ -502,10 +498,10 @@ export default function MySubPage() {
             </>
           )}
 
-          {transparentGroups.length > 0 && (
+          {showTransparentSubscription && (
             <Card className="overflow-hidden border border-secondary/30 bg-gradient-to-br from-secondary/10 via-secondary/5 to-default/10 shadow-lg shadow-secondary/5">
               <CardBody className="gap-4 p-4 sm:p-5 lg:p-6">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Chip color="secondary" size="sm" variant="flat">
@@ -514,52 +510,53 @@ export default function MySubPage() {
                       <h2 className="text-lg font-semibold sm:text-xl">
                         透明中转复合订阅
                       </h2>
+                      <span className="text-sm text-default-500">
+                        包含透明中转页里当前可用的 L4 与 HY2/TUIC 协议中转。
+                      </span>
                     </div>
                     <p className="mt-2 text-xs leading-5 text-default-500">
-                      这里展示手工端口/隧道转发的入口地址清单。它不是翻墙协议订阅,复制后按客户端需要逐条填写地址和端口。
+                      这是一条独立订阅链接,不会混进普通“全部线路”。透明中转新增或停用后,客户端更新这条订阅即可同步。
                     </p>
                   </div>
-                  <div className="rounded-xl border border-secondary/20 bg-black/10 px-4 py-2.5 text-right text-secondary-600 dark:bg-white/5 dark:text-secondary-300">
-                    <div className="text-xs text-default-500">入口数量</div>
-                    <div className="text-xl font-bold leading-tight">
-                      {transparentEntryCount}
+                  <div className="flex shrink-0 items-center gap-3 rounded-xl border border-secondary/20 bg-black/10 px-4 py-2.5 dark:bg-white/5">
+                    <div className="text-right">
+                      <div className="text-xs text-default-500">可用节点</div>
+                      <div className="text-xl font-bold leading-tight text-secondary-600 dark:text-secondary-300">
+                        {transparentAvailableCount}
+                      </div>
                     </div>
+                    {transparentSkippedCount > 0 && (
+                      <Chip color="warning" size="sm" variant="flat">
+                        跳过 {transparentSkippedCount}
+                      </Chip>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {transparentGroups.map((group) => (
-                    <div
-                      key={`transparent-${group.tunnelId ?? group.tunnelName}`}
-                      className="rounded-2xl border border-default-200/70 bg-default-50/40 p-3 dark:bg-white/[0.03] sm:p-4"
+                <div className="flex flex-col gap-2.5 xl:flex-row xl:items-start">
+                  <Input
+                    readOnly
+                    className="min-w-0 flex-1"
+                    size="sm"
+                    value={transparentSubscriptionUrl}
+                    onClick={(event) => event.currentTarget.select()}
+                  />
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button
+                      color="secondary"
+                      size="sm"
+                      variant="flat"
+                      onPress={() =>
+                        copySubscription(
+                          transparentSubscriptionUrl,
+                          "已复制透明中转复合订阅",
+                        )
+                      }
                     >
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="min-w-0 truncate font-semibold">
-                          {group.tunnelName}
-                        </span>
-                        <Chip className="ml-auto" size="sm" variant="flat">
-                          {group.entries.length} 入口
-                        </Chip>
-                      </div>
-                      <Textarea
-                        readOnly
-                        className="font-mono text-xs"
-                        minRows={Math.min(6, Math.max(2, group.entries.length))}
-                        value={group.compositeText}
-                        onClick={(event) => event.currentTarget.select()}
-                      />
-                      <div className="mt-3 flex justify-end">
-                        <Button
-                          color="secondary"
-                          size="sm"
-                          variant="flat"
-                          onPress={() => copyTransparentText(group.compositeText)}
-                        >
-                          复制复合清单
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                      复制订阅链接
+                    </Button>
+                    <SubQrToggle url={transparentSubscriptionUrl} />
+                  </div>
                 </div>
               </CardBody>
             </Card>
@@ -579,7 +576,7 @@ export default function MySubPage() {
             <div className="min-w-0">
               <div className="font-medium">Loon / Shadowrocket (iOS)</div>
               <div className="mt-1 text-xs leading-5 text-default-500">
-                协议线路用订阅;透明中转按复合清单里的 地址:端口 新增对应节点或服务
+                协议线路用普通订阅;透明中转用“透明中转复合订阅”单独添加并更新
               </div>
             </div>
             <div className="min-w-0">
@@ -602,7 +599,7 @@ export default function MySubPage() {
             </div>
           </div>
           <div className="border-t border-default-200/60 pt-3 text-xs leading-5 text-default-500">
-            每条协议线路是独立的套餐:流量、到期各算各的,一条用完不影响另一条。透明中转展示已有转发入口,方便一次复制给自己用。
+            每条协议线路是独立的套餐:流量、到期各算各的,一条用完不影响另一条。透明中转复合订阅只包含透明中转页里的可用中转节点。
           </div>
         </CardBody>
       </Card>
