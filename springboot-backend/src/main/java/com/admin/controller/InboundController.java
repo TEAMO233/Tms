@@ -4,6 +4,7 @@ import com.admin.common.annotation.RequireRole;
 import com.admin.common.aop.LogAnnotation;
 import com.admin.common.dto.InboundDto;
 import com.admin.common.dto.InboundUserDto;
+import com.admin.common.dto.UdpQuicRelayCreateDto;
 import com.admin.common.lang.R;
 import com.admin.service.InboundService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,14 @@ public class InboundController extends BaseController {
                 String.valueOf(body.get("link")),
                 body.get("name") == null ? null : String.valueOf(body.get("name")),
                 body.get("sni") == null ? null : String.valueOf(body.get("sni")));
+    }
+
+    /** HY2/TUIC 协议中转:入口节点新建协议入站,出站走目标节点对应 HY2/TUIC。 */
+    @LogAnnotation
+    @RequireRole
+    @PostMapping("/udp-quic-relay")
+    public R createUdpQuicRelay(@Validated @RequestBody UdpQuicRelayCreateDto dto) {
+        return inboundService.createUdpQuicRelay(dto);
     }
 
     @RequireRole

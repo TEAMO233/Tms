@@ -119,6 +119,86 @@ export interface ForwardSubscriptionResponse {
   skippedCount: number;
 }
 
+export interface TransparentRelay {
+  id: number;
+  name: string;
+  inNodeId: number;
+  inNodeName?: string;
+  inNodeIp?: string;
+  inNodeServerIp?: string;
+  entryPort: number;
+  targetHost: string;
+  targetPort: number;
+  protocol: 'tcp' | 'udp' | 'tcp_udp' | 'hysteria2' | 'tuic';
+  masquerade: boolean;
+  lastError?: string | null;
+  createdTime?: number;
+  updatedTime?: number;
+  status: number;
+  relayType?: 'l4' | 'udp_quic';
+  inboundId?: number;
+  landingId?: number;
+  forwardId?: number;
+  landingName?: string;
+  targetName?: string;
+}
+
+export interface TransparentRelayForm {
+  id?: number;
+  name: string;
+  inNodeId: number | null;
+  entryPort: number | null;
+  targetHost: string;
+  targetPort: number | null;
+  protocol: 'tcp' | 'udp' | 'tcp_udp';
+}
+
+export interface TransparentRelayBatchForm {
+  inNodeId: number | null;
+  targetHost: string;
+}
+
+export interface TransparentRelayBatchResult {
+  targetCount: number;
+  createdCount: number;
+  skippedCount: number;
+  createdPorts: number[];
+  skippedPorts: number[];
+  skippedQuicProtocols?: string[];
+}
+
+export interface TransparentRelaySubscriptionResult {
+  subToken: string;
+  availableCount: number;
+  skippedCount: number;
+}
+
+export interface UdpQuicRelayCreateForm {
+  ingressNodeId: number | null;
+  targetNodeId: number | null;
+  protocols: Array<"hysteria2" | "tuic">;
+}
+
+export interface UdpQuicRelayResult {
+  protocol: string;
+  landingId?: number;
+  inboundId?: number;
+  forwardId?: number;
+  entryPort?: number;
+  subToken?: string;
+  link?: string;
+  createdLanding?: boolean;
+  createdInbound?: boolean;
+  assignedUser?: boolean;
+  skippedReason?: string;
+}
+
+export interface TransparentRelayStatusResponse {
+  ipForward?: boolean;
+  exists?: boolean;
+  ruleset?: string;
+}
+
 export interface SpeedLimit {
   id: number;
   name: string;

@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * 把一条节点分享链接解析成 sing-box 出站(outbound)。
- * 支持:socks5:// / ss:// / vmess:// / vless:// / trojan:// / hysteria2://(hy2://)。
+ * 支持:socks5:// / ss:// / vmess:// / vless:// / trojan:// / hysteria2://(hy2://) / tuic://。
  *
  * 解析结果不含 "tag";下发节点配置时由 SingboxUtil 填 "landing-<id>",这样一条落地能被多台前置机复用。
  * 落地多为任意第三方节点(住宅代理 / 机场),TLS 一律 insecure=true(不校验证书),reality 除外(用 pbk 校验)。
@@ -53,6 +53,9 @@ public class LandingUtil {
             }
             if (lower.startsWith("hysteria2://") || lower.startsWith("hy2://")) {
                 return new Parsed("hysteria2", parseHysteria2(s));
+            }
+            if (lower.startsWith("tuic://")) {
+                return new Parsed("tuic", parseTuic(s));
             }
             // 没协议头 → 当住宅 socks 的裸格式:IP:端口 / IP:端口:账号:密码 / 账号:密码@IP:端口
             return new Parsed("socks5", parseBareSocks(s));
@@ -314,6 +317,56 @@ public class LandingUtil {
             ob.put("password", firstNonBlank(q.get("obfs-password"), q.get("obfsParam"), ""));
             o.put("obfs", ob);
         }
+        return o;
+    }
+
+    // ---------- tuic://uuid:password@host:port?params#tag ----------
+    private static JSONObject parseTuic(String s) {
+        String body = stripScheme(s);
+        body = stripFragment(body);
+        Map<String, String> q = new HashMap<>();
+        int qi = body.indexOf('?');
+        if (qi >= 0) {
+            q = parseQuery(body.substring(qi + 1));
+            body = body.substring(0, qi);
+        }
+        int at = body.lastIndexOf('@');
+        if (at < 0) {
+            throw new IllegalArgumentException("tuic 链接缺少账号信息");
+        }
+        String userInfo = body.substring(0, at);
+        int colon = userInfo.indexOf(':');
+        if (colon <= 0) {
+            throw new IllegalArgumentException("tuic 链接缺少 uuid 或 password");
+        }
+        String uuid = urlDecode(userInfo.substring(0, colon));
+        String password = urlDecode(userInfo.substring(colon + 1));
+        String[] hp = splitHostPort(body.substring(at + 1));
+
+        JSONObject o = new JSONObject();
+        o.put("type", "tuic");
+        o.put("server", hp[0]);
+        o.put("server_port", Integer.parseInt(hp[1]));
+        o.put("uuid", uuid);
+        o.put("password", password);
+        o.put("congestion_control", firstNonBlank(q.get("congestion_control"), q.get("congestion"), "bbr"));
+        o.put("udp_relay_mode", firstNonBlank(q.get("udp_relay_mode"), "native"));
+
+        String sni = firstNonBlank(q.get("sni"), q.get("peer"), hp[0]);
+        JSONObject tls = tlsBlock(sni, null, null, null);
+        String alpn = firstNonBlank(q.get("alpn"), "h3");
+        if (!isBlank(alpn)) {
+            com.alibaba.fastjson.JSONArray arr = new com.alibaba.fastjson.JSONArray();
+            for (String item : alpn.split(",")) {
+                if (!isBlank(item)) {
+                    arr.add(item.trim());
+                }
+            }
+            if (!arr.isEmpty()) {
+                tls.put("alpn", arr);
+            }
+        }
+        o.put("tls", tls);
         return o;
     }
 

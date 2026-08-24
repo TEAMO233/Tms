@@ -50,6 +50,28 @@ public class SchemaMigration implements ApplicationRunner {
                 "ALTER TABLE `forward` ADD COLUMN `source_link` LONGTEXT NULL COMMENT '原始客户端协议分享链接,仅用于生成转发客户端链接'");
         addColumnIfMissing("user", "forward_sub_token",
                 "ALTER TABLE `user` ADD COLUMN `forward_sub_token` VARCHAR(64) NULL COMMENT '转发聚合订阅token'");
+        addColumnIfMissing("user", "transparent_relay_sub_token",
+                "ALTER TABLE `user` ADD COLUMN `transparent_relay_sub_token` VARCHAR(64) NULL COMMENT '透明中转聚合订阅token'");
+
+        // 透明中转/线路机模式:入口节点用 nftables DNAT+SNAT 转到目标服务器端口。
+        createTableIfMissing("transparent_relay",
+                "CREATE TABLE `transparent_relay` ("
+                        + "`id` int(10) NOT NULL AUTO_INCREMENT,"
+                        + "`name` varchar(100) NOT NULL COMMENT '透明中转规则名',"
+                        + "`in_node_id` int(10) NOT NULL COMMENT '入口/线路机节点ID',"
+                        + "`entry_port` int(10) NOT NULL COMMENT '客户端连接入口端口',"
+                        + "`target_host` varchar(255) NOT NULL COMMENT '入口机可访问的目标地址',"
+                        + "`target_port` int(10) NOT NULL COMMENT '目标端口',"
+                        + "`protocol` varchar(16) NOT NULL DEFAULT 'tcp_udp' COMMENT 'tcp/udp/tcp_udp',"
+                        + "`masquerade` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否SNAT/MASQUERADE',"
+                        + "`last_error` varchar(512) DEFAULT NULL COMMENT '最近一次应用失败摘要',"
+                        + "`created_time` bigint(20) NOT NULL,"
+                        + "`updated_time` bigint(20) DEFAULT NULL,"
+                        + "`status` int(10) NOT NULL DEFAULT '1' COMMENT '1=启用 0=暂停 -1=应用失败',"
+                        + "PRIMARY KEY (`id`),"
+                        + "KEY `idx_tr_node` (`in_node_id`),"
+                        + "KEY `idx_tr_node_port` (`in_node_id`,`entry_port`)"
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     /** 列不存在才执行 ddl;任何异常都吞掉(只记日志),不能因为迁移失败导致面板起不来 */
@@ -70,6 +92,33 @@ public class SchemaMigration implements ApplicationRunner {
             } else {
                 log.warn("表结构迁移失败 {}.{}: {}", table, column, msg);
             }
+        }
+    }
+
+    /** 表不存在才执行建表;任何异常都吞掉(只记日志),不能因为迁移失败导致面板起不来 */
+    private void createTableIfMissing(String table, String ddl) {
+        try (Connection conn = dataSource.getConnection()) {
+            if (tableExists(conn, table)) {
+                return;
+            }
+            try (Statement st = conn.createStatement()) {
+                st.executeUpdate(ddl);
+                log.info("表结构迁移: 表 {} 已创建", table);
+            }
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            if (msg.contains("already exists") || msg.contains("1050")) {
+                log.debug("表结构迁移: 表 {} 已存在,跳过", table);
+            } else {
+                log.warn("表结构迁移失败 表 {}: {}", table, msg);
+            }
+        }
+    }
+
+    private boolean tableExists(Connection conn, String table) throws Exception {
+        DatabaseMetaData meta = conn.getMetaData();
+        try (ResultSet rs = meta.getTables(conn.getCatalog(), null, table, new String[]{"TABLE"})) {
+            return rs.next();
         }
     }
 

@@ -1,4 +1,16 @@
-import type { ForwardClientLinkResponse, ForwardForm, ForwardSubscriptionResponse } from '@/types';
+import type {
+  ForwardClientLinkResponse,
+  ForwardForm,
+  ForwardSubscriptionResponse,
+  TransparentRelay,
+  TransparentRelayBatchForm,
+  TransparentRelayBatchResult,
+  TransparentRelayForm,
+  TransparentRelayStatusResponse,
+  TransparentRelaySubscriptionResult,
+  UdpQuicRelayCreateForm,
+  UdpQuicRelayResult,
+} from '@/types';
 
 import Network from './network';
 
@@ -91,8 +103,21 @@ export const getUserSub = (userId: number) => Network.post("/inbound/user-sub", 
 
 // 中转(前置机协议 + 落地出口):落地内联粘贴、测试、搭建
 export const oneClickRelay = (nodeId: number, link: string, name?: string, sni?: string) => Network.post("/inbound/one-click-relay", { nodeId, link, name, sni });
+export const createUdpQuicRelay = (data: UdpQuicRelayCreateForm) => Network.post<UdpQuicRelayResult[]>("/inbound/udp-quic-relay", data);
 export const testLanding = (nodeId: number, link: string) => Network.post("/landing/test", { nodeId, link });
 export const getLandingList = () => Network.post("/landing/list"); // 仅用于中转卡片显示落地名
+
+// 透明中转 / 线路机模式:入口机 nftables DNAT+SNAT 到主服务器端口
+export const createTransparentRelay = (data: TransparentRelayForm) => Network.post<TransparentRelay>("/transparent-relay/create", data);
+export const createTransparentRelayBatch = (data: TransparentRelayBatchForm) => Network.post<TransparentRelayBatchResult>("/transparent-relay/batch-create", data);
+export const getTransparentRelayList = () => Network.post<TransparentRelay[]>("/transparent-relay/list");
+export const updateTransparentRelay = (data: TransparentRelayForm) => Network.post("/transparent-relay/update", data);
+export const deleteTransparentRelay = (id: number) => Network.post("/transparent-relay/delete", { id });
+export const pauseTransparentRelay = (id: number) => Network.post("/transparent-relay/pause", { id });
+export const resumeTransparentRelay = (id: number) => Network.post("/transparent-relay/resume", { id });
+export const getTransparentRelayStatus = (nodeId: number) => Network.post<TransparentRelayStatusResponse>("/transparent-relay/status", { nodeId });
+export const getTransparentRelaySubscriptionLink = (id: number) => Network.post<{ link: string }>("/transparent-relay/subscription/link", { id });
+export const createTransparentRelaySubscription = () => Network.post<TransparentRelaySubscriptionResult>("/transparent-relay/subscription");
 
 // 订阅按线路(车友×机器):一个车友的所有订阅线路
 export const getUserLines = (userId: number) => Network.post("/inbound/user-lines", { userId });

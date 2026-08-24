@@ -593,6 +593,16 @@ func (w *WebSocketReporter) routeCommand(cmd CommandMessage) {
 		response.Type = "TestOutboundResponse"
 		response.Data = testResult
 
+	// 透明中转/线路机模式:节点本机 nftables DNAT+SNAT 规则
+	case "SetTransparentRelays":
+		err = w.handleSetTransparentRelays(cmd.Data)
+		response.Type = "SetTransparentRelaysResponse"
+	case "GetTransparentRelayStatus":
+		var statusResult map[string]interface{}
+		statusResult, err = w.handleGetTransparentRelayStatus(cmd.Data)
+		response.Type = "GetTransparentRelayStatusResponse"
+		response.Data = statusResult
+
 	default:
 		err = fmt.Errorf("未知命令类型: %s", cmd.Type)
 		response.Type = "UnknownCommandResponse"

@@ -7,6 +7,7 @@ import com.admin.entity.Node;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
@@ -109,6 +110,15 @@ public final class ClientLinkUtil {
     /** namePrefix 仅用于现有聚合订阅的线路名称前缀。 */
     public static String buildInboundLink(Inbound inbound, InboundUser inboundUser,
                                           Node node, Forward forward, String namePrefix) {
+        return buildInboundLink(inbound, inboundUser, node, forward, namePrefix, false);
+    }
+
+    /**
+     * exactName=true 时 namePrefix 作为完整展示名使用,用于透明中转订阅的 Transit 命名。
+     */
+    public static String buildInboundLink(Inbound inbound, InboundUser inboundUser,
+                                          Node node, Forward forward, String namePrefix,
+                                          boolean exactName) {
         if (inbound == null || inboundUser == null || node == null || forward == null) {
             throw new IllegalArgumentException("协议来源信息不完整");
         }
@@ -119,7 +129,9 @@ public final class ClientLinkUtil {
         String endpointHost = resolveNodeEndpoint(node);
         String protocol = inbound.getProtocol() == null
                 ? "" : inbound.getProtocol().toLowerCase(Locale.ROOT);
-        String remark = buildRemark(inbound, node, namePrefix);
+        String remark = exactName && namePrefix != null && !namePrefix.trim().isEmpty()
+                ? namePrefix.trim()
+                : buildRemark(inbound, node, namePrefix);
         String uuid = inboundUser.getUuid();
         String password = inboundUser.getPassword();
 
@@ -199,15 +211,17 @@ public final class ClientLinkUtil {
         if ("ss".equals(scheme)) {
             try {
                 UriSource uri = parseUriSource(source, schemeSeparator);
-                return uri.schemePrefix + uri.userInfo + formatUriHost(host) + ":" + endpointPort + uri.suffix;
+                return uri.schemePrefix + uri.userInfo + formatUriHost(host) + ":" + endpointPort
+                        + rewriteUriFragmentName(uri.suffix, nodeName);
             } catch (IllegalArgumentException ignored) {
                 // 兼容 ss://Base64(method:password@host:port)#备注 这种旧式分享格式。
-                return rewriteLegacyShadowsocks(source, schemeSeparator, host, endpointPort);
+                return rewriteLegacyShadowsocks(source, schemeSeparator, host, endpointPort, nodeName);
             }
         }
 
         UriSource uri = parseUriSource(source, schemeSeparator);
-        return uri.schemePrefix + uri.userInfo + formatUriHost(host) + ":" + endpointPort + uri.suffix;
+        return uri.schemePrefix + uri.userInfo + formatUriHost(host) + ":" + endpointPort
+                + rewriteUriFragmentName(uri.suffix, nodeName);
     }
 
     /** 节点域名优先,否则使用 server_ip;多候选地址只取第一个可展示值。 */
@@ -334,7 +348,8 @@ public final class ClientLinkUtil {
     }
 
     private static String rewriteLegacyShadowsocks(String source, int schemeSeparator,
-                                                    String endpointHost, int endpointPort) {
+                                                    String endpointHost, int endpointPort,
+                                                    String nodeName) {
         int payloadStart = schemeSeparator + 3;
         // Base64 负载使用标准编码时可能自然包含 '/',不能把它误判成 URI 路径。
         int payloadEnd = firstIndexOf(source, payloadStart, '?', '#');
@@ -356,7 +371,25 @@ public final class ClientLinkUtil {
         String rewritten = decoded.substring(0, at + 1) + formatUriHost(endpointHost) + ":" + endpointPort;
         String reencoded = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(rewritten.getBytes(StandardCharsets.UTF_8));
-        return source.substring(0, payloadStart) + reencoded + source.substring(payloadEnd);
+        return source.substring(0, payloadStart) + reencoded
+                + rewriteUriFragmentName(source.substring(payloadEnd), nodeName);
+    }
+
+    private static String rewriteUriFragmentName(String suffix, String nodeName) {
+        if (nodeName == null || nodeName.trim().isEmpty()) {
+            return suffix;
+        }
+        String cleanName = nodeName.trim();
+        String base = suffix == null ? "" : suffix;
+        int fragmentStart = base.indexOf('#');
+        if (fragmentStart >= 0) {
+            base = base.substring(0, fragmentStart);
+        }
+        return base + "#" + encodeUriFragment(cleanName);
+    }
+
+    private static String encodeUriFragment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     private static void validateLegacyShadowsocks(String source, int schemeSeparator) {

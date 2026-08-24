@@ -5,13 +5,18 @@ import com.admin.common.dto.GostDto;
 import com.admin.common.dto.InboundDto;
 import com.admin.common.dto.InboundUserDto;
 import com.admin.common.dto.TunnelDto;
+import com.admin.common.dto.UdpQuicRelayCreateDto;
+import com.admin.common.dto.UdpQuicRelayResultDto;
 import com.admin.common.lang.R;
 import com.admin.common.utils.ClientLinkUtil;
+import com.admin.common.utils.JwtUtil;
+import com.admin.common.utils.LandingUtil;
 import com.admin.common.utils.SingboxUtil;
 import com.admin.entity.Forward;
 import com.admin.entity.Inbound;
 import com.admin.entity.InboundLine;
 import com.admin.entity.InboundUser;
+import com.admin.entity.Landing;
 import com.admin.entity.Node;
 import com.admin.entity.Tunnel;
 import com.admin.entity.User;
@@ -35,8 +40,11 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -262,6 +270,214 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             return R.err("中转已入库,但下发 sing-box 配置失败:" + push.getMsg());
         }
         return R.ok(created);
+    }
+
+    @Override
+    public R createUdpQuicRelay(UdpQuicRelayCreateDto dto) {
+        Node ingress = dto.getIngressNodeId() == null ? null : nodeMapper.selectById(dto.getIngressNodeId());
+        if (ingress == null) {
+            return R.err("入口节点不存在");
+        }
+        Node target = dto.getTargetNodeId() == null ? null : nodeMapper.selectById(dto.getTargetNodeId());
+        if (target == null) {
+            return R.err("目标节点不存在");
+        }
+        if (ingress.getId().equals(target.getId())) {
+            return R.err("入口节点和目标节点不能相同");
+        }
+        Long userId = dto.getUserId();
+        if (userId == null) {
+            Integer uid = JwtUtil.getUserIdFromToken();
+            if (uid == null) {
+                return R.err("未登录");
+            }
+            userId = uid.longValue();
+        }
+        if (userMapper.selectById(userId) == null) {
+            return R.err("用户不存在");
+        }
+
+        Set<String> protocols = new LinkedHashSet<>();
+        for (String protocol : dto.getProtocols()) {
+            String normalized = normalizeUdpQuicProtocol(protocol);
+            if (!isUdpQuicProtocol(normalized)) {
+                return R.err("协议只支持 hysteria2 / tuic");
+            }
+            protocols.add(normalized);
+        }
+        if (protocols.isEmpty()) {
+            return R.err("请选择协议");
+        }
+        if (Boolean.TRUE.equals(dto.getPauseOldL4())) {
+            return R.err("第一版不会自动暂停旧 L4 HY2/TUIC,请测试成功后手动处理");
+        }
+
+        List<UdpQuicRelayResultDto> results = new java.util.ArrayList<>();
+        for (String protocol : protocols) {
+            results.add(createOneUdpQuicRelay(ingress, target, protocol, userId));
+        }
+        return R.ok(results);
+    }
+
+    private UdpQuicRelayResultDto createOneUdpQuicRelay(Node ingress, Node target, String protocol, Long userId) {
+        UdpQuicRelayResultDto result = new UdpQuicRelayResultDto();
+        result.setProtocol(protocol);
+        result.setCreatedLanding(false);
+        result.setCreatedInbound(false);
+        result.setAssignedUser(false);
+
+        Inbound targetInbound = this.getOne(new QueryWrapper<Inbound>()
+                .eq("node_id", target.getId())
+                .isNull("landing_id")
+                .eq("protocol", protocol)
+                .ne("status", 0)
+                .last("limit 1"));
+        if (targetInbound == null) {
+            result.setSkippedReason("目标节点没有启用的 " + protocolDisplayName(protocol) + " 直连入站");
+            return result;
+        }
+
+        InboundUserDto targetAssign = new InboundUserDto();
+        targetAssign.setInboundId(targetInbound.getId());
+        targetAssign.setUserId(userId);
+        R targetAssigned = assignUser(targetAssign);
+        if (targetAssigned.getCode() != 0) {
+            result.setSkippedReason("目标凭证创建失败:" + targetAssigned.getMsg());
+            return result;
+        }
+        String targetLink = extractAssignedLink(targetAssigned.getData());
+        if (targetLink == null || targetLink.trim().isEmpty()) {
+            result.setSkippedReason("目标协议链接为空");
+            return result;
+        }
+
+        String marker = relayLandingMarker(ingress.getId(), target.getId(), protocol);
+        Landing landing = landingMapper.selectOne(new QueryWrapper<Landing>()
+                .eq("remark", marker)
+                .eq("status", 1)
+                .last("limit 1"));
+        if (landing == null) {
+            LandingUtil.Parsed parsed;
+            try {
+                parsed = LandingUtil.parse(targetLink);
+            } catch (IllegalArgumentException e) {
+                result.setSkippedReason("目标链接解析失败:" + e.getMessage());
+                return result;
+            }
+            if (!protocol.equals(parsed.type)) {
+                result.setSkippedReason("目标链接协议不匹配:" + parsed.type);
+                return result;
+            }
+            landing = new Landing();
+            landing.setName(readableNodeName(target) + " " + protocolDisplayName(protocol) + " 出口");
+            landing.setType(parsed.type);
+            landing.setLink(targetLink.trim());
+            landing.setOutboundJson(parsed.outbound.toJSONString());
+            landing.setRemark(marker);
+            landing.setStatus(1);
+            landing.setCreatedTime(System.currentTimeMillis());
+            landing.setUpdatedTime(System.currentTimeMillis());
+            landingMapper.insert(landing);
+            result.setCreatedLanding(true);
+        }
+        result.setLandingId(landing.getId());
+
+        Inbound relayInbound = this.getOne(new QueryWrapper<Inbound>()
+                .eq("node_id", ingress.getId())
+                .eq("landing_id", landing.getId())
+                .eq("protocol", protocol)
+                .ne("status", 0)
+                .last("limit 1"));
+        if (relayInbound == null) {
+            InboundDto relayDto = new InboundDto();
+            relayDto.setNodeId(ingress.getId());
+            relayDto.setProtocol(protocol);
+            relayDto.setLandingId(landing.getId());
+            relayDto.setRemark(relayInboundRemark(ingress, target, protocol));
+            R built = buildAndSaveInbound(relayDto);
+            if (built.getCode() != 0) {
+                result.setSkippedReason("入口入站创建失败:" + built.getMsg());
+                return result;
+            }
+            relayInbound = (Inbound) built.getData();
+            result.setCreatedInbound(true);
+        }
+        result.setInboundId(relayInbound.getId());
+
+        InboundUserDto relayAssign = new InboundUserDto();
+        relayAssign.setInboundId(relayInbound.getId());
+        relayAssign.setUserId(userId);
+        R relayAssigned = assignUser(relayAssign);
+        if (relayAssigned.getCode() != 0) {
+            result.setSkippedReason("入口凭证创建失败:" + relayAssigned.getMsg());
+            return result;
+        }
+        result.setAssignedUser(true);
+        fillRelayAssignmentResult(result, relayAssigned.getData(), relayInbound.getId(), userId);
+        return result;
+    }
+
+    boolean isUdpQuicProtocol(String protocol) {
+        String p = normalizeUdpQuicProtocol(protocol);
+        return "hysteria2".equals(p) || "tuic".equals(p);
+    }
+
+    String relayLandingMarker(Long ingressNodeId, Long targetNodeId, String protocol) {
+        return "udp-quic-relay:" + ingressNodeId + ":" + targetNodeId + ":" + normalizeUdpQuicProtocol(protocol);
+    }
+
+    String relayInboundRemark(Node ingress, Node target, String protocol) {
+        return readableNodeName(ingress) + " -> " + readableNodeName(target) + " "
+                + protocolDisplayName(normalizeUdpQuicProtocol(protocol)) + " 协议中转";
+    }
+
+    private String normalizeUdpQuicProtocol(String protocol) {
+        return protocol == null ? "" : protocol.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String readableNodeName(Node node) {
+        if (node != null && node.getName() != null && !node.getName().trim().isEmpty()) {
+            return node.getName().trim();
+        }
+        return node == null || node.getId() == null ? "节点" : "节点" + node.getId();
+    }
+
+    private String extractAssignedLink(Object data) {
+        JSONObject json = assignmentData(data);
+        return json == null ? null : json.getString("link");
+    }
+
+    private void fillRelayAssignmentResult(UdpQuicRelayResultDto result, Object data, Long inboundId, Long userId) {
+        JSONObject json = assignmentData(data);
+        if (json != null) {
+            result.setLink(json.getString("link"));
+            result.setSubToken(json.getString("subToken"));
+            Integer port = json.getInteger("port");
+            if (port != null) {
+                result.setEntryPort(port);
+            }
+        }
+        InboundUser iu = inboundUserMapper.selectOne(new QueryWrapper<InboundUser>()
+                .eq("inbound_id", inboundId)
+                .eq("user_id", userId)
+                .last("limit 1"));
+        if (iu != null && iu.getGostForwardId() != null) {
+            result.setForwardId(iu.getGostForwardId().longValue());
+            Forward f = forwardMapper.selectById(iu.getGostForwardId());
+            if (f != null && f.getInPort() != null) {
+                result.setEntryPort(f.getInPort());
+            }
+        }
+    }
+
+    private JSONObject assignmentData(Object data) {
+        if (data == null) {
+            return null;
+        }
+        if (data instanceof JSONObject) {
+            return (JSONObject) data;
+        }
+        return JSON.parseObject(JSON.toJSONString(data));
     }
 
     @Override

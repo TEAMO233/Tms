@@ -54,6 +54,7 @@ import {
   getForwardClientLink,
   createForwardSubscription,
 } from "@/api";
+import { splitForwardGroups } from "@/utils/forward-groups";
 import { JwtUtil } from "@/utils/jwt";
 
 /** 时间戳 → 本地日期串。不能用 toISOString(那是 UTC,凌晨点「30天」会少算一天) */
@@ -379,13 +380,10 @@ export default function ForwardPage() {
   };
 
   // 按用户和隧道分组转发数据
-  const groupForwardsByUserAndTunnel = (): UserGroup[] => {
+  const groupForwardsByUserAndTunnel = (forwardsToGroup: Forward[]): UserGroup[] => {
     const userMap = new Map<string, UserGroup>();
     
-    // 获取排序后的转发列表
-    const sortedForwards = getSortedForwards();
-    
-    sortedForwards.forEach(forward => {
+    forwardsToGroup.forEach(forward => {
       const userKey = forward.userId ? forward.userId.toString() : 'unknown';
       const userName = forward.userName || '未知用户';
       
@@ -970,8 +968,8 @@ export default function ForwardPage() {
       let forwardsToExport: Forward[] = [];
       
       if (viewMode === 'grouped') {
-        // 分组模式下，获取指定隧道的转发
-        const userGroups = groupForwardsByUserAndTunnel();
+        // 分组模式下，获取指定隧道的普通转发；协议托管转发归独立分组，不混入导出
+        const userGroups = groupForwardsByUserAndTunnel(getSortedForwards());
         forwardsToExport = userGroups.flatMap(userGroup => 
           userGroup.tunnelGroups
             .filter(tunnelGroup => tunnelGroup.tunnelId === selectedTunnelForExport)
@@ -1232,70 +1230,65 @@ export default function ForwardPage() {
     })
   );
 
-  // 根据排序顺序获取转发列表
-  const getSortedForwards = (): Forward[] => {
-    // 确保 forwards 数组存在且有效
-    if (!forwards || forwards.length === 0) {
-      return [];
-    }
-    
-    // 搭协议/搭中转自动建的管道默认不露面：它们归「协议管理」「中转」页管，
-    // 混在这里只会把手工建的端口转发淹掉（注意只在展示层过滤，
-    // forwards 本身要保持完整，端口占用检测还得靠它避让 20000+ 那一段）
-    let filteredForwards = showProtocolForwards ? forwards : forwards.filter(f => !f.protocolManaged);
+  const filterForDirectModeUser = (source: Forward[]): Forward[] => {
+    if (viewMode !== 'direct') return source;
+    const currentUserId = JwtUtil.getUserIdFromToken();
+    if (currentUserId === null) return source;
+    return source.filter(forward => forward.userId === currentUserId);
+  };
 
-    // 在平铺模式下，只显示当前用户的转发
-    if (viewMode === 'direct') {
-      const currentUserId = JwtUtil.getUserIdFromToken();
-      if (currentUserId !== null) {
-        filteredForwards = filteredForwards.filter(forward => forward.userId === currentUserId);
-      }
-    }
-    
-    // 确保过滤后的转发列表有效
-    if (!filteredForwards || filteredForwards.length === 0) {
+  const sortForwardList = (source: Forward[]): Forward[] => {
+    if (!source || source.length === 0) {
       return [];
     }
-    
+
     // 优先使用数据库中的 inx 字段进行排序
-    const sortedForwards = [...filteredForwards].sort((a, b) => {
+    const sortedForwards = [...source].sort((a, b) => {
       const aInx = a.inx ?? 0;
       const bInx = b.inx ?? 0;
       return aInx - bInx;
     });
-    
+
     // 如果数据库中没有排序信息，则使用本地存储的顺序
     if (forwardOrder && forwardOrder.length > 0 && sortedForwards.every(f => f.inx === undefined || f.inx === 0)) {
-      const forwardMap = new Map(filteredForwards.map(f => [f.id, f]));
+      const forwardMap = new Map(source.map(f => [f.id, f]));
       const localSortedForwards: Forward[] = [];
-      
+
       forwardOrder.forEach(id => {
         const forward = forwardMap.get(id);
         if (forward) {
           localSortedForwards.push(forward);
         }
       });
-      
+
       // 添加不在排序列表中的转发（新添加的）
-      filteredForwards.forEach(forward => {
+      source.forEach(forward => {
         if (!forwardOrder.includes(forward.id)) {
           localSortedForwards.push(forward);
         }
       });
-      
+
       return localSortedForwards;
     }
-    
+
     return sortedForwards;
   };
 
+  const getForwardDisplayGroups = () => {
+    const scopedForwards = filterForDirectModeUser(forwards || []);
+    const groups = splitForwardGroups(scopedForwards);
+
+    return {
+      manualForwards: sortForwardList(groups.manualForwards),
+      protocolManagedForwards: sortForwardList(groups.protocolManagedForwards),
+    };
+  };
+
+  // 根据排序顺序获取普通转发列表
+  const getSortedForwards = (): Forward[] => getForwardDisplayGroups().manualForwards;
+
   // 可拖拽的转发卡片组件
   const SortableForwardCard = ({ forward }: { forward: Forward }) => {
-    // 确保 forward 对象有效
-    if (!forward || !forward.id) {
-      return null;
-    }
-
     const {
       attributes,
       listeners,
@@ -1375,6 +1368,14 @@ export default function ForwardPage() {
                   hasMultipleAddresses(forward.inIp) ? 'hover:bg-default-100 dark:hover:bg-default-200/50' : ''
                 }`}
                 onClick={() => showAddressModal(forward.inIp, forward.inPort, '入口端口')}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    showAddressModal(forward.inIp, forward.inPort, '入口端口');
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 title={formatInAddress(forward.inIp, forward.inPort)}
               >
                 <div className="flex items-center justify-between">
@@ -1397,6 +1398,14 @@ export default function ForwardPage() {
                   hasMultipleAddresses(forward.remoteAddr) ? 'hover:bg-default-100 dark:hover:bg-default-200/50' : ''
                 }`}
                 onClick={() => showAddressModal(forward.remoteAddr, null, '目标地址')}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    showAddressModal(forward.remoteAddr, null, '目标地址');
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 title={formatRemoteAddress(forward.remoteAddr)}
               >
                 <div className="flex items-center justify-between">
@@ -1510,8 +1519,10 @@ export default function ForwardPage() {
     );
   }
 
-  const userGroups = groupForwardsByUserAndTunnel();
-  const protocolForwardCount = forwards.filter(f => f.protocolManaged).length;
+  const forwardDisplayGroups = getForwardDisplayGroups();
+  const userGroups = groupForwardsByUserAndTunnel(forwardDisplayGroups.manualForwards);
+  const protocolManagedForwards = forwardDisplayGroups.protocolManagedForwards;
+  const protocolForwardCount = protocolManagedForwards.length;
 
   return (
 
@@ -1611,7 +1622,7 @@ export default function ForwardPage() {
 
         {/* 根据显示模式渲染不同内容 */}
         {viewMode === 'grouped' ? (
-          /* 按用户和隧道分组的转发列表 */
+          /* 按用户和隧道分组的普通转发列表 */
           userGroups.length > 0 ? (
             <div className="space-y-6">
               {userGroups.map((userGroup) => (
@@ -1686,8 +1697,8 @@ export default function ForwardPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">暂无转发配置</h3>
-                    <p className="text-default-500 text-sm mt-1">还没有创建任何转发配置，点击上方按钮开始创建</p>
+                    <h3 className="text-lg font-semibold text-foreground">暂无普通转发配置</h3>
+                    <p className="text-default-500 text-sm mt-1">手动创建的转发会显示在这里；协议管理生成的转发会放到下方「自动转发/协议托管转发」分组</p>
                   </div>
                 </div>
               </CardBody>
@@ -1726,13 +1737,59 @@ export default function ForwardPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">暂无转发配置</h3>
-                    <p className="text-default-500 text-sm mt-1">还没有创建任何转发配置，点击上方按钮开始创建</p>
+                    <h3 className="text-lg font-semibold text-foreground">暂无普通转发配置</h3>
+                    <p className="text-default-500 text-sm mt-1">手动创建的转发会显示在这里；协议管理生成的转发会放到下方「自动转发/协议托管转发」分组</p>
                   </div>
                 </div>
               </CardBody>
             </Card>
           )
+        )}
+
+        {protocolForwardCount > 0 && (
+          <Card className="mt-6 shadow-sm border border-secondary-200/60 dark:border-secondary-900/50 bg-secondary-50/30 dark:bg-secondary-950/10">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between w-full gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-semibold text-foreground">自动转发/协议托管转发</h2>
+                    <Chip color="secondary" variant="flat" size="sm" className="text-xs">
+                      {protocolForwardCount} 条
+                    </Chip>
+                  </div>
+                  <p className="text-xs text-default-500 mt-1">
+                    由「协议管理」「中转」自动创建，用来把公网入口端口转到节点本机协议监听端口；一般不要手动编辑或删除。
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="secondary"
+                  onPress={() => setShowProtocolForwards(!showProtocolForwards)}
+                >
+                  {showProtocolForwards ? "收起自动转发" : "展开自动转发"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardBody className="pt-0">
+              <Alert
+                color="secondary"
+                variant="flat"
+                className="mb-4"
+                title="这一组是协议托管的底层运行依赖"
+                description="例如 inbound-38-user-1 / inbound-tunnel-node2；它们不是普通人工转发，删除后对应订阅节点可能会连不上。"
+              />
+              {showProtocolForwards ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                  {protocolManagedForwards.map((forward) => renderForwardCard(forward, undefined))}
+                </div>
+              ) : (
+                <div className="text-sm text-default-500">
+                  已收起 {protocolForwardCount} 条协议托管转发，普通转发列表不会再被它们淹掉。
+                </div>
+              )}
+            </CardBody>
+          </Card>
         )}
 
         {/* 新增/编辑模态框 */}

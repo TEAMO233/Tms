@@ -12,6 +12,7 @@ import com.admin.entity.InboundUser;
 import com.admin.mapper.InboundUserMapper;
 import com.admin.service.InboundService;
 import com.admin.service.ForwardService;
+import com.admin.service.TransparentRelayService;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ public class OpenApiController extends BaseController {
 
     @Autowired
     private ForwardService forwardService;
+
+    @Autowired
+    private TransparentRelayService transparentRelayService;
 
     @Autowired
     private InboundUserMapper inboundUserMapper;
@@ -77,6 +81,12 @@ public class OpenApiController extends BaseController {
     @GetMapping("/forward_sub")
     public String forwardSub(@RequestParam("token") String token) {
         return forwardService.buildForwardSubscription(token);
+    }
+
+    /** 透明中转独立订阅:只包含透明中转页里的 L4 与 HY2/TUIC 协议中转,免登录。 */
+    @GetMapping("/transparent_relay_sub")
+    public String transparentRelaySub(@RequestParam("token") String token) {
+        return transparentRelayService.buildSubscription(token);
     }
 
     @LogAnnotation

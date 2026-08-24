@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author QAQ
@@ -68,6 +68,9 @@ public class User extends BaseEntity {
 
     /** 当前用户「转发订阅」的稳定 token,与全部线路订阅分开。 */
     private String forwardSubToken;
+
+    /** 当前用户「透明中转聚合订阅」的稳定 token,与我的订阅/转发订阅分开。 */
+    private String transparentRelaySubToken;
 
 
 }

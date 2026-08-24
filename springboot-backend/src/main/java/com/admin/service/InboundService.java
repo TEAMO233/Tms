@@ -2,6 +2,7 @@ package com.admin.service;
 
 import com.admin.common.dto.InboundDto;
 import com.admin.common.dto.InboundUserDto;
+import com.admin.common.dto.UdpQuicRelayCreateDto;
 import com.admin.common.lang.R;
 import com.admin.entity.Inbound;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -22,6 +23,9 @@ public interface InboundService extends IService<Inbound> {
 
     /** 一键搭中转:在前置机上把全套协议建出来,流量经落地(内联粘贴的分享链接)出网。sni 同上 */
     R oneClickRelay(Long nodeId, String link, String name, String sni);
+
+    /** 创建 HY2/TUIC 协议中转:入口 sing-box 入站 -> 目标节点对应协议出站。 */
+    R createUdpQuicRelay(UdpQuicRelayCreateDto dto);
 
     /** 入站列表 */
     R getInbounds();

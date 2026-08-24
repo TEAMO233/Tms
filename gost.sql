@@ -155,6 +155,7 @@ CREATE TABLE `user` (
   `num` int(10) NOT NULL,
   `all_sub_token` varchar(64) DEFAULT NULL COMMENT '全部线路聚合订阅token',
   `forward_sub_token` varchar(64) DEFAULT NULL COMMENT '转发聚合订阅token',
+  `transparent_relay_sub_token` varchar(64) DEFAULT NULL COMMENT '透明中转聚合订阅token',
   `created_time` bigint(20) NOT NULL,
   `updated_time` bigint(20) DEFAULT NULL,
   `status` int(10) NOT NULL
@@ -185,6 +186,31 @@ CREATE TABLE `user_tunnel` (
   `flow_reset_time` bigint(20) NOT NULL,
   `exp_time` bigint(20) NOT NULL,
   `status` int(10) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `transparent_relay`
+--
+
+CREATE TABLE `transparent_relay` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL COMMENT '透明中转规则名',
+  `in_node_id` int(10) NOT NULL COMMENT '入口/线路机节点ID',
+  `entry_port` int(10) NOT NULL COMMENT '客户端连接入口端口',
+  `target_host` varchar(255) NOT NULL COMMENT '入口机可访问的目标地址',
+  `target_port` int(10) NOT NULL COMMENT '目标端口',
+  `protocol` varchar(16) NOT NULL DEFAULT 'tcp_udp' COMMENT 'tcp/udp/tcp_udp',
+  `masquerade` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否SNAT/MASQUERADE',
+  `last_error` varchar(512) DEFAULT NULL COMMENT '最近一次应用失败摘要',
+  `created_time` bigint(20) NOT NULL,
+  `updated_time` bigint(20) DEFAULT NULL,
+  `status` int(10) NOT NULL DEFAULT '1' COMMENT '1=启用 0=暂停 -1=应用失败',
+  PRIMARY KEY (`id`),
+  KEY `idx_tr_node` (`in_node_id`),
+  KEY `idx_tr_node_port` (`in_node_id`,`entry_port`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------
@@ -461,4 +487,24 @@ CREATE TABLE IF NOT EXISTS `inbound_line` (
   PRIMARY KEY (`id`),
   KEY `idx_line_user` (`user_id`),
   KEY `idx_line_user_node` (`user_id`, `node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- TMS 透明中转 / 线路机模式 schema
+CREATE TABLE IF NOT EXISTS `transparent_relay` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL COMMENT '透明中转规则名',
+  `in_node_id` int(10) NOT NULL COMMENT '入口/线路机节点ID',
+  `entry_port` int(10) NOT NULL COMMENT '客户端连接入口端口',
+  `target_host` varchar(255) NOT NULL COMMENT '入口机可访问的目标地址',
+  `target_port` int(10) NOT NULL COMMENT '目标端口',
+  `protocol` varchar(16) NOT NULL DEFAULT 'tcp_udp' COMMENT 'tcp/udp/tcp_udp',
+  `masquerade` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否SNAT/MASQUERADE',
+  `last_error` varchar(512) DEFAULT NULL COMMENT '最近一次应用失败摘要',
+  `created_time` bigint(20) NOT NULL,
+  `updated_time` bigint(20) DEFAULT NULL,
+  `status` int(10) NOT NULL DEFAULT '1' COMMENT '1=启用 0=暂停 -1=应用失败',
+  PRIMARY KEY (`id`),
+  KEY `idx_tr_node` (`in_node_id`),
+  KEY `idx_tr_node_port` (`in_node_id`,`entry_port`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
