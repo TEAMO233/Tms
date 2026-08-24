@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 4
-- **Last Active**: 2026-08-23
+- **Total Sessions**: 5
+- **Last Active**: 2026-08-24
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~93 | Active |
+| `journal-1.md` | ~115 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 5 | 2026-08-24 | 重设计我的订阅页面 | `d88f381`, `3b2326d` | `main` |
 | 4 | 2026-08-23 | 完成手动转发协议自动匹配 | `c078f58` | `main` |
 | 3 | 2026-08-23 | 完成转发协议链接与聚合订阅 | `30dc395` | `main` |
 | 2 | 2026-08-23 | 节点订阅国家码与国旗前缀 | `35db3d4` | `main` |

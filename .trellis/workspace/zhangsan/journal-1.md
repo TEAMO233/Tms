@@ -91,3 +91,25 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: 重设计我的订阅页面
+
+**Date**: 2026-08-24
+**Task**: 重设计我的订阅页面
+**Branch**: `main`
+
+### Summary
+
+完成 /my-sub 订阅指挥台重设计：新增聚合订阅 hero、线路筛选、统一列表、状态/流量展示、复制扫码与按需展开链接；完成桌面、窄桌面和移动端响应式 QA，页面静态检查与构建通过，并记录设计 QA 与响应式列表规范。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d88f381` | (see git log) |
+| `3b2326d` | (see git log) |
+
+### Status
+
+[OK] **Completed**
