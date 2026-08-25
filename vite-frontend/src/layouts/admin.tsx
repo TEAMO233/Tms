@@ -25,6 +25,11 @@ import { safeLogout } from "@/utils/logout";
 import { siteConfig, SITE_CONFIG_UPDATED } from "@/config/site";
 import SkinPicker from "@/components/skin-picker";
 
+const isProtocolDesignPreview =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("preview") ===
+    "protocol-board";
+
 interface MenuItem {
   path: string;
   label: string;
@@ -49,6 +54,7 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const isDashboard = location.pathname === "/dashboard";
+  const isProtocolBoard = location.pathname === "/inbound";
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   // 更新弹窗单独一个开关,别和改密码那个共用
   const updateModal = useDisclosure();
@@ -289,12 +295,15 @@ export default function AdminLayout({
 
   useEffect(() => {
     // 获取用户信息
-    const name = localStorage.getItem("name") || "Admin";
+    const name = isProtocolDesignPreview
+      ? "teamo"
+      : localStorage.getItem("name") || "Admin";
 
     // 兼容处理：如果没有admin字段，根据role_id判断（0为管理员）
-    let adminFlag = localStorage.getItem("admin") === "true";
+    let adminFlag =
+      isProtocolDesignPreview || localStorage.getItem("admin") === "true";
 
-    if (localStorage.getItem("admin") === null) {
+    if (!isProtocolDesignPreview && localStorage.getItem("admin") === null) {
       const roleId = parseInt(localStorage.getItem("role_id") || "1", 10);
 
       adminFlag = roleId === 0;
@@ -429,8 +438,8 @@ export default function AdminLayout({
         className={`
         ${isMobile ? "fixed" : "relative"}
         ${isMobile && !mobileMenuVisible ? "-translate-x-full" : "translate-x-0"}
-        ${isMobile ? "w-64" : desktopMenuCollapsed ? "w-[72px]" : isDashboard ? "w-[208px]" : "w-72"}
-        ${isDashboard ? "bg-content1/80 border-divider shadow-none backdrop-blur-xl" : "bg-white/70 dark:bg-black/40 backdrop-blur-xl shadow-lg border-gray-200 dark:border-gray-600"}
+        ${isMobile ? "w-64" : desktopMenuCollapsed ? "w-[72px]" : isDashboard ? "w-[208px]" : isProtocolBoard ? "w-[255px]" : "w-72"}
+        ${isDashboard ? "bg-content1/80 border-divider shadow-none backdrop-blur-xl" : isProtocolBoard ? "bg-[#0b1322] border-[#253651] shadow-none" : "bg-white/70 dark:bg-black/40 backdrop-blur-xl shadow-lg border-gray-200 dark:border-gray-600"}
         border-r
         z-50
         transition-transform duration-300 ease-in-out
@@ -454,7 +463,7 @@ export default function AdminLayout({
                 <h1
                   className={`truncate text-sm font-bold ${isDashboard ? "text-foreground" : "text-foreground"}`}
                 >
-                  {appName}
+                  {isProtocolDesignPreview ? "TunnelBox" : appName}
                 </h1>
                 <div className="flex items-center gap-1.5">
                   <p
@@ -543,7 +552,7 @@ export default function AdminLayout({
       >
         {/* 顶部导航栏 */}
         <header
-          className={`relative z-10 flex h-16 items-center justify-between border-b px-4 lg:px-6 ${isDashboard ? "border-divider bg-content1/80 shadow-none backdrop-blur-xl" : "border-gray-200 bg-white/60 shadow-md backdrop-blur-xl dark:border-gray-600 dark:bg-black/30"}`}
+          className={`relative z-10 flex ${isProtocolBoard ? "h-14" : "h-16"} items-center justify-between border-b px-4 lg:px-6 ${isDashboard ? "border-divider bg-content1/80 shadow-none backdrop-blur-xl" : isProtocolBoard ? "border-[#253651] bg-[#0f1a2b] shadow-none" : "border-gray-200 bg-white/60 shadow-md backdrop-blur-xl dark:border-gray-600 dark:bg-black/30"}`}
         >
           <div className="flex items-center gap-4">
             {/* 移动端菜单按钮 */}

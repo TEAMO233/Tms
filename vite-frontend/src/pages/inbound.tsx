@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
@@ -10,7 +9,6 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
-import { Chip } from "@heroui/chip";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
@@ -30,6 +28,190 @@ import {
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { SNI_PRESETS, DEFAULT_SNI, cleanSni } from "@/config/sni";
 import { SubQr } from "@/components/sub-qr";
+import {
+  DeleteIcon,
+  PlusIcon,
+  SearchIcon,
+  UserIcon,
+} from "@/components/icons";
+import DeviceDesktop from "@spectrum-icons/workflow/DeviceDesktop";
+import MoreVertical from "@spectrum-icons/workflow/MoreVertical";
+import Refresh from "@spectrum-icons/workflow/Refresh";
+import AlertCircle from "@spectrum-icons/workflow/AlertCircle";
+import CheckmarkCircle from "@spectrum-icons/workflow/CheckmarkCircle";
+import LinkCheck from "@spectrum-icons/workflow/LinkCheck";
+import ChevronDown from "@spectrum-icons/workflow/ChevronDown";
+import ChevronUp from "@spectrum-icons/workflow/ChevronUp";
+import ChevronLeft from "@spectrum-icons/workflow/ChevronLeft";
+import ChevronRight from "@spectrum-icons/workflow/ChevronRight";
+import ColumnSettings from "@spectrum-icons/workflow/ColumnSettings";
+import Copy from "@spectrum-icons/workflow/Copy";
+
+const isProtocolDesignPreview =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("preview") ===
+    "protocol-board";
+
+const protocolDesignPreviewNodes = [
+  {
+    id: 1,
+    name: "本机",
+    machineId: "local-node",
+    nodeType: "local",
+    ip: "140.245.126.119",
+    serverIp: "140.245.126.119",
+    version: "1.9.3",
+    status: 1,
+    singboxRunning: true,
+    uptime: "Uptime 2d 14h",
+    assignedUsers: 5,
+    protocolTotal: 6,
+    protocolHealthy: 6,
+  },
+  {
+    id: 2,
+    name: "vmss日本",
+    machineId: "node-002",
+    nodeType: "cloud",
+    ip: "64.83.37.138",
+    serverIp: "64.83.37.138",
+    version: "1.9.3",
+    status: 1,
+    singboxRunning: true,
+    uptime: "Uptime 7d 8h",
+    assignedUsers: 8,
+    protocolTotal: 6,
+    protocolHealthy: 6,
+  },
+  {
+    id: 3,
+    name: "加坡01",
+    machineId: "node-003",
+    nodeType: "cloud",
+    ip: "103.226.15.90",
+    serverIp: "103.226.15.90",
+    version: "1.8.7",
+    status: 1,
+    singboxRunning: true,
+    uptime: "Uptime 3d 2h",
+    assignedUsers: 3,
+    protocolTotal: 6,
+    protocolHealthy: 5,
+  },
+  {
+    id: 4,
+    name: "美国洛杉矶",
+    machineId: "node-004",
+    nodeType: "cloud",
+    ip: "154.16.23.11",
+    serverIp: "154.16.23.11",
+    version: "1.8.7",
+    status: 0,
+    singboxRunning: false,
+    lastOnline: "最后在线：1d 6h 前",
+    assignedUsers: 0,
+    protocolTotal: 6,
+    protocolHealthy: 0,
+  },
+  {
+    id: 5,
+    name: "香港-02",
+    machineId: "node-005",
+    nodeType: "cloud",
+    ip: "45.76.98.54",
+    serverIp: "45.76.98.54",
+    version: "1.9.3",
+    status: 1,
+    singboxRunning: true,
+    uptime: "Uptime 12h 33m",
+    assignedUsers: 2,
+    protocolTotal: 6,
+    protocolHealthy: 6,
+  },
+  {
+    id: 6,
+    name: "德国法兰克福",
+    machineId: "node-006",
+    nodeType: "cloud",
+    ip: "80.81.193.64",
+    serverIp: "80.81.193.64",
+    version: "1.8.7",
+    status: 0,
+    singboxRunning: false,
+    lastOnline: "最后在线：3d 22h 前",
+    assignedUsers: 0,
+    protocolTotal: 6,
+    protocolHealthy: 0,
+  },
+];
+
+const protocolDesignPreviewInbounds = [
+  [1, "vless", 443, "reality"],
+  [1, "trojan", 8443, "reality"],
+  [1, "vmess", 80, "none"],
+  [1, "hysteria2", 8444, "tls"],
+  [1, "tuic", 2096, "tls"],
+  [1, "anytls", 2053, "tls"],
+  [2, "vless", 443, "reality"],
+  [2, "trojan", 8443, "reality"],
+  [2, "vmess", 80, "none"],
+  [2, "hysteria2", 8444, "tls"],
+  [2, "tuic", 2096, "tls"],
+  [2, "anytls", 2053, "tls"],
+  [3, "vless", 443, "reality"],
+  [3, "trojan", 8443, "reality"],
+  [3, "vmess", 80, "none"],
+  [3, "hysteria2", 8444, "tls"],
+  [3, "tuic", 2096, "tls"],
+  [3, "anytls", 2053, "tls"],
+  [4, "vless", 443, "reality"],
+  [4, "trojan", 8443, "reality"],
+  [4, "vmess", 80, "none"],
+  [4, "hysteria2", 8444, "tls"],
+  [4, "tuic", 2096, "tls"],
+  [4, "anytls", 2053, "tls"],
+  [5, "vless", 443, "reality"],
+  [5, "trojan", 8443, "reality"],
+  [5, "vmess", 80, "none"],
+  [5, "hysteria2", 8444, "tls"],
+  [5, "tuic", 2096, "tls"],
+  [5, "anytls", 2053, "tls"],
+  [6, "vless", 443, "reality"],
+  [6, "trojan", 8443, "reality"],
+  [6, "vmess", 80, "none"],
+  [6, "hysteria2", 8444, "tls"],
+  [6, "tuic", 2096, "tls"],
+  [6, "anytls", 2053, "tls"],
+].map(([nodeId, protocol, listenPort, security], index) => ({
+  id: 1000 + index,
+  nodeId,
+  protocol,
+  listenPort,
+  security,
+  status: nodeId === 3 && protocol === "anytls" ? 0 : 1,
+  health: nodeId === 3 && protocol === "anytls" ? "warning" : "healthy",
+  sni: security === "reality" ? "www.apple.com" : "",
+  remark: "整机协议",
+}));
+
+const protocolDesignPreviewUsers = Array.from({ length: 8 }, (_, index) => ({
+  id: index + 1,
+  user: `车友${String(index + 1).padStart(2, "0")}`,
+}));
+
+const protocolTableColumns = [
+  { key: "machine", label: "机器", width: "225px" },
+  { key: "nodeStatus", label: "节点状态", width: "120px" },
+  { key: "ip", label: "IP 地址", width: "180px" },
+  {
+    key: "protocolStatus",
+    label: "协议运行状态（运行 / 总数）",
+    width: "232px",
+  },
+  { key: "protocols", label: "协议列表", width: "minmax(460px, 1fr)" },
+  { key: "users", label: "分配用户", width: "175px" },
+  { key: "actions", label: "操作", width: "328px" },
+];
 
 /**
  * 协议管理(合体面板)· 机器卡模式。
@@ -79,10 +261,36 @@ export default function InboundPage() {
   // 订阅链接的域名部分永远是【面板地址】,几台机器点出来长得几乎一样,
   // 只有末尾 token 不同 —— 不写清楚是哪台机器,很容易以为"点第二台弹的还是第一台"
   const [selfNodeName, setSelfNodeName] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [healthFilter, setHealthFilter] = useState<
+    "all" | "healthy" | "warning" | "offline"
+  >("all");
+  const [protocolFilter, setProtocolFilter] = useState<
+    "all" | "healthy" | "warning" | "offline"
+  >("all");
+  const [nodeTypeFilter, setNodeTypeFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
+    Object.fromEntries(protocolTableColumns.map((column) => [column.key, true])),
+  );
+  const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>(
+    {},
+  );
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
 
   const handleAssignSelf = async (nodeId: number, nodeName?: string) => {
     setSelfLoading(nodeId);
     setSelfNodeName(nodeName || "");
+    if (isProtocolDesignPreview) {
+      setSelfSubUrl(
+        `${window.location.origin}/api/v1/open_api/sub?token=preview-${nodeId}`,
+      );
+      setSelfOpen(true);
+      setSelfLoading(null);
+
+      return;
+    }
     try {
       const res = await assignSelf({ nodeId });
 
@@ -102,6 +310,15 @@ export default function InboundPage() {
   };
 
   const loadAll = async () => {
+    if (isProtocolDesignPreview) {
+      setInbounds(protocolDesignPreviewInbounds);
+      setNodes(protocolDesignPreviewNodes);
+      setUsers(protocolDesignPreviewUsers);
+      setSpeedRules([]);
+      setLastLoadedAt(Date.now());
+
+      return;
+    }
     try {
       const [ib, nd, us, sp] = await Promise.all([
         getInboundList(),
@@ -118,6 +335,7 @@ export default function InboundPage() {
         setUsers(Array.isArray(d) ? d : d && d.records ? d.records : []);
       }
       if (sp.code === 0) setSpeedRules(sp.data || []);
+      setLastLoadedAt(Date.now());
     } catch (e) {
       toast.error("加载失败");
     }
@@ -146,6 +364,13 @@ export default function InboundPage() {
     if (isReality(createForm.protocol) && !createForm.sni)
       return toast.error("Reality 协议需要填 SNI");
     setCreateLoading(true);
+    if (isProtocolDesignPreview) {
+      toast.success("预览模式：协议创建流程已触发");
+      setCreateOpen(false);
+      setCreateLoading(false);
+
+      return;
+    }
     try {
       const payload: any = {
         nodeId: createForm.nodeId,
@@ -175,6 +400,13 @@ export default function InboundPage() {
   const handleOneClick = async () => {
     if (!oneClickNodeId) return toast.error("请选择节点");
     setOneClickLoading(true);
+    if (isProtocolDesignPreview) {
+      toast.success("预览模式：一键搭建流程已触发");
+      setOneClickOpen(false);
+      setOneClickLoading(false);
+
+      return;
+    }
     try {
       const res = await oneClickInbound(oneClickNodeId, cleanSni(oneClickSni));
 
@@ -207,6 +439,13 @@ export default function InboundPage() {
   const handleNodeAssign = async () => {
     if (!assignForm.userId) return toast.error("请选择车友");
     setAssignLoading(true);
+    if (isProtocolDesignPreview) {
+      toast.success("预览模式：整机分配流程已触发");
+      setAssignOpen(false);
+      setAssignLoading(false);
+
+      return;
+    }
     try {
       const payload: any = {
         userId: assignForm.userId,
@@ -255,6 +494,12 @@ export default function InboundPage() {
       return;
     if (clearLoading !== null) return;
     setClearLoading(nodeId);
+    if (isProtocolDesignPreview) {
+      toast.success("预览模式：清空流程已触发");
+      setClearLoading(null);
+
+      return;
+    }
     try {
       const res = await deleteInboundsByNode(nodeId, false);
 
@@ -271,28 +516,621 @@ export default function InboundPage() {
     }
   };
 
+  const handleCopyNodeIp = async (ip: string) => {
+    if (!ip) return;
+    const copied = await copyTextToClipboard(ip);
+
+    copied ? toast.success("IP 地址已复制") : toast.error("复制失败");
+  };
+
   // 协议管理只管【直连】协议(landingId 为空);中转的协议在「中转」页管
   const machineNodes = nodes.filter((n) =>
     inbounds.some((ib) => ib.nodeId === n.id && !ib.landingId),
   );
 
+  const getNodeInbounds = (nodeId: number) =>
+    inbounds.filter((ib) => ib.nodeId === nodeId && !ib.landingId);
+
+  const getNodeProtocolTotal = (node: any, nodeInbounds = getNodeInbounds(node.id)) =>
+    typeof node.protocolTotal === "number" ? node.protocolTotal : nodeInbounds.length;
+
+  const getNodeHealthyProtocolCount = (
+    node: any,
+    nodeInbounds = getNodeInbounds(node.id),
+  ) => {
+    if (typeof node.protocolHealthy === "number") return node.protocolHealthy;
+
+    return nodeInbounds.filter((inbound) => inbound.status !== 0).length;
+  };
+
+  const getNodeHealth = (node: any): "healthy" | "warning" | "offline" => {
+    if (node.status !== 1) return "offline";
+    if (node.singboxRunning === false) return "warning";
+    if (
+      getNodeHealthyProtocolCount(node) <
+      getNodeProtocolTotal(node)
+    )
+      return "warning";
+
+    return "healthy";
+  };
+
+  const getInboundHealth = (node: any, inbound: any) => {
+    if (node.status !== 1) return "offline";
+    if (inbound.health === "warning") return "warning";
+    if (node.singboxRunning === false || inbound.status === 0) return "muted";
+
+    return "success";
+  };
+
+  const getProtocolState = (node: any, inbound: any) => {
+    if (node.status !== 1) return "节点离线";
+    if (node.singboxRunning === false) return "sing-box 未运行";
+    if (inbound.health === "warning") return "协议异常";
+    return inbound.status === 0 ? "已停用" : "运行中";
+  };
+
+  const getProtocolStateTone = (node: any, inbound: any) => {
+    const health = getInboundHealth(node, inbound);
+
+    if (health !== "success") return "muted";
+
+    return inbound.status === 0 ? "muted" : "success";
+  };
+
+  const protocolTotal = machineNodes.reduce(
+    (sum, node) => sum + getNodeInbounds(node.id).length,
+    0,
+  );
+  const onlineNodeCount = machineNodes.filter((node) => node.status === 1).length;
+  const runtimeIssueCount = machineNodes.filter(
+    (node) => getNodeHealth(node) !== "healthy",
+  ).length;
+  const runningProtocolCount = machineNodes.reduce(
+    (sum, node) =>
+      sum +
+      getNodeInbounds(node.id).filter(
+        (inbound) =>
+          node.status === 1 &&
+          node.singboxRunning !== false &&
+          inbound.status !== 0,
+      ).length,
+    0,
+  );
+
+  const filteredMachineNodes = machineNodes.filter((node) => {
+    const query = searchTerm.trim().toLowerCase();
+    const matchesQuery =
+      !query ||
+      [node.name, node.ip, node.serverIp, node.domain]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    const matchesHealth =
+      healthFilter === "all" || getNodeHealth(node) === healthFilter;
+    const matchesProtocol =
+      protocolFilter === "all" ||
+      (protocolFilter === "healthy" && getNodeHealth(node) === "healthy") ||
+      (protocolFilter === "warning" && getNodeHealth(node) === "warning") ||
+      (protocolFilter === "offline" && getNodeHealth(node) === "offline");
+    const matchesNodeType =
+      nodeTypeFilter === "all" || (node.nodeType || "cloud") === nodeTypeFilter;
+
+    return matchesQuery && matchesHealth && matchesProtocol && matchesNodeType;
+  });
+
+  const visibleTableColumns = protocolTableColumns.filter(
+    (column) => visibleColumns[column.key],
+  );
+  const tableGridTemplate = visibleTableColumns
+    .map((column) => column.width)
+    .join(" ");
+  const pageSize = 10;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMachineNodes.length / pageSize),
+  );
+  const pagedMachineNodes = filteredMachineNodes.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+  const summaryOnlineMachineCount = isProtocolDesignPreview ? 2 : onlineNodeCount;
+  const summaryProtocolTotal = isProtocolDesignPreview ? 18 : protocolTotal;
+  const summaryUnavailableProtocolCount = isProtocolDesignPreview
+    ? 2
+    : Math.max(0, protocolTotal - runningProtocolCount);
+
+  const resetTableFilters = () => {
+    setSearchTerm("");
+    setHealthFilter("all");
+    setProtocolFilter("all");
+    setNodeTypeFilter("all");
+    setPage(1);
+  };
+
+  const formatLastLoaded = () => {
+    if (!lastLoadedAt) return "等待首次同步";
+    return `最后同步 ${new Date(lastLoadedAt).toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })}`;
+  };
+
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold">协议管理</h1>
-        <div className="flex gap-2">
+    <div className="protocol-command-board">
+      <section className="protocol-operations-table">
+        <div className="protocol-operations-header">
+          <div>
+            <h1 className="protocol-operations-title">
+              线路总览 <span>/ Operations Table</span>
+            </h1>
+            <p className="protocol-operations-subtitle">
+              按机器维度管理协议运行状态、分配用户与执行常用操作。
+            </p>
+          </div>
+          <div className="protocol-operations-actions">
+            <Button
+              className="protocol-operations-primary"
+              color="secondary"
+              startContent={<PlusIcon size={16} />}
+              onPress={() => {
+                setOneClickNodeId(null);
+                setOneClickOpen(true);
+              }}
+            >
+              一键搭建整机协议
+            </Button>
+            <Button
+              className="protocol-operations-secondary"
+              color="primary"
+              startContent={<PlusIcon size={16} />}
+              onPress={() => {
+                setCreateForm({
+                  nodeId: null,
+                  protocol: "vless",
+                  sni: DEFAULT_SNI,
+                  dest: "",
+                  remark: "",
+                });
+                setCreateOpen(true);
+              }}
+            >
+              单独加一个协议
+            </Button>
+          </div>
+        </div>
+
+        <section className="protocol-operations-summary" aria-label="线路运行概览">
+          <div className="protocol-operations-summary-item">
+            <span className="protocol-operations-summary-icon protocol-summary-blue">
+              <DeviceDesktop size="S" />
+            </span>
+            <span>
+              <small>在线机器</small>
+              <strong>
+                {summaryOnlineMachineCount} / {machineNodes.length}
+              </strong>
+              <em>
+                {summaryOnlineMachineCount} 台在线 / 共 {machineNodes.length} 台
+              </em>
+            </span>
+          </div>
+          <div className="protocol-operations-summary-item">
+            <span className="protocol-operations-summary-icon protocol-summary-purple">
+              <LinkCheck size="S" />
+            </span>
+            <span>
+              <small>协议总数</small>
+              <strong>{summaryProtocolTotal}</strong>
+              <em>{summaryProtocolTotal} 个协议在运行</em>
+            </span>
+          </div>
+          <div className="protocol-operations-summary-item protocol-operations-summary-last">
+            <span className="protocol-operations-summary-icon protocol-summary-amber">
+              <AlertCircle size="S" />
+            </span>
+            <span>
+              <small>不可用协议</small>
+              <strong>{summaryUnavailableProtocolCount}</strong>
+              <em>{summaryUnavailableProtocolCount} 个协议异常</em>
+            </span>
+          </div>
+        </section>
+
+        <div className="protocol-operations-toolbar">
+          <div className="protocol-operations-toolbar-left">
+            <label className="protocol-operations-search">
+              <SearchIcon size={16} />
+              <input
+                aria-label="搜索机器名称或 IP"
+                placeholder="搜索机器名称 / IP"
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </label>
+            <select
+              aria-label="筛选节点状态"
+              className="protocol-operations-select"
+              value={healthFilter}
+              onChange={(event) => {
+                setHealthFilter(
+                  event.target.value as "all" | "healthy" | "warning" | "offline",
+                );
+                setPage(1);
+              }}
+            >
+              <option value="all">状态　　全部</option>
+              <option value="healthy">状态　　在线</option>
+              <option value="warning">状态　　异常</option>
+              <option value="offline">状态　　离线</option>
+            </select>
+            <select
+              aria-label="筛选协议健康度"
+              className="protocol-operations-select"
+              value={protocolFilter}
+              onChange={(event) => {
+                setProtocolFilter(
+                  event.target.value as "all" | "healthy" | "warning" | "offline",
+                );
+                setPage(1);
+              }}
+            >
+              <option value="all">协议健康度　全部</option>
+              <option value="healthy">协议健康度　全部健康</option>
+              <option value="warning">协议健康度　有异常</option>
+              <option value="offline">协议健康度　节点离线</option>
+            </select>
+            <select
+              aria-label="筛选节点类型"
+              className="protocol-operations-select"
+              value={nodeTypeFilter}
+              onChange={(event) => {
+                setNodeTypeFilter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="all">节点类型　全部</option>
+              <option value="local">节点类型　本机</option>
+              <option value="cloud">节点类型　云服务器</option>
+            </select>
+            <button className="protocol-operations-reset" type="button" onClick={resetTableFilters}>
+              重置
+            </button>
+          </div>
+          <div className="protocol-operations-toolbar-right">
+            <Button
+              className="protocol-operations-toolbar-button"
+              startContent={<Refresh size="S" />}
+              variant="flat"
+              onPress={loadAll}
+            >
+              刷新
+            </Button>
+            <div className="protocol-column-settings-control">
+              <button
+                aria-expanded={columnSettingsOpen}
+                className="protocol-operations-toolbar-button"
+                type="button"
+                onClick={() => setColumnSettingsOpen((open) => !open)}
+              >
+                <ColumnSettings size="S" />
+                列设置
+              </button>
+              {columnSettingsOpen && (
+                <div className="protocol-column-settings-menu">
+                  <strong>显示列</strong>
+                  {protocolTableColumns.map((column) => (
+                    <label key={column.key}>
+                      <input
+                        checked={Boolean(visibleColumns[column.key])}
+                        disabled={column.key === "machine" || column.key === "actions"}
+                        type="checkbox"
+                        onChange={() =>
+                          setVisibleColumns((current) => ({
+                            ...current,
+                            [column.key]: !current[column.key],
+                          }))
+                        }
+                      />
+                      <span>{column.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="protocol-operations-table-scroll">
+          <div className="protocol-operations-table-grid protocol-operations-table-head" role="table">
+            <div
+              className="protocol-operations-table-grid protocol-operations-table-header-row"
+              role="row"
+              style={{ gridTemplateColumns: tableGridTemplate }}
+            >
+              {visibleTableColumns.map((column) => (
+                <div key={column.key} role="columnheader">
+                  {column.label}
+                </div>
+              ))}
+            </div>
+
+            {pagedMachineNodes.map((n) => {
+              const nodeInbounds = getNodeInbounds(n.id);
+              const health = getNodeHealth(n);
+              const firstIp = n.ip
+                ? String(n.ip).split(",")[0].trim()
+                : n.serverIp || "";
+              const totalProtocols = getNodeProtocolTotal(n, nodeInbounds);
+              const healthyProtocols = getNodeHealthyProtocolCount(n, nodeInbounds);
+              const expanded = Boolean(expandedNodes[n.id]);
+              const nodeType = n.nodeType || "cloud";
+              const assignedUsers =
+                typeof n.assignedUsers === "number" ? n.assignedUsers : null;
+
+              return (
+                <div
+                  key={n.id}
+                  className={`protocol-operations-table-grid protocol-operations-table-row protocol-row-${health}`}
+                  role="row"
+                  style={{ gridTemplateColumns: tableGridTemplate }}
+                >
+                  {visibleColumns.machine && (
+                    <div className="protocol-table-cell protocol-table-machine-cell" role="cell">
+                      <DeviceDesktop size="S" />
+                      <div>
+                        <div className="protocol-table-machine-name">
+                          <strong>{n.name}</strong>
+                          <span
+                            className={`protocol-table-node-tag ${health === "offline" ? "offline" : nodeType}`}
+                          >
+                            {nodeType === "local" ? "本机" : health === "offline" ? "离线" : "在线"}
+                          </span>
+                        </div>
+                        <small>ID: {n.machineId || n.id}</small>
+                      </div>
+                    </div>
+                  )}
+
+                  {visibleColumns.nodeStatus && (
+                    <div className="protocol-table-cell protocol-table-status-cell" role="cell">
+                      <div className={`protocol-table-status-label ${health}`}>
+                        <span className={`protocol-health-dot ${health}`} />
+                        <strong>{health === "offline" ? "离线" : "在线"}</strong>
+                      </div>
+                      <small>
+                        {health === "offline"
+                          ? n.lastOnline || "最后在线：未知"
+                          : "运行中"}
+                      </small>
+                      {health !== "offline" && <small>{n.uptime || "Uptime —"}</small>}
+                    </div>
+                  )}
+
+                  {visibleColumns.ip && (
+                    <div className="protocol-table-cell protocol-table-ip-cell" role="cell">
+                      <span>{firstIp || "—"}</span>
+                      <button
+                        aria-label={`复制 ${n.name} IP 地址`}
+                        title="复制 IP 地址"
+                        type="button"
+                        onClick={() => handleCopyNodeIp(firstIp)}
+                      >
+                        <Copy size="S" />
+                      </button>
+                    </div>
+                  )}
+
+                  {visibleColumns.protocolStatus && (
+                    <div className="protocol-table-cell protocol-table-health-cell" role="cell">
+                      <div className={`protocol-table-health-count ${health}`}>
+                        {health === "healthy" ? (
+                          <CheckmarkCircle size="S" />
+                        ) : (
+                          <AlertCircle size="S" />
+                        )}
+                        <strong>
+                          {healthyProtocols} / {totalProtocols}
+                        </strong>
+                      </div>
+                      <small>
+                        {health === "healthy"
+                          ? "全部健康"
+                          : health === "warning"
+                            ? `${Math.max(0, totalProtocols - healthyProtocols)} 个异常`
+                            : "节点离线"}
+                      </small>
+                    </div>
+                  )}
+
+                  {visibleColumns.protocols && (
+                    <div className="protocol-table-cell protocol-table-protocols-cell" role="cell">
+                      <div className="protocol-table-protocol-list">
+                        {nodeInbounds.map((ib) => {
+                          const protocolHealth = getInboundHealth(n, ib);
+                          const protocolName = protoLabel(ib.protocol);
+
+                          return (
+                            <span
+                              key={ib.id}
+                              className={`protocol-table-protocol-chip ${protocolHealth}`}
+                              title={`${protocolName} · ${getProtocolState(n, ib)}`}
+                            >
+                              {protocolHealth === "warning"
+                                ? `${protocolName} (异常)`
+                                : protocolName}
+                            </span>
+                          );
+                        })}
+                        <button
+                          aria-label={`给${n.name}添加协议`}
+                          className="protocol-table-add-button"
+                          title="添加协议"
+                          type="button"
+                          onClick={() => {
+                            setCreateForm({
+                              nodeId: n.id,
+                              protocol: "vless",
+                              sni: DEFAULT_SNI,
+                              dest: "",
+                              remark: "",
+                            });
+                            setCreateOpen(true);
+                          }}
+                        >
+                          <PlusIcon size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {visibleColumns.users && (
+                    <div className="protocol-table-cell protocol-table-users-cell" role="cell">
+                      <div className="protocol-table-user-count">
+                        <UserIcon size={15} />
+                        <strong>{assignedUsers === null ? "—" : `${assignedUsers} 个用户`}</strong>
+                      </div>
+                      <button
+                        className="protocol-table-detail-link"
+                        type="button"
+                        onClick={() =>
+                          setExpandedNodes((current) => ({
+                            ...current,
+                            [n.id]: !current[n.id],
+                          }))
+                        }
+                      >
+                        {expanded ? "收起详情" : "查看详情"} <ChevronRight size="S" />
+                      </button>
+                      {expanded && (
+                        <div className="protocol-table-inline-detail">
+                          {nodeInbounds.map((ib) => protoLabel(ib.protocol)).join("、")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {visibleColumns.actions && (
+                    <div className="protocol-table-cell protocol-table-actions-cell" role="cell">
+                      <Button
+                        className="protocol-table-action protocol-table-action-assign"
+                        size="sm"
+                        startContent={<UserIcon size={14} />}
+                        onPress={() => openNodeAssign(n, nodeInbounds.length)}
+                      >
+                        分配用户
+                      </Button>
+                      <Button
+                        className="protocol-table-action protocol-table-action-self"
+                        isLoading={selfLoading === n.id}
+                        size="sm"
+                        variant="flat"
+                        onPress={() => handleAssignSelf(n.id, n.name)}
+                      >
+                        我自己用
+                      </Button>
+                      <Button
+                        className="protocol-table-action protocol-table-action-danger"
+                        isDisabled={clearLoading !== null}
+                        isLoading={clearLoading === n.id}
+                        size="sm"
+                        variant="flat"
+                        onPress={() => handleClearNode(n.id, n.name)}
+                      >
+                        清空该机
+                      </Button>
+                      <button
+                        aria-label={`${n.name}更多操作`}
+                        className="protocol-table-more"
+                        title="更多操作"
+                        type="button"
+                        onClick={() =>
+                          setExpandedNodes((current) => ({
+                            ...current,
+                            [n.id]: !current[n.id],
+                          }))
+                        }
+                      >
+                        <MoreVertical size="S" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {filteredMachineNodes.length === 0 && (
+          <div className="protocol-operations-empty">
+            <DeviceDesktop size="M" />
+            <strong>
+              {machineNodes.length === 0 ? "还没有协议机器" : "没有匹配的机器"}
+            </strong>
+            <span>
+              {machineNodes.length === 0
+                ? "使用右上角的一键搭建整机协议，在在线机器上快速创建整套协议。"
+                : "可以清除搜索词或重置筛选，查看其他机器。"}
+            </span>
+          </div>
+        )}
+
+        <div className="protocol-operations-pagination">
+          <span>共 {filteredMachineNodes.length} 条</span>
+          <div>
+            <select aria-label="每页条数" value={pageSize} disabled onChange={() => undefined}>
+              <option value={10}>10 条/页</option>
+            </select>
+            <button
+              aria-label="上一页"
+              disabled={page <= 1}
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              <ChevronLeft size="S" />
+            </button>
+            <span className="protocol-operations-page-number">{Math.min(page, totalPages)}</span>
+            <button
+              aria-label="下一页"
+              disabled={page >= totalPages}
+              type="button"
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              <ChevronRight size="S" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="protocol-command-header">
+        <div>
+          <p className="protocol-kicker">OPERATIONS / PROTOCOLS</p>
+          <h1 className="protocol-command-title">
+            协议编排 <span>/ Command Board</span>
+          </h1>
+          <p className="protocol-command-subtitle">
+            全局查看与管理各机器上的协议运行与分配状态
+          </p>
+        </div>
+        <div className="protocol-command-actions">
           <Button
+            className="protocol-button protocol-button-primary"
             color="secondary"
+            startContent={<PlusIcon size={16} />}
             onPress={() => {
               setOneClickNodeId(null);
               setOneClickOpen(true);
             }}
           >
-            ⚡ 一键搭建整机协议
+            一键搭建整机协议
           </Button>
           <Button
+            className="protocol-button protocol-button-outline"
             color="primary"
-            variant="flat"
+            startContent={<PlusIcon size={16} />}
             onPress={() => {
               setCreateForm({
                 nodeId: null,
@@ -309,118 +1147,349 @@ export default function InboundPage() {
         </div>
       </div>
 
-      {/* 一机一卡:每台机器的全套协议折叠成一条记录,卡上直接分配用户 */}
-      <div className="grid gap-3 md:grid-cols-2">
-        {machineNodes.map((n) => {
-          const nodeInbounds = inbounds.filter(
-            (ib) => ib.nodeId === n.id && !ib.landingId,
-          );
-          const online = n.status === 1;
+      <div className="protocol-status-strip" aria-label="协议运行概览">
+        <div className="protocol-summary-item">
+          <span className="protocol-summary-icon protocol-summary-blue">
+            <DeviceDesktop size="S" />
+          </span>
+          <span>
+            <small>机器总数</small>
+            <strong>{machineNodes.length}</strong>
+          </span>
+        </div>
+        <div className="protocol-summary-item">
+          <span className="protocol-summary-icon protocol-summary-green">
+            <CheckmarkCircle size="S" />
+          </span>
+          <span>
+            <small>运行中</small>
+            <strong>{onlineNodeCount}</strong>
+          </span>
+        </div>
+        <div className="protocol-summary-item">
+          <span className="protocol-summary-icon protocol-summary-amber">
+            <AlertCircle size="S" />
+          </span>
+          <span>
+            <small>运行异常</small>
+            <strong>{runtimeIssueCount}</strong>
+          </span>
+        </div>
+        <div className="protocol-summary-item">
+          <span className="protocol-summary-icon protocol-summary-blue">
+            <LinkCheck size="S" />
+          </span>
+          <span>
+            <small>协议总数</small>
+            <strong>
+              {runningProtocolCount}/{protocolTotal}
+            </strong>
+          </span>
+        </div>
+        <div className="protocol-summary-item">
+          <span className="protocol-summary-icon protocol-summary-purple">
+            <UserIcon size={16} />
+          </span>
+          <span>
+            <small>可分配车友</small>
+            <strong>{users.length}</strong>
+          </span>
+        </div>
+        <div className="protocol-summary-item protocol-summary-last">
+          <span className="protocol-summary-icon protocol-summary-purple">
+            <LinkCheck size="S" />
+          </span>
+          <span>
+            <small>整机线路</small>
+            <strong>{machineNodes.length}</strong>
+          </span>
+        </div>
+      </div>
+
+      <div className="protocol-board-toolbar">
+        <div className="protocol-toolbar-left">
+          <label className="protocol-search-field">
+            <SearchIcon size={16} />
+            <input
+              aria-label="搜索机器"
+              placeholder="搜索机器名称或 IP"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+          <select
+            aria-label="筛选机器状态"
+            className="protocol-filter-select"
+            value={healthFilter}
+            onChange={(event) =>
+              setHealthFilter(
+                event.target.value as "all" | "healthy" | "warning" | "offline",
+              )
+            }
+          >
+            <option value="all">全部状态</option>
+            <option value="healthy">运行正常</option>
+            <option value="warning">存在异常</option>
+            <option value="offline">节点离线</option>
+          </select>
+          <span className="protocol-sync-label">{formatLastLoaded()}</span>
+        </div>
+        <Button
+          className="protocol-refresh-button"
+          isIconOnly
+          aria-label="刷新协议状态"
+          title="刷新协议状态"
+          variant="flat"
+          onPress={loadAll}
+        >
+          <Refresh size="S" />
+        </Button>
+      </div>
+
+      <div className="protocol-board-stack">
+        {filteredMachineNodes.map((n) => {
+          const nodeInbounds = getNodeInbounds(n.id);
+          const health = getNodeHealth(n);
           const firstIp = n.ip
             ? String(n.ip).split(",")[0].trim()
             : n.serverIp || "";
+          const expanded = Boolean(expandedNodes[n.id]);
+          const healthyProtocols = nodeInbounds.filter(
+            (inbound) => getProtocolStateTone(n, inbound) === "success",
+          ).length;
 
           return (
-            <Card key={n.id}>
-              <CardBody className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold truncate">
-                    🖥️ {n.name}
+            <section
+              key={n.id}
+              className={`protocol-machine-board protocol-health-${health}`}
+            >
+              <div className="protocol-machine-meta">
+                <div className="protocol-machine-health">
+                  <span className={`protocol-health-dot ${health}`} />
+                  <span>
+                    {health === "healthy"
+                      ? "运行中"
+                      : health === "warning"
+                        ? "部分异常"
+                        : "节点离线"}
                   </span>
-                  <Chip
-                    color={online ? "success" : "default"}
-                    size="sm"
-                    variant="flat"
-                  >
-                    {online ? "在线" : "离线"}
-                  </Chip>
-                  <Chip
-                    className="ml-auto"
-                    color="primary"
-                    size="sm"
-                    variant="flat"
-                  >
-                    {nodeInbounds.length} 协议
-                  </Chip>
                 </div>
-                {firstIp && (
-                  <div className="text-xs text-default-500 font-mono">
-                    {firstIp}
+                <div className="protocol-machine-identity">
+                  <span className="protocol-machine-icon">
+                    <DeviceDesktop size="M" />
+                  </span>
+                  <div className="protocol-machine-name-block">
+                    <div className="protocol-machine-name-row">
+                      <h2>{n.name}</h2>
+                      <span className={`protocol-node-pill ${health}`}>
+                        {n.status === 1 ? "在线" : "离线"}
+                      </span>
+                    </div>
+                    <p>{firstIp || "未配置访问地址"}</p>
+                  </div>
+                  <button
+                    aria-label={`${expanded ? "收起" : "展开"}${n.name}详情`}
+                    aria-expanded={expanded}
+                    className="protocol-machine-expand"
+                    type="button"
+                    onClick={() =>
+                      setExpandedNodes((current) => ({
+                        ...current,
+                        [n.id]: !current[n.id],
+                      }))
+                    }
+                  >
+                    {expanded ? <ChevronUp size="S" /> : <ChevronDown size="S" />}
+                  </button>
+                </div>
+                <div className="protocol-machine-facts">
+                  <div>
+                    <span>协议数量</span>
+                    <strong>{nodeInbounds.length}</strong>
+                  </div>
+                  <div>
+                    <span>运行状态</span>
+                    <strong>
+                      {healthyProtocols}/{nodeInbounds.length}
+                    </strong>
+                  </div>
+                </div>
+                <div className="protocol-subscription-hint">
+                  <span className="protocol-subscription-icon">
+                    <LinkCheck size="S" />
+                  </span>
+                  <span>
+                    <strong>整机订阅</strong>
+                    <small>新增协议会自动同步</small>
+                  </span>
+                </div>
+              </div>
+
+              <div className="protocol-machine-workspace">
+                <div className="protocol-workspace-header">
+                  <div>
+                    <div className="protocol-workspace-title">
+                      协议列表 <span>({nodeInbounds.length})</span>
+                    </div>
+                    <span className="protocol-workspace-caption">
+                      {healthyProtocols}/{nodeInbounds.length} 个协议可用
+                    </span>
+                  </div>
+                  <div className="protocol-machine-actions">
+                    <Button
+                      className="protocol-action-button protocol-action-assign"
+                      color="primary"
+                      size="sm"
+                      startContent={<UserIcon size={15} />}
+                      onPress={() => openNodeAssign(n, nodeInbounds.length)}
+                    >
+                      分配用户
+                    </Button>
+                    <Button
+                      className="protocol-action-button protocol-action-self"
+                      color="success"
+                      isLoading={selfLoading === n.id}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => handleAssignSelf(n.id, n.name)}
+                    >
+                      我自己用
+                    </Button>
+                    <Button
+                      className="protocol-action-button protocol-action-danger"
+                      color="danger"
+                      isDisabled={clearLoading !== null}
+                      isLoading={clearLoading === n.id}
+                      size="sm"
+                      startContent={<DeleteIcon size={15} />}
+                      variant="flat"
+                      onPress={() => handleClearNode(n.id, n.name)}
+                    >
+                      清空该机
+                    </Button>
+                    <Button
+                      isIconOnly
+                      aria-label={`${n.name}更多操作`}
+                      className="protocol-more-button"
+                      size="sm"
+                      title="更多操作"
+                      variant="light"
+                      onPress={() =>
+                        setExpandedNodes((current) => ({
+                          ...current,
+                          [n.id]: !current[n.id],
+                        }))
+                      }
+                    >
+                      <MoreVertical size="S" />
+                    </Button>
+                  </div>
+                </div>
+
+                {health === "warning" && (
+                  <div className="protocol-runtime-warning">
+                    <AlertCircle size="S" />
+                    <div>
+                      <strong>sing-box 未运行，协议暂不可用</strong>
+                      <span>
+                        节点本身在线，但协议服务没有启动；请在节点上执行
+                        <code>systemctl enable --now sing-box</code>
+                      </span>
+                    </div>
                   </div>
                 )}
 
-                {/* 节点在线 ≠ 协议可用:gost 和 sing-box 是两个服务,sing-box 挂了
-                    这里照样显示「在线」,但这台机上所有协议全都连不上。必须单独标出来 —— 
-                    不然只会以为是协议参数配错了,往那个方向查很久都查不出来 */}
-                {online &&
-                  n.singboxRunning === false &&
-                  nodeInbounds.length > 0 && (
-                    <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
-                      <div className="text-sm font-semibold text-danger">
-                        ⚠️ sing-box 未运行,这台机的协议全部不可用
+                {nodeInbounds.length > 0 ? (
+                  <div className="protocol-tile-grid">
+                    {nodeInbounds.map((ib) => {
+                      const state = getProtocolState(n, ib);
+                      const tone = getProtocolStateTone(n, ib);
+
+                      return (
+                        <div
+                          key={ib.id}
+                          className={`protocol-tile protocol-tile-${tone}`}
+                        >
+                          <div className="protocol-tile-heading">
+                            <span className="protocol-tile-icon">
+                              <LinkCheck size="S" />
+                            </span>
+                            <strong>{protoLabel(ib.protocol)}</strong>
+                            <span className={`protocol-tile-badge ${tone}`}>
+                              {ib.status === 0 ? "已停用" : "已启用"}
+                            </span>
+                          </div>
+                          <div className="protocol-tile-status">
+                            <span className={`protocol-health-dot ${tone}`} />
+                            <span>{state}</span>
+                            <span className="protocol-tile-port">
+                              {ib.listenPort ? `端口 ${ib.listenPort}` : "端口待同步"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="protocol-empty-state">
+                    <span className="protocol-empty-icon">
+                      <LinkCheck size="M" />
+                    </span>
+                    <strong>这台机器还没有协议</strong>
+                    <span>可以使用右上角的“一键搭建整机协议”快速创建。</span>
+                  </div>
+                )}
+
+                {expanded && (
+                  <div className="protocol-detail-list">
+                    <div className="protocol-detail-heading">协议详情</div>
+                    {nodeInbounds.map((ib) => (
+                      <div className="protocol-detail-row" key={`detail-${ib.id}`}>
+                        <span>{protoLabel(ib.protocol)}</span>
+                        <span>{ib.security || "默认安全配置"}</span>
+                        <span>{ib.sni || "无需域名"}</span>
+                        <span>{ib.remark || "无备注"}</span>
                       </div>
-                      <div className="text-xs text-default-500">
-                        节点本身在线(gost 正常),但跑协议的 sing-box
-                        没起来。到这台机上执行:
-                        <code className="font-mono bg-default-200 px-1 rounded ml-1">
-                          systemctl enable --now sing-box
-                        </code>
-                      </div>
-                    </div>
-                  )}
-                <div className="flex flex-wrap gap-1">
-                  {nodeInbounds.map((ib) => (
-                    <Chip
-                      key={ib.id}
-                      color="secondary"
-                      size="sm"
-                      variant="flat"
-                    >
-                      {protoLabel(ib.protocol)}
-                    </Chip>
-                  ))}
-                </div>
-                <div className="text-xs text-default-400">
-                  整机一条订阅:分配给车友后,一条订阅链接导入客户端即拿到上面全部协议,以后加新协议自动更新。
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    color="primary"
-                    size="sm"
-                    onPress={() => openNodeAssign(n, nodeInbounds.length)}
+                    ))}
+                  </div>
+                )}
+
+                <div className="protocol-workspace-footer">
+                  <span>
+                    协议变更会自动同步到该机器的整机订阅；中转协议在“中转”页单独管理。
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedNodes((current) => ({
+                        ...current,
+                        [n.id]: !current[n.id],
+                      }))
+                    }
                   >
-                    👤 分配用户
-                  </Button>
-                  {/* 自己用不必先建车友再分配:一键开给当前管理员,不限速不限量不到期 */}
-                  <Button
-                    color="success"
-                    isLoading={selfLoading === n.id}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => handleAssignSelf(n.id, n.name)}
-                  >
-                    🔑 我自己用
-                  </Button>
-                  <Button
-                    color="danger"
-                    isDisabled={clearLoading !== null}
-                    isLoading={clearLoading === n.id}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => handleClearNode(n.id, n.name)}
-                  >
-                    清空该机
-                  </Button>
+                    {expanded ? "收起详情" : "展开详情"}{" "}
+                    {expanded ? <ChevronUp size="S" /> : <ChevronDown size="S" />}
+                  </button>
                 </div>
-              </CardBody>
-            </Card>
+              </div>
+            </section>
           );
         })}
       </div>
-      {machineNodes.length === 0 && (
-        <div className="text-center text-default-400 py-8">
-          还没有协议,点右上角「⚡ 一键搭建整机协议」在某台机器上把全套协议建出来
+
+      {filteredMachineNodes.length === 0 && (
+        <div className="protocol-board-empty">
+          <span className="protocol-empty-icon">
+            <DeviceDesktop size="M" />
+          </span>
+          <strong>
+            {machineNodes.length === 0 ? "还没有协议机器" : "没有匹配的机器"}
+          </strong>
+          <span>
+            {machineNodes.length === 0
+              ? "使用右上角的一键搭建整机协议，在在线机器上快速创建整套协议。"
+              : "可以清除搜索词或切换状态筛选，查看其他机器。"}
+          </span>
         </div>
       )}
 
@@ -428,7 +1497,7 @@ export default function InboundPage() {
       <Modal isOpen={selfOpen} size="2xl" onClose={() => setSelfOpen(false)}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <span>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</span>
+            <span>已开给你自己(不限速 · 不限流量 · 不限到期)</span>
             {selfNodeName && (
               <span className="text-sm font-normal text-default-500">
                 机器:<b className="text-foreground">{selfNodeName}</b>
@@ -441,7 +1510,7 @@ export default function InboundPage() {
               里就能用。以后随时在「我的订阅」页也能找到。
             </div>
             <div className="text-xs text-default-400 bg-default-100 rounded-lg px-3 py-2">
-              💡 链接前半段是<b>面板地址</b>,所以每台机器点出来都一样 ——
+              链接前半段是<b>面板地址</b>,所以每台机器点出来都一样 ——
               真正区分线路的是末尾的
               <b> token</b>。拉下来的节点才是这台机器的。
             </div>
@@ -475,12 +1544,11 @@ export default function InboundPage() {
       {/* 机器卡「分配用户」:整机协议一次分给车友,出一条订阅链接 */}
       <Modal isOpen={assignOpen} onClose={() => setAssignOpen(false)}>
         <ModalContent>
-          <ModalHeader>👤 给车友分配「{assignForm.nodeName}」</ModalHeader>
+          <ModalHeader>给车友分配「{assignForm.nodeName}」</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
               把这台机器上的 <b>{assignForm.protocolCount} 个协议</b>{" "}
-              一次分给车友。分配完到「用户管理」页,点该车友的「🔗
-              订阅链接」拿链接发给他。
+              一次分给车友。分配完到「用户管理」页,点该车友的「订阅链接」拿链接发给他。
             </div>
             <Select
               label="子账号(车友)"
@@ -566,7 +1634,7 @@ export default function InboundPage() {
       {/* 一键搭建整机协议:选机器,把所有支持的协议一键全建出来 */}
       <Modal isOpen={oneClickOpen} onClose={() => setOneClickOpen(false)}>
         <ModalContent>
-          <ModalHeader>⚡ 一键搭建整机协议</ModalHeader>
+          <ModalHeader>一键搭建整机协议</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
               在选中的机器上一键建好全部协议:

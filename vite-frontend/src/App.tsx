@@ -23,6 +23,11 @@ import H5SimpleLayout from "@/layouts/h5-simple";
 import { isLoggedIn, isAdmin } from "@/utils/auth";
 import { siteConfig } from "@/config/site";
 
+const isProtocolDesignPreview =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("preview") ===
+    "protocol-board";
+
 // 检测是否为H5模式
 const useH5Mode = () => {
   // 立即检测H5模式，避免初始渲染时的闪屏
@@ -77,7 +82,7 @@ const ProtectedRoute = ({
   useSimpleLayout?: boolean;
   skipLayout?: boolean;
 }) => {
-  const authenticated = isLoggedIn();
+  const authenticated = isLoggedIn() || isProtocolDesignPreview;
   const isH5 = useH5Mode();
   const navigate = useNavigate();
 
