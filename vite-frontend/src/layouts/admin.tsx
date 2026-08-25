@@ -414,7 +414,7 @@ export default function AdminLayout({
 
   return (
     <div
-      className={`flex ${isMobile ? "min-h-screen" : "h-screen"} ${isDashboard ? "bg-[#f4f6f8] text-slate-900" : "bg-transparent"}`}
+      className={`flex ${isMobile ? "min-h-screen" : "h-screen"} ${isDashboard ? "bg-default-50/70 text-foreground" : "bg-transparent"}`}
     >
       {/* 移动端遮罩层 */}
       {isMobile && mobileMenuVisible && (
@@ -430,7 +430,7 @@ export default function AdminLayout({
         ${isMobile ? "fixed" : "relative"}
         ${isMobile && !mobileMenuVisible ? "-translate-x-full" : "translate-x-0"}
         ${isMobile ? "w-64" : desktopMenuCollapsed ? "w-[72px]" : isDashboard ? "w-[208px]" : "w-72"}
-        ${isDashboard ? "bg-white border-slate-200 shadow-none" : "bg-white/70 dark:bg-black/40 backdrop-blur-xl shadow-lg border-gray-200 dark:border-gray-600"}
+        ${isDashboard ? "bg-content1/80 border-divider shadow-none backdrop-blur-xl" : "bg-white/70 dark:bg-black/40 backdrop-blur-xl shadow-lg border-gray-200 dark:border-gray-600"}
         border-r
         z-50
         transition-transform duration-300 ease-in-out
@@ -445,20 +445,20 @@ export default function AdminLayout({
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <span
-              className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${isDashboard ? "bg-[#1465f5] text-white" : "bg-primary text-primary-foreground"}`}
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${isDashboard ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground"}`}
             >
               <Logo size={21} />
             </span>
             {(!desktopMenuCollapsed || isMobile) && (
               <div className="min-w-0">
                 <h1
-                  className={`truncate text-sm font-bold ${isDashboard ? "text-slate-900" : "text-foreground"}`}
+                  className={`truncate text-sm font-bold ${isDashboard ? "text-foreground" : "text-foreground"}`}
                 >
                   {appName}
                 </h1>
                 <div className="flex items-center gap-1.5">
                   <p
-                    className={`text-[11px] ${isDashboard ? "text-slate-400" : "text-default-500"}`}
+                    className={`text-[11px] ${isDashboard ? "text-default-500" : "text-default-500"}`}
                   >
                     v{versionInfo?.panelVersion || siteConfig.version}
                     {versionInfo?.commit && versionInfo.commit !== "dev" && (
@@ -502,10 +502,10 @@ export default function AdminLayout({
                        ${
                          isActive
                            ? isDashboard
-                             ? "bg-[#eaf2ff] text-[#1465f5]"
+                             ? "bg-primary-100 text-primary"
                              : "bg-primary-100 dark:bg-primary-600/20 text-primary-600 dark:text-primary-300"
                            : isDashboard
-                             ? "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                             ? "text-default-500 hover:bg-default-100 hover:text-foreground"
                              : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
                        }
                      `}
@@ -527,7 +527,7 @@ export default function AdminLayout({
         <div className="mt-auto shrink-0 px-3 pb-4 pt-3">
           <button
             aria-label={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
-            className={`flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-xs transition-colors ${isDashboard ? "text-slate-400 hover:bg-slate-50 hover:text-slate-600" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900"} ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}`}
+            className={`flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-xs transition-colors ${isDashboard ? "text-default-400 hover:bg-default-100 hover:text-default-600" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900"} ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}`}
             title={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
             type="button"
             onClick={() => setDesktopMenuCollapsed((collapsed) => !collapsed)}
@@ -543,7 +543,7 @@ export default function AdminLayout({
       >
         {/* 顶部导航栏 */}
         <header
-          className={`relative z-10 flex h-16 items-center justify-between border-b px-4 lg:px-6 ${isDashboard ? "border-slate-200 bg-white shadow-none" : "border-gray-200 bg-white/60 shadow-md backdrop-blur-xl dark:border-gray-600 dark:bg-black/30"}`}
+          className={`relative z-10 flex h-16 items-center justify-between border-b px-4 lg:px-6 ${isDashboard ? "border-divider bg-content1/80 shadow-none backdrop-blur-xl" : "border-gray-200 bg-white/60 shadow-md backdrop-blur-xl dark:border-gray-600 dark:bg-black/30"}`}
         >
           <div className="flex items-center gap-4">
             {/* 移动端菜单按钮 */}
@@ -578,11 +578,11 @@ export default function AdminLayout({
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
-                  className={`text-sm font-medium ${isDashboard ? "text-slate-700 hover:bg-slate-50" : "text-foreground"}`}
+                  className={`text-sm font-medium ${isDashboard ? "text-foreground hover:bg-default-100" : "text-foreground"}`}
                   variant="light"
                 >
                   {isDashboard && (
-                    <span className="grid h-8 w-8 place-items-center rounded-full bg-[#1465f5] text-white">
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
                       <UserIcon size={16} />
                     </span>
                   )}
@@ -648,7 +648,7 @@ export default function AdminLayout({
 
         {/* 主内容 */}
         <main
-          className={`flex-1 ${isDashboard ? "bg-[#f4f6f8]" : "bg-transparent"} ${isMobile ? "" : "overflow-y-auto"}`}
+          className={`flex-1 ${isDashboard ? "bg-default-50/70" : "bg-transparent"} ${isMobile ? "" : "overflow-y-auto"}`}
         >
           {children}
         </main>

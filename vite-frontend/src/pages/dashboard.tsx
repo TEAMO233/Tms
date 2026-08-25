@@ -503,8 +503,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto flex min-h-[420px] max-w-[1440px] items-center justify-center">
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-[#1465f5]" />
+          <div className="flex items-center gap-3 text-sm text-default-500">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-default-200 border-t-primary" />
             正在加载数据...
           </div>
         </div>
@@ -513,21 +513,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="dashboard-page min-h-full px-4 py-5 text-slate-900 sm:px-6 lg:px-8">
+    <div className="dashboard-page min-h-full px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1440px]">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1465f5]">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
               TRAFFIC CONTROL
             </p>
-            <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-950">
+            <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-foreground">
               仪表板
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-default-500">
               账户用量、统计范围和转发线路一览
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-default-500">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             数据实时同步
           </div>
@@ -537,13 +537,13 @@ export default function DashboardPage() {
           <article className="dashboard-surface p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-slate-500">总流量</p>
-                <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-slate-950">
+                <p className="text-sm font-medium text-default-500">总流量</p>
+                <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                   {formatFlow(userInfo.flow, "gb")}
                 </p>
-                <p className="mt-2 text-xs text-slate-400">套餐上限</p>
+                <p className="mt-2 text-xs text-default-400">套餐上限</p>
               </div>
-              <span className="dashboard-metric-icon bg-[#edf4ff] text-[#4a82ee]">
+              <span className="dashboard-metric-icon bg-primary-50 text-primary">
                 <SettingsIcon size={17} />
               </span>
             </div>
@@ -552,13 +552,13 @@ export default function DashboardPage() {
           <article className="dashboard-surface p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-500">已用流量</p>
-                <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-slate-950">
+                <p className="text-sm font-medium text-default-500">已用流量</p>
+                <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                   {formatFlow(usedFlow)}
                 </p>
-                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#edf0f5]">
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-default-200">
                   <div
-                    className="h-full rounded-full bg-[#2e73ed] transition-all duration-500"
+                    className="h-full rounded-full bg-primary transition-all duration-500"
                     style={{
                       width:
                         userInfo.flow === 99999
@@ -567,7 +567,7 @@ export default function DashboardPage() {
                     }}
                   />
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-400">
+                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-default-400">
                   <span>
                     {userInfo.flow === 99999
                       ? "无限制"
@@ -581,7 +581,7 @@ export default function DashboardPage() {
                     )}
                 </div>
               </div>
-              <span className="dashboard-metric-icon bg-[#edf8f2] text-[#18a05d]">
+              <span className="dashboard-metric-icon bg-success-50 text-success">
                 <SearchIcon size={17} />
               </span>
             </div>
@@ -591,13 +591,13 @@ export default function DashboardPage() {
             <article className="dashboard-surface p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">转发配额</p>
-                  <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-slate-950">
+                  <p className="text-sm font-medium text-default-500">转发配额</p>
+                  <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                     {formatNumber(userInfo.num || 0)}
                   </p>
-                  <p className="mt-2 text-xs text-slate-400">账户级线路数量</p>
+                  <p className="mt-2 text-xs text-default-400">账户级线路数量</p>
                 </div>
-                <span className="dashboard-metric-icon bg-[#f3efff] text-[#7546e9]">
+                <span className="dashboard-metric-icon bg-secondary-50 text-secondary">
                   <PlusIcon size={17} />
                 </span>
               </div>
@@ -608,13 +608,13 @@ export default function DashboardPage() {
             <article className="dashboard-surface p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-500">已用转发</p>
-                  <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-slate-950">
+                  <p className="text-sm font-medium text-default-500">已用转发</p>
+                  <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                     {forwardList.length}
                   </p>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#edf0f5]">
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-default-200">
                     <div
-                      className="h-full rounded-full bg-[#176cf1] transition-all duration-500"
+                      className="h-full rounded-full bg-primary transition-all duration-500"
                       style={{
                         width:
                           userInfo.num === 99999
@@ -623,13 +623,13 @@ export default function DashboardPage() {
                       }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">
+                  <p className="mt-2 text-xs text-default-400">
                     {userInfo.num === 99999
                       ? "无限制"
                       : String(forwardUsage.toFixed(1)) + "%"}
                   </p>
                 </div>
-                <span className="dashboard-metric-icon bg-[#eef5ff] text-[#3c7eef]">
+                <span className="dashboard-metric-icon bg-primary-50 text-primary">
                   <UserIcon size={17} />
                 </span>
               </div>
@@ -638,19 +638,19 @@ export default function DashboardPage() {
         </section>
 
         <section className="dashboard-surface mt-4 overflow-hidden">
-          <div className="flex flex-col gap-5 border-b border-[#e8ebf0] p-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex flex-col gap-5 border-b border-divider p-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+                <h2 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
                   流量统计
                 </h2>
                 {flowStatisticsLoading && (
-                  <span className="rounded-full bg-[#edf4ff] px-2 py-1 text-[11px] font-medium text-[#1465f5]">
+                  <span className="rounded-full bg-primary-50 px-2 py-1 text-[11px] font-medium text-primary">
                     查询中
                   </span>
                 )}
               </div>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-default-500">
                 {flowStatistics?.granularity === "day"
                   ? "多日按天汇总"
                   : "单日按小时展示"}{" "}
@@ -664,14 +664,14 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-2">
               <div
                 aria-label="统计快捷范围"
-                className="flex items-center rounded-lg bg-[#f4f6f9] p-1"
+                className="flex items-center rounded-lg bg-default-100 p-1"
                 role="group"
               >
                 <Button
                   className={
                     activeShortcut === "today"
-                      ? "h-8 min-w-0 rounded-md bg-white px-3 text-xs font-medium text-slate-900 shadow-sm"
-                      : "h-8 min-w-0 rounded-md px-3 text-xs font-medium text-slate-500"
+                      ? "h-8 min-w-0 rounded-md bg-content1 px-3 text-xs font-medium text-foreground shadow-sm"
+                      : "h-8 min-w-0 rounded-md px-3 text-xs font-medium text-default-500"
                   }
                   isDisabled={flowStatisticsLoading}
                   size="sm"
@@ -685,8 +685,8 @@ export default function DashboardPage() {
                 <Button
                   className={
                     activeShortcut === "7d"
-                      ? "h-8 min-w-0 rounded-md bg-white px-3 text-xs font-medium text-slate-900 shadow-sm"
-                      : "h-8 min-w-0 rounded-md px-3 text-xs font-medium text-slate-500"
+                      ? "h-8 min-w-0 rounded-md bg-content1 px-3 text-xs font-medium text-foreground shadow-sm"
+                      : "h-8 min-w-0 rounded-md px-3 text-xs font-medium text-default-500"
                   }
                   isDisabled={flowStatisticsLoading}
                   size="sm"
@@ -700,8 +700,8 @@ export default function DashboardPage() {
                 <Button
                   className={
                     activeShortcut === "30d"
-                      ? "h-8 min-w-0 rounded-md bg-white px-3 text-xs font-medium text-slate-900 shadow-sm"
-                      : "h-8 min-w-0 rounded-md px-3 text-xs font-medium text-slate-500"
+                      ? "h-8 min-w-0 rounded-md bg-content1 px-3 text-xs font-medium text-foreground shadow-sm"
+                      : "h-8 min-w-0 rounded-md px-3 text-xs font-medium text-default-500"
                   }
                   isDisabled={flowStatisticsLoading}
                   size="sm"
@@ -745,7 +745,7 @@ export default function DashboardPage() {
                 />
               </label>
               <Button
-                className="h-10 rounded-lg bg-[#1465f5] px-4 text-xs font-semibold text-white shadow-none"
+                className="h-10 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-none"
                 isDisabled={flowStatisticsLoading}
                 size="sm"
                 startContent={<SearchIcon size={15} />}
@@ -758,18 +758,18 @@ export default function DashboardPage() {
 
           <div className="px-4 pb-5 pt-4 sm:px-5">
             {flowStatisticsLoading && !flowStatistics ? (
-              <div className="flex h-[320px] items-center justify-center text-sm text-slate-400">
+              <div className="flex h-[320px] items-center justify-center text-sm text-default-400">
                 正在加载流量统计...
               </div>
             ) : (flowStatistics?.points?.length || 0) === 0 ? (
               <div className="flex h-[320px] flex-col items-center justify-center text-center">
-                <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-[#f1f4f8] text-[#91a0b4]">
+                <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-default-100 text-default-400">
                   <SearchIcon size={18} />
                 </span>
-                <p className="text-sm font-medium text-slate-600">
+                <p className="text-sm font-medium text-default-600">
                   暂无流量统计数据
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-default-400">
                   调整日期范围后重新查询
                 </p>
               </div>
@@ -787,19 +787,19 @@ export default function DashboardPage() {
                     margin={{ top: 12, right: 16, left: 4, bottom: 0 }}
                   >
                     <CartesianGrid
-                      stroke="#e9edf3"
+                      stroke="hsl(var(--heroui-default-200))"
                       strokeDasharray="3 3"
                       vertical={false}
                     />
                     <XAxis
-                      axisLine={{ stroke: "#dfe4eb" }}
+                      axisLine={{ stroke: "hsl(var(--heroui-default-300))" }}
                       dataKey="time"
-                      tick={{ fill: "#8b96a6", fontSize: 11 }}
+                      tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
                       tickLine={false}
                     />
                     <YAxis
                       axisLine={false}
-                      tick={{ fill: "#8b96a6", fontSize: 11 }}
+                      tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
                       tickFormatter={(value) => {
                         if (value === 0) return "0";
                         if (value < 1024) return String(value) + "B";
@@ -825,8 +825,8 @@ export default function DashboardPage() {
                         }
 
                         return (
-                          <div className="space-y-1 rounded-lg border border-[#e3e7ee] bg-white p-3 shadow-lg">
-                            <p className="text-xs font-semibold text-slate-800">
+                          <div className="space-y-1 rounded-lg border border-divider bg-content1 p-3 shadow-lg">
+                            <p className="text-xs font-semibold text-foreground">
                               {(flowStatistics?.granularity === "day"
                                 ? "日期"
                                 : "时间") +
@@ -851,50 +851,50 @@ export default function DashboardPage() {
                     <Legend
                       iconType="circle"
                       wrapperStyle={{
-                        color: "#64748b",
+                        color: "hsl(var(--heroui-default-500))",
                         fontSize: 12,
                         paddingTop: 12,
                       }}
                     />
                     <Line
                       activeDot={{
-                        fill: "#ffffff",
+                        fill: "hsl(var(--heroui-content1))",
                         r: 4,
-                        stroke: "#16a05d",
+                        stroke: "hsl(var(--heroui-success))",
                         strokeWidth: 2,
                       }}
                       dataKey="uploadFlow"
                       name="上传"
                       dot={false}
-                      stroke="#16a05d"
+                      stroke="hsl(var(--heroui-success))"
                       strokeWidth={2.5}
                       type="monotone"
                     />
                     <Line
                       activeDot={{
-                        fill: "#ffffff",
+                        fill: "hsl(var(--heroui-content1))",
                         r: 4,
-                        stroke: "#f28a13",
+                        stroke: "hsl(var(--heroui-warning))",
                         strokeWidth: 2,
                       }}
                       dataKey="downloadFlow"
                       name="下载"
                       dot={false}
-                      stroke="#f28a13"
+                      stroke="hsl(var(--heroui-warning))"
                       strokeWidth={2.5}
                       type="monotone"
                     />
                     <Line
                       activeDot={{
-                        fill: "#ffffff",
+                        fill: "hsl(var(--heroui-content1))",
                         r: 4,
-                        stroke: "#7440e8",
+                        stroke: "hsl(var(--heroui-secondary))",
                         strokeWidth: 2,
                       }}
                       dataKey="flow"
                       name="总量"
                       dot={false}
-                      stroke="#7440e8"
+                      stroke="hsl(var(--heroui-secondary))"
                       strokeDasharray="5 5"
                       strokeWidth={2.5}
                       type="monotone"
@@ -908,21 +908,21 @@ export default function DashboardPage() {
 
         {isAdmin && (
           <section className="dashboard-surface mt-4 overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-[#e8ebf0] px-5 py-4">
+            <div className="flex items-center justify-between gap-3 border-b border-divider px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
                     转发配置
                   </h2>
-                  <span className="rounded-full bg-[#edf4ff] px-2 py-1 text-[11px] font-semibold text-[#1465f5]">
+                  <span className="rounded-full bg-primary-50 px-2 py-1 text-[11px] font-semibold text-primary">
                     {forwardList.length}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-default-400">
                   按节点分组查看当前转发线路与用量
                 </p>
               </div>
-              <span className="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
+              <span className="hidden items-center gap-2 text-xs text-default-400 sm:flex">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 线路状态正常
               </span>
@@ -930,17 +930,17 @@ export default function DashboardPage() {
 
             {forwardGroups.length === 0 ? (
               <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
-                <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-[#f1f4f8] text-[#91a0b4]">
+                <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-default-100 text-default-400">
                   <PlusIcon size={18} />
                 </span>
-                <p className="text-sm font-medium text-slate-600">
+                <p className="text-sm font-medium text-default-600">
                   暂无转发配置
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-[980px]">
-                  <div className="grid grid-cols-[minmax(180px,1.15fr)_minmax(190px,1fr)_minmax(190px,1fr)_minmax(100px,.65fr)_minmax(100px,.65fr)_minmax(100px,.65fr)] gap-4 border-b border-[#eef1f4] bg-[#fafbfc] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                  <div className="grid grid-cols-[minmax(180px,1.15fr)_minmax(190px,1fr)_minmax(190px,1fr)_minmax(100px,.65fr)_minmax(100px,.65fr)_minmax(100px,.65fr)] gap-4 border-b border-divider bg-default-50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-default-500">
                     <span>转发名称</span>
                     <span>入口地址（监听）</span>
                     <span>目标地址（转发至）</span>
@@ -959,7 +959,7 @@ export default function DashboardPage() {
                       <div key={group.tunnelName}>
                         <button
                           aria-expanded={expanded}
-                          className="flex w-full items-center justify-between border-b border-[#eef1f4] px-5 py-3 text-left transition-colors hover:bg-[#f8fafc]"
+                          className="flex w-full items-center justify-between border-b border-divider px-5 py-3 text-left transition-colors hover:bg-default-50"
                           type="button"
                           onClick={() => toggleForwardGroup(group.tunnelName)}
                         >
@@ -967,8 +967,8 @@ export default function DashboardPage() {
                             <span
                               className={
                                 expanded
-                                  ? "text-[#1465f5] transition-transform"
-                                  : "text-slate-400 transition-transform"
+                                  ? "text-primary transition-transform"
+                                  : "text-default-400 transition-transform"
                               }
                             >
                               <PlusIcon
@@ -976,10 +976,10 @@ export default function DashboardPage() {
                                 size={15}
                               />
                             </span>
-                            <span className="text-sm font-semibold text-slate-800">
+                            <span className="text-sm font-semibold text-foreground">
                               {group.tunnelName}
                             </span>
-                            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                            <span className="flex items-center gap-1.5 text-xs text-default-400">
                               <span
                                 className={
                                   healthy
@@ -990,7 +990,7 @@ export default function DashboardPage() {
                               {healthy ? "运行中" : "需要关注"}
                             </span>
                           </span>
-                          <span className="rounded-md bg-[#1465f5] px-2.5 py-1.5 text-xs font-semibold text-white">
+                          <span className="rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground">
                             {group.forwards.length}个转发
                           </span>
                         </button>
@@ -999,16 +999,16 @@ export default function DashboardPage() {
                           group.forwards.map((forward) => (
                             <div
                               key={forward.id}
-                              className="grid grid-cols-[minmax(180px,1.15fr)_minmax(190px,1fr)_minmax(190px,1fr)_minmax(100px,.65fr)_minmax(100px,.65fr)_minmax(100px,.65fr)] gap-4 border-b border-[#f0f2f5] px-5 py-3.5 transition-colors hover:bg-[#fbfcfe]"
+                              className="grid grid-cols-[minmax(180px,1.15fr)_minmax(190px,1fr)_minmax(190px,1fr)_minmax(100px,.65fr)_minmax(100px,.65fr)_minmax(100px,.65fr)] gap-4 border-b border-divider px-5 py-3.5 transition-colors hover:bg-default-50"
                             >
                               <div className="flex min-w-0 items-center gap-2">
                                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                                <span className="truncate text-sm font-medium text-slate-700">
+                                <span className="truncate text-sm font-medium text-foreground">
                                   {forward.name}
                                 </span>
                               </div>
                               <button
-                                className="min-w-0 truncate text-left font-mono text-xs text-emerald-600 transition-colors hover:text-emerald-700"
+                                className="min-w-0 truncate text-left font-mono text-xs text-success transition-colors hover:text-success-600"
                                 title={formatInAddress(
                                   forward.inIp,
                                   forward.inPort,
@@ -1025,7 +1025,7 @@ export default function DashboardPage() {
                                 {formatInAddress(forward.inIp, forward.inPort)}
                               </button>
                               <button
-                                className="min-w-0 truncate text-left font-mono text-xs text-blue-600 transition-colors hover:text-blue-700"
+                                className="min-w-0 truncate text-left font-mono text-xs text-primary transition-colors hover:text-primary-600"
                                 title={formatRemoteAddress(forward.remoteAddr)}
                                 type="button"
                                 onClick={() =>
@@ -1037,13 +1037,13 @@ export default function DashboardPage() {
                               >
                                 {formatRemoteAddress(forward.remoteAddr)}
                               </button>
-                              <span className="font-mono text-xs font-medium text-emerald-600">
+                              <span className="font-mono text-xs font-medium text-success">
                                 {formatFlow(forward.inFlow || 0)}
                               </span>
-                              <span className="font-mono text-xs font-medium text-orange-500">
+                              <span className="font-mono text-xs font-medium text-warning">
                                 {formatFlow(forward.outFlow || 0)}
                               </span>
-                              <span className="font-mono text-xs font-medium text-[#1465f5]">
+                              <span className="font-mono text-xs font-medium text-primary">
                                 {formatFlow(calculateForwardBillingFlow(forward))}
                               </span>
                             </div>
