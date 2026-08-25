@@ -185,7 +185,11 @@ function App() {
         element={
           <ProtectedRoute>
             {/* 仪表板是账号级口径,车友一切按线路算 → 直接送他去「我的订阅」 */}
-            {isAdmin() ? <DashboardPage /> : <Navigate replace to="/my-sub" />}
+            {isAdmin() || isProtocolDesignPreview ? (
+              <DashboardPage />
+            ) : (
+              <Navigate replace to="/my-sub" />
+            )}
           </ProtectedRoute>
         }
         path="/dashboard"

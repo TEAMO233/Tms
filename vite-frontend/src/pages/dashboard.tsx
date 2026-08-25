@@ -71,13 +71,89 @@ interface AddressItem {
   copying: boolean;
 }
 
+const isProtocolDesignPreview =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("preview") ===
+    "protocol-board";
+
+const PREVIEW_USER_INFO: UserInfo = {
+  flow: 99999,
+  inFlow: 14.9 * 1024 * 1024 * 1024,
+  outFlow: 2.08 * 1024 * 1024 * 1024,
+  num: 99999,
+  flowResetTime: 7,
+};
+
+const PREVIEW_FORWARDS: Forward[] = Array.from({ length: 14 }, (_, index) => {
+  const inFlow = [127.33, 17.96, 982.33, 3.98, 615.45, 48.2, 238.1, 91.8][
+    index % 8
+  ];
+  const outFlow = [488.12, 17.04, 58.44 * 1024, 8.04, 332.4, 61.2, 14.8, 102.4][
+    index % 8
+  ];
+
+  return {
+    id: index + 1,
+    name: `inbound-${30 - index}-user-1`,
+    tunnelId: 2,
+    tunnelName: "inbound-tunnel-node2",
+    inIp: "64.83.37.138",
+    inPort: 20007 - index,
+    remoteAddr: `127.0.0.1:${40005 - index}`,
+    inFlow: inFlow * 1024,
+    outFlow: outFlow * 1024,
+    serviceRunning: true,
+  };
+});
+
+const PREVIEW_FLOW_STATISTICS: FlowStatisticsResponse = {
+  granularity: "hour",
+  startTime: 0,
+  endTime: 0,
+  totalFlow: 8.74 * 1024 * 1024 * 1024,
+  downloadFlow: 214.96 * 1024 * 1024,
+  uploadFlow: 2.08 * 1024 * 1024 * 1024,
+  points: [
+    [0.02, 0.01, 0.01],
+    [0.02, 0.01, 0.01],
+    [0.03, 0.02, 0.01],
+    [0.02, 0.01, 0.01],
+    [0.03, 0.02, 0.01],
+    [0.42, 0.04, 0.01],
+    [0.02, 0.01, 0.01],
+    [0.02, 0.01, 0.01],
+    [0.58, 0.05, 0.01],
+    [2.24, 0.12, 0.02],
+    [0.88, 0.11, 0.02],
+    [0.68, 0.1, 0.02],
+    [0.48, 0.08, 0.02],
+    [1.1, 0.08, 0.03],
+    [0.06, 0.04, 0.05],
+    [0.76, 0.08, 0.72],
+    [1.18, 0.12, 1.06],
+  ].map(([flow, downloadFlow, uploadFlow], index) => ({
+    label: `${String(index).padStart(2, "0")}:00`,
+    startTime: index,
+    endTime: index + 1,
+    flow: flow * 1024 * 1024 * 1024,
+    downloadFlow: downloadFlow * 1024 * 1024 * 1024,
+    uploadFlow: uploadFlow * 1024 * 1024 * 1024,
+  })),
+};
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState<UserInfo>({} as UserInfo);
-  const [forwardList, setForwardList] = useState<Forward[]>([]);
+  const [userInfo, setUserInfo] = useState<UserInfo>(
+    isProtocolDesignPreview ? PREVIEW_USER_INFO : ({} as UserInfo),
+  );
+  const [forwardList, setForwardList] = useState<Forward[]>(
+    isProtocolDesignPreview ? PREVIEW_FORWARDS : [],
+  );
   const [statisticsRange, setStatisticsRange] = useState<FlowStatisticsDateRange>(() => createTodayRange());
   const [appliedStatisticsRange, setAppliedStatisticsRange] = useState<FlowStatisticsDateRange>(() => createTodayRange());
-  const [flowStatistics, setFlowStatistics] = useState<FlowStatisticsResponse | null>(null);
+  const [flowStatistics, setFlowStatistics] = useState<FlowStatisticsResponse | null>(
+    isProtocolDesignPreview ? PREVIEW_FLOW_STATISTICS : null,
+  );
   const [flowStatisticsLoading, setFlowStatisticsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeShortcut, setActiveShortcut] = useState<"today" | "7d" | "30d" | "custom">(
@@ -184,13 +260,13 @@ export default function DashboardPage() {
   useEffect(() => {
     // 重置状态并加载数据，防止页面切换时显示旧数据
     setLoading(true);
-    setUserInfo({} as UserInfo);
-    setForwardList([]);
-    setFlowStatistics(null);
+    setUserInfo(isProtocolDesignPreview ? PREVIEW_USER_INFO : ({} as UserInfo));
+    setForwardList(isProtocolDesignPreview ? PREVIEW_FORWARDS : []);
+    setFlowStatistics(isProtocolDesignPreview ? PREVIEW_FLOW_STATISTICS : null);
 
     // 检查用户是否是管理员
     const adminStatus = localStorage.getItem('admin');
-    setIsAdmin(adminStatus === 'true');
+    setIsAdmin(isProtocolDesignPreview || adminStatus === 'true');
 
     const today = createTodayRange();
     setStatisticsRange(today);
@@ -203,6 +279,13 @@ export default function DashboardPage() {
 
   const loadPackageData = async () => {
     setLoading(true);
+    if (isProtocolDesignPreview) {
+      setUserInfo(PREVIEW_USER_INFO);
+      setForwardList(PREVIEW_FORWARDS);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await getUserPackageInfo();
       if (res.code === 0) {
@@ -225,6 +308,13 @@ export default function DashboardPage() {
 
   const loadFlowStatistics = async (range: FlowStatisticsDateRange = statisticsRange) => {
     setFlowStatisticsLoading(true);
+    if (isProtocolDesignPreview) {
+      setFlowStatistics(PREVIEW_FLOW_STATISTICS);
+      setAppliedStatisticsRange(range);
+      setFlowStatisticsLoading(false);
+      return;
+    }
+
     try {
       const query = buildFlowStatisticsRange(range.startDate, range.endDate);
       const res = await getFlowStatisticsRange(query);
@@ -502,7 +592,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[420px] max-w-[1440px] items-center justify-center">
+        <div className="mx-auto flex min-h-[420px] items-center justify-center">
           <div className="flex items-center gap-3 text-sm text-default-500">
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-default-200 border-t-primary" />
             正在加载数据...
@@ -513,8 +603,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="dashboard-page min-h-full px-4 py-5 text-foreground sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1440px]">
+    <div className="dashboard-page min-h-full px-6 pb-8 pt-8 text-foreground sm:px-8 lg:pl-[66px] lg:pr-[88px]">
+        <div className="mx-auto max-w-none">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -527,21 +617,21 @@ export default function DashboardPage() {
               账户用量、统计范围和转发线路一览
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-default-500">
+          <div className="hidden items-center gap-2 text-xs text-default-500">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             数据实时同步
           </div>
         </div>
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="dashboard-surface p-4 sm:p-5">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="dashboard-surface h-[136px] p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-default-500">总流量</p>
-                <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                   {formatFlow(userInfo.flow, "gb")}
                 </p>
-                <p className="mt-2 text-xs text-default-400">套餐上限</p>
+                <p className="mt-1 text-xs text-default-400">套餐上限</p>
               </div>
               <span className="dashboard-metric-icon bg-primary-50 text-primary">
                 <SettingsIcon size={17} />
@@ -549,14 +639,14 @@ export default function DashboardPage() {
             </div>
           </article>
 
-          <article className="dashboard-surface p-4 sm:p-5">
+          <article className="dashboard-surface h-[136px] p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-default-500">已用流量</p>
-                <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                   {formatFlow(usedFlow)}
                 </p>
-                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-default-200">
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-default-200">
                   <div
                     className="h-full rounded-full bg-primary transition-all duration-500"
                     style={{
@@ -567,7 +657,7 @@ export default function DashboardPage() {
                     }}
                   />
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-default-400">
+                <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-default-400">
                   <span>
                     {userInfo.flow === 99999
                       ? "无限制"
@@ -588,14 +678,14 @@ export default function DashboardPage() {
           </article>
 
           {isAdmin && (
-            <article className="dashboard-surface p-4 sm:p-5">
+            <article className="dashboard-surface h-[136px] p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-default-500">转发配额</p>
-                  <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                  <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                     {formatNumber(userInfo.num || 0)}
                   </p>
-                  <p className="mt-2 text-xs text-default-400">账户级线路数量</p>
+                  <p className="mt-1 text-xs text-default-400">账户级线路数量</p>
                 </div>
                 <span className="dashboard-metric-icon bg-secondary-50 text-secondary">
                   <PlusIcon size={17} />
@@ -605,14 +695,14 @@ export default function DashboardPage() {
           )}
 
           {isAdmin && (
-            <article className="dashboard-surface p-4 sm:p-5">
+            <article className="dashboard-surface h-[136px] p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-default-500">已用转发</p>
-                  <p className="mt-3 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                  <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                     {forwardList.length}
                   </p>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-default-200">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-default-200">
                     <div
                       className="h-full rounded-full bg-primary transition-all duration-500"
                       style={{
@@ -623,7 +713,7 @@ export default function DashboardPage() {
                       }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-default-400">
+                  <p className="mt-1.5 text-xs text-default-400">
                     {userInfo.num === 99999
                       ? "无限制"
                       : String(forwardUsage.toFixed(1)) + "%"}
@@ -637,8 +727,8 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="dashboard-surface mt-4 overflow-hidden">
-          <div className="flex flex-col gap-5 border-b border-divider p-5 xl:flex-row xl:items-end xl:justify-between">
+        <section className="dashboard-surface mt-3 overflow-hidden">
+          <div className="flex flex-col gap-5 border-b border-divider p-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
@@ -758,11 +848,11 @@ export default function DashboardPage() {
 
           <div className="px-4 pb-5 pt-4 sm:px-5">
             {flowStatisticsLoading && !flowStatistics ? (
-              <div className="flex h-[320px] items-center justify-center text-sm text-default-400">
+              <div className="flex h-[250px] items-center justify-center text-sm text-default-400">
                 正在加载流量统计...
               </div>
             ) : (flowStatistics?.points?.length || 0) === 0 ? (
-              <div className="flex h-[320px] flex-col items-center justify-center text-center">
+              <div className="flex h-[250px] flex-col items-center justify-center text-center">
                 <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-default-100 text-default-400">
                   <SearchIcon size={18} />
                 </span>
@@ -777,8 +867,8 @@ export default function DashboardPage() {
               <div
                 className={
                   flowStatisticsLoading
-                    ? "h-[320px] w-full opacity-60"
-                    : "h-[320px] w-full"
+                    ? "h-[250px] w-full opacity-60"
+                    : "h-[250px] w-full"
                 }
               >
                 <ResponsiveContainer width="100%" height="100%">
@@ -991,7 +1081,7 @@ export default function DashboardPage() {
                             </span>
                           </span>
                           <span className="rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground">
-                            {group.forwards.length}个转发
+                            {isProtocolDesignPreview ? 8 : group.forwards.length}个转发
                           </span>
                         </button>
 

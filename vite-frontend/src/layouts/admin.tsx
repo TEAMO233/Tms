@@ -54,7 +54,6 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const isDashboard = location.pathname === "/dashboard";
-  const isProtocolBoard = location.pathname === "/inbound";
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   // 更新弹窗单独一个开关,别和改密码那个共用
   const updateModal = useDisclosure();
@@ -423,7 +422,7 @@ export default function AdminLayout({
 
   return (
     <div
-      className={`flex ${isMobile ? "min-h-screen" : "h-screen"} ${isDashboard ? "bg-default-50/70 text-foreground" : "bg-transparent"}`}
+      className={`admin-shell relative flex ${isMobile ? "min-h-screen" : "h-screen overflow-hidden"} ${isDashboard ? "bg-[#0a101b] text-foreground" : "bg-default-50/70 text-foreground"}`}
     >
       {/* 移动端遮罩层 */}
       {isMobile && mobileMenuVisible && (
@@ -436,40 +435,40 @@ export default function AdminLayout({
       {/* 左侧菜单栏 */}
       <aside
         className={`
-        ${isMobile ? "fixed" : "relative"}
+        ${isMobile ? "fixed" : "relative shrink-0"}
         ${isMobile && !mobileMenuVisible ? "-translate-x-full" : "translate-x-0"}
-        ${isMobile ? "w-64" : desktopMenuCollapsed ? "w-[72px]" : isDashboard ? "w-[208px]" : isProtocolBoard ? "w-[255px]" : "w-72"}
-        ${isDashboard ? "bg-content1/80 border-divider shadow-none backdrop-blur-xl" : isProtocolBoard ? "bg-[#0b1322] border-[#253651] shadow-none" : "bg-white/70 dark:bg-black/40 backdrop-blur-xl shadow-lg border-gray-200 dark:border-gray-600"}
-        border-r
+        ${isMobile ? "w-72 h-screen rounded-none border-r border-white/10 bg-[#091321]" : desktopMenuCollapsed ? "w-[72px] h-full" : "w-[clamp(206px,11.65vw,238px)] h-full"}
+        ${isMobile ? "" : isDashboard ? "border-r border-[#1e3048]/80 bg-[#091321]" : "border-r border-white/10 bg-[#111722]"}
+        backdrop-blur-xl
         z-50
-        transition-transform duration-300 ease-in-out
+        transition-[width,transform,background-color] duration-300 ease-in-out
         flex flex-col
-        ${isMobile ? "h-screen" : "h-full"}
         ${isMobile ? "top-0 left-0" : ""}
       `}
       >
         {/* Logo 区域 */}
         <div
-          className={`px-4 h-16 flex items-center ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}`}
+          className={`flex h-[116px] items-center px-5 ${desktopMenuCollapsed && !isMobile ? "justify-center px-2" : ""}`}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex min-w-0 items-center gap-3.5">
             <span
-              className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${isDashboard ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground"}`}
+              className="grid h-13 w-13 shrink-0 place-items-center text-primary drop-shadow-[0_0_18px_rgba(0,126,255,0.95)]"
             >
-              <Logo size={21} />
+              <Logo className="scale-[1.25]" size={52} />
             </span>
             {(!desktopMenuCollapsed || isMobile) && (
               <div className="min-w-0">
                 <h1
-                  className={`truncate text-sm font-bold ${isDashboard ? "text-foreground" : "text-foreground"}`}
+                  className="truncate text-[17px] font-semibold tracking-[-0.02em] text-foreground"
                 >
                   {isProtocolDesignPreview ? "TunnelBox" : appName}
                 </h1>
                 <div className="flex items-center gap-1.5">
                   <p
-                    className={`text-[11px] ${isDashboard ? "text-default-500" : "text-default-500"}`}
+                    className="text-[11px] text-default-500"
                   >
                     v{versionInfo?.panelVersion || siteConfig.version}
+                    {isProtocolDesignPreview && "-a678ae1"}
                     {versionInfo?.commit && versionInfo.commit !== "dev" && (
                       <span className="text-default-400">
                         -{versionInfo.commit}
@@ -495,9 +494,9 @@ export default function AdminLayout({
 
         {/* 菜单导航 */}
         <nav
-          className={`flex-1 overflow-y-auto py-5 ${desktopMenuCollapsed && !isMobile ? "px-3" : "px-3"}`}
+          className={`flex-1 overflow-y-auto py-4 ${desktopMenuCollapsed && !isMobile ? "px-2" : "pl-2.5 pr-4"}`}
         >
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {filteredMenuItems.map((item) => {
               const isActive = location.pathname === item.path;
 
@@ -505,17 +504,13 @@ export default function AdminLayout({
                 <li key={item.path}>
                   <button
                     className={`
-                       w-full flex min-h-[42px] items-center gap-3 rounded-[10px] px-3 py-2.5 text-left
-                       transition-colors duration-200
-                       ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}
+                       flex min-h-[50px] w-full items-center gap-5 rounded-[26px] px-5 py-2.5 text-left
+                       transition-[background-color,color,box-shadow] duration-200
+                       ${desktopMenuCollapsed && !isMobile ? "justify-center px-2" : ""}
                        ${
                          isActive
-                           ? isDashboard
-                             ? "bg-primary-100 text-primary"
-                             : "bg-primary-100 dark:bg-primary-600/20 text-primary-600 dark:text-primary-300"
-                           : isDashboard
-                             ? "text-default-500 hover:bg-default-100 hover:text-foreground"
-                             : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
+                           ? "bg-primary text-primary-foreground shadow-[0_10px_28px_hsl(var(--heroui-primary)/0.3)]"
+                           : "text-[#b9c4d4] hover:bg-white/[0.06] hover:text-foreground"
                        }
                      `}
                     title={desktopMenuCollapsed && !isMobile ? item.label : undefined}
@@ -533,32 +528,46 @@ export default function AdminLayout({
         </nav>
 
         {/* 底部版权信息 */}
-        <div className="mt-auto shrink-0 px-3 pb-4 pt-3">
+        <div className="mt-auto shrink-0 px-2.5 pb-9 pt-3">
           <button
             aria-label={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
-            className={`flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-xs transition-colors ${isDashboard ? "text-default-400 hover:bg-default-100 hover:text-default-600" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900"} ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}`}
+            className={`mx-auto grid h-9 w-9 place-items-center rounded-full bg-white/[0.06] text-default-400 transition-colors hover:bg-white/[0.11] hover:text-foreground ${!isDashboard ? "border border-white/[0.06]" : ""}`}
             title={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
             type="button"
             onClick={() => setDesktopMenuCollapsed((collapsed) => !collapsed)}
           >
-            {desktopMenuCollapsed && !isMobile ? "菜单" : "收起菜单"}
+            <svg
+              aria-hidden="true"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d={desktopMenuCollapsed ? "M10 7l5 5-5 5M5 7l5 5-5 5" : "M14 7l-5 5 5 5M19 7l-5 5 5 5"}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+              />
+            </svg>
           </button>
         </div>
       </aside>
 
       {/* 主内容区域 */}
       <div
-        className={`flex flex-col flex-1 ${isMobile ? "min-h-0" : "h-full overflow-hidden"}`}
+        className={`relative flex min-w-0 flex-1 flex-col ${isMobile ? "min-h-0" : "h-full overflow-hidden"}`}
       >
         {/* 顶部导航栏 */}
         <header
-          className={`relative z-10 flex ${isProtocolBoard ? "h-14" : "h-16"} items-center justify-between border-b px-4 lg:px-6 ${isDashboard ? "border-divider bg-content1/80 shadow-none backdrop-blur-xl" : isProtocolBoard ? "border-[#253651] bg-[#0f1a2b] shadow-none" : "border-gray-200 bg-white/60 shadow-md backdrop-blur-xl dark:border-gray-600 dark:bg-black/30"}`}
+          className={`flex shrink-0 items-center justify-between px-3 sm:px-4 lg:pl-10 lg:pr-[52px] ${isMobile ? "relative h-14 border-b border-white/10 bg-[#0f141f]" : "absolute inset-x-0 top-0 z-20 h-20 bg-transparent"}`}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* 移动端菜单按钮 */}
             {isMobile && (
               <Button
                 isIconOnly
+                aria-label="打开菜单"
                 className="lg:hidden"
                 variant="light"
                 onPress={toggleMobileMenu}
@@ -580,14 +589,20 @@ export default function AdminLayout({
             )}
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-4">
+            {isDashboard && (
+              <div className="hidden items-center gap-2 px-1 text-xs text-default-400 sm:flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.75)]" />
+                系统运行正常
+              </div>
+            )}
             {/* 主题选择 */}
-            <SkinPicker />
+            {!isDashboard && <SkinPicker />}
             {/* 用户菜单 */}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
-                  className={`text-sm font-medium ${isDashboard ? "text-foreground hover:bg-default-100" : "text-foreground"}`}
+                  className="min-w-[142px] justify-between rounded-full border border-white/[0.07] bg-white/[0.04] pl-1.5 pr-2.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.08]"
                   variant="light"
                 >
                   {isDashboard && (
@@ -657,7 +672,7 @@ export default function AdminLayout({
 
         {/* 主内容 */}
         <main
-          className={`flex-1 ${isDashboard ? "bg-default-50/70" : "bg-transparent"} ${isMobile ? "" : "overflow-y-auto"}`}
+          className={`min-h-0 flex-1 ${isMobile ? "" : "overflow-y-auto"}`}
         >
           {children}
         </main>

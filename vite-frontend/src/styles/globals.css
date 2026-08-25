@@ -89,6 +89,9 @@ html, body {
 .dashboard-page {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at 30% 8%, rgba(30, 65, 108, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(9, 18, 31, 0.2), rgba(9, 16, 27, 0));
 }
 
 .dashboard-surface {
@@ -97,6 +100,12 @@ html, body {
   background: hsl(var(--heroui-content1) / 0.9);
   box-shadow: 0 1px 2px hsl(var(--heroui-foreground) / 0.08);
   backdrop-filter: blur(18px);
+}
+
+.dashboard-page .dashboard-surface {
+  border-color: rgba(125, 151, 192, 0.2);
+  background: linear-gradient(135deg, rgba(18, 29, 45, 0.94), rgba(12, 21, 34, 0.96));
+  box-shadow: none;
 }
 
 .dashboard-metric-icon {
@@ -111,7 +120,7 @@ html, body {
 .dashboard-date-field {
   display: flex;
   height: 40px;
-  min-width: 148px;
+  min-width: 164px;
   flex-direction: column;
   justify-content: center;
   border: 1px solid hsl(var(--heroui-default-200));
@@ -119,6 +128,11 @@ html, body {
   background: hsl(var(--heroui-content1) / 0.9);
   padding: 0 10px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.dashboard-page .dashboard-date-field {
+  border-color: rgba(125, 151, 192, 0.24);
+  background: rgba(18, 29, 45, 0.88);
 }
 
 .dashboard-date-field:focus-within {
