@@ -31,6 +31,8 @@ interface Node {
   domain?: string;
   /** 该机 sing-box 是否在运行(节点上报);null/undefined = 还没上报过 */
   singboxRunning?: boolean;
+  /** 该机装没装 sing-box。undefined = 老节点没上报这个字段,提示里两种情况都要提 */
+  singboxInstalled?: boolean;
   portSta: number;
   portEnd: number;
   version?: string;
@@ -697,7 +699,13 @@ export default function NodePage() {
                     <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-2">
                       <div className="text-xs font-semibold text-danger">⚠️ sing-box 未运行</div>
                       <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
-                        这台机上的协议全部不可用。执行 <code className="font-mono">systemctl enable --now sing-box</code> 恢复
+                        {node.singboxInstalled === false ? (
+                          <>这台机上的协议全部不可用。<span className="text-danger">sing-box 没装上</span>(装节点时下载 GitHub 失败,国内机常见)——
+                          在这台机器上重跑一次节点安装脚本即可。</>
+                        ) : (
+                          <>这台机上的协议全部不可用。执行 <code className="font-mono">systemctl enable --now sing-box</code> 恢复;
+                          若提示 unit 不存在,说明没装上,重跑节点安装脚本。</>
+                        )}
                       </div>
                     </div>
                   )}

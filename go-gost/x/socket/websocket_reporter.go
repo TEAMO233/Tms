@@ -23,6 +23,7 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 	psnet "github.com/shirou/gopsutil/v3/net"
 	"os"
+	"path/filepath"
 )
 
 // SystemInfo 系统信息结构体
@@ -39,6 +40,13 @@ type SystemInfo struct {
 	// 排查时极难联想到,所以必须单独报出来让面板能识别。
 	// 该机没搭协议时 sing-box 本来就不该跑,是否异常由面板结合有无入站来判断。
 	SingboxRunning bool `json:"singbox_running"`
+
+	// SingboxInstalled 区分「压根没装」和「装了但没跑」。
+	// 只报 running 的话,面板只能给一句 systemctl enable --now sing-box,
+	// 而没装的机器执行它会得到 "Unit file sing-box.service does not exist" ——
+	// 提示把人引到了死路上。国内机装的时候从 GitHub 下 sing-box 失败很常见,
+	// 这条正是为那种情况准备的。
+	SingboxInstalled bool `json:"singbox_installed"`
 }
 
 // NetworkStats 网络统计信息
@@ -315,7 +323,25 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 		CPUUsage:         cpuInfo.Usage,
 		MemoryUsage:      memoryInfo.Usage,
 		SingboxRunning:   isSingboxRunning(),
+		SingboxInstalled: isSingboxInstalled(),
 	}
+}
+
+// isSingboxInstalled 判断这台机上到底装没装 sing-box。
+//
+// 服务文件和二进制哪个在都算装过 —— 只查服务文件的话,二进制下载成功但
+// 写 unit 失败的半吊子状态会被报成「没装」,而那种情况重跑安装脚本确实能修,
+// 结论一样;反过来只查二进制则会漏掉 unit 被手工删掉的机器。
+func isSingboxInstalled() bool {
+	for _, p := range []string{
+		"/etc/systemd/system/sing-box.service",
+		filepath.Join(installDir, "sing-box"),
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // isSingboxRunning 判断 sing-box 服务是否在运行。

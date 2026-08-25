@@ -110,6 +110,7 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         // 带上节点上报的 sing-box 运行状态,让前端能区分「节点在线」和「协议可用」
         for (Node n : nodeList) {
             n.setSingboxRunning(com.admin.common.utils.WebSocketServer.getSingboxRunning(n.getId()));
+            n.setSingboxInstalled(com.admin.common.utils.WebSocketServer.getSingboxInstalled(n.getId()));
         }
         return R.ok(nodeList);
     }

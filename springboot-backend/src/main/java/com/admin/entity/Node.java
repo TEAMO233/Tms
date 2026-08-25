@@ -43,6 +43,15 @@ public class Node extends BaseEntity {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Boolean singboxRunning;
 
+    /**
+     * 这台机装没装 sing-box。null = 节点版本较老、没上报过这个字段。
+     * 区分它是因为「没装」和「装了没跑」的修法完全不同:前者要重跑安装脚本
+     * (国内机常见于下载 GitHub 失败),后者 systemctl enable --now 就行,
+     * 而对没装的机器执行后者只会得到 "Unit file does not exist"。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean singboxInstalled;
+
     private String version;
 
     private Integer portSta;
