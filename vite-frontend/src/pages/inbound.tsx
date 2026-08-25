@@ -870,6 +870,14 @@ export default function InboundPage() {
               const nodeType = n.nodeType || "cloud";
               const assignedUsers =
                 typeof n.assignedUsers === "number" ? n.assignedUsers : null;
+              const assignedUserNames = Array.isArray(n.assignedUserNames)
+                ? n.assignedUserNames.filter(Boolean).map((name: any) => String(name))
+                : [];
+              const assignedUserLabel = assignedUserNames.length
+                ? `${assignedUserNames.slice(0, 2).join("、")}${assignedUserNames.length > 2 ? ` 等 ${assignedUserNames.length} 人` : ""}`
+                : assignedUsers === null
+                  ? "—"
+                  : `${assignedUsers} 个用户`;
 
               return (
                 <div
@@ -989,9 +997,12 @@ export default function InboundPage() {
 
                   {visibleColumns.users && (
                     <div className="protocol-table-cell protocol-table-users-cell" role="cell">
-                      <div className="protocol-table-user-count">
+                      <div
+                        className="protocol-table-user-count"
+                        title={assignedUserNames.length ? assignedUserNames.join("、") : undefined}
+                      >
                         <UserIcon size={15} />
-                        <strong>{assignedUsers === null ? "—" : `${assignedUsers} 个用户`}</strong>
+                        <strong>{assignedUserLabel}</strong>
                       </div>
                       <button
                         className="protocol-table-detail-link"

@@ -8,11 +8,17 @@ import com.admin.common.dto.NodeUpdateDto;
 import com.admin.common.lang.R;
 import com.admin.common.utils.GeoIpUtil;
 import com.admin.common.utils.WebSocketServer;
+import com.admin.entity.Inbound;
+import com.admin.entity.InboundUser;
 import com.admin.entity.Node;
 import com.admin.entity.Tunnel;
+import com.admin.entity.User;
 import com.admin.entity.ViteConfig;
+import com.admin.mapper.InboundMapper;
+import com.admin.mapper.InboundUserMapper;
 import com.admin.mapper.NodeMapper;
 import com.admin.mapper.TunnelMapper;
+import com.admin.mapper.UserMapper;
 import com.admin.service.NodeService;
 import com.admin.service.TunnelService;
 import com.admin.service.ViteConfigService;
@@ -25,8 +31,13 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 
@@ -74,6 +85,15 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
     private TunnelMapper tunnelMapper;
 
     @Resource
+    private InboundMapper inboundMapper;
+
+    @Resource
+    private InboundUserMapper inboundUserMapper;
+
+    @Resource
+    private UserMapper userMapper;
+
+    @Resource
     @Lazy
     private TunnelService tunnelService;
 
@@ -112,6 +132,7 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         for (Node n : nodeList) {
             n.setSingboxRunning(com.admin.common.utils.WebSocketServer.getSingboxRunning(n.getId()));
         }
+        populateProtocolAssignmentSummary(nodeList);
         return R.ok(nodeList);
     }
 
@@ -233,6 +254,95 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
     }
 
     // ========== 私有辅助方法 ==========
+
+    /**
+     * 为节点列表补齐协议管理页展示用的派生字段。
+     *
+     * 协议管理页只展示直连协议（landing_id 为空），所以这里按同一口径统计：
+     * node -> inbound(直连) -> inbound_user -> user，按节点去重用户。
+     */
+    private void populateProtocolAssignmentSummary(List<Node> nodeList) {
+        if (nodeList == null || nodeList.isEmpty()) {
+            return;
+        }
+
+        List<Long> nodeIds = new ArrayList<>();
+        for (Node node : nodeList) {
+            node.setAssignedUsers(0);
+            node.setAssignedUserNames(new ArrayList<>());
+            if (node.getId() != null) {
+                nodeIds.add(node.getId());
+            }
+        }
+        if (nodeIds.isEmpty()) {
+            return;
+        }
+
+        List<Inbound> directInbounds = inboundMapper.selectList(new QueryWrapper<Inbound>()
+                .in("node_id", nodeIds)
+                .isNull("landing_id"));
+        if (directInbounds == null || directInbounds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Long> inboundNodeByInboundId = new HashMap<>();
+        List<Long> inboundIds = new ArrayList<>();
+        for (Inbound inbound : directInbounds) {
+            if (inbound.getId() == null || inbound.getNodeId() == null) {
+                continue;
+            }
+            inboundIds.add(inbound.getId());
+            inboundNodeByInboundId.put(inbound.getId(), inbound.getNodeId());
+        }
+        if (inboundIds.isEmpty()) {
+            return;
+        }
+
+        List<InboundUser> assignments = inboundUserMapper.selectList(new QueryWrapper<InboundUser>()
+                .in("inbound_id", inboundIds)
+                .eq("status", 1));
+        if (assignments == null || assignments.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Set<Long>> userIdsByNode = new HashMap<>();
+        Set<Long> allUserIds = new LinkedHashSet<>();
+        for (InboundUser assignment : assignments) {
+            if (assignment.getInboundId() == null || assignment.getUserId() == null) {
+                continue;
+            }
+            Long nodeId = inboundNodeByInboundId.get(assignment.getInboundId());
+            if (nodeId == null) {
+                continue;
+            }
+            userIdsByNode.computeIfAbsent(nodeId, key -> new LinkedHashSet<>()).add(assignment.getUserId());
+            allUserIds.add(assignment.getUserId());
+        }
+        if (allUserIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, String> userNameById = new HashMap<>();
+        for (User user : userMapper.selectBatchIds(allUserIds)) {
+            if (user.getId() != null) {
+                userNameById.put(user.getId(), user.getUser());
+            }
+        }
+
+        for (Node node : nodeList) {
+            Set<Long> assignedUserIds = userIdsByNode.get(node.getId());
+            if (assignedUserIds == null || assignedUserIds.isEmpty()) {
+                continue;
+            }
+            List<String> names = new ArrayList<>();
+            for (Long userId : assignedUserIds) {
+                String name = userNameById.get(userId);
+                names.add((name == null || name.isBlank()) ? ("用户#" + userId) : name);
+            }
+            node.setAssignedUsers(names.size());
+            node.setAssignedUserNames(names);
+        }
+    }
 
     /**
      * 构建新节点对象

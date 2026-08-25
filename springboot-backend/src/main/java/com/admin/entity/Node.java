@@ -1,12 +1,13 @@
 package com.admin.entity;
 
 import java.io.Serializable;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author QAQ
@@ -46,6 +47,17 @@ public class Node extends BaseEntity {
      */
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Boolean singboxRunning;
+
+    /**
+     * 协议管理页派生字段：该节点直连协议已分配的去重用户数。
+     * 不入库，由 /node/list 查询时根据 inbound_user 聚合填充。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer assignedUsers;
+
+    /** 协议管理页派生字段：该节点直连协议已分配的用户名列表。 */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private List<String> assignedUserNames;
 
     private String version;
 
