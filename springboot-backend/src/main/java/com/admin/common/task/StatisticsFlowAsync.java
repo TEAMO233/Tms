@@ -13,7 +13,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
@@ -24,6 +26,11 @@ import java.util.List;
 @EnableScheduling
 public class StatisticsFlowAsync {
 
+    private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    /** 按小时落库后支持仪表板自定义时间段查询,保留一年左右的历史。 */
+    private static final long RETENTION_DAYS = 366L;
+
     @Resource
     UserService userService;
 
@@ -32,13 +39,13 @@ public class StatisticsFlowAsync {
 
     @Scheduled(cron = "0 0 * * * ?")
     public void statistics_flow() {
-        LocalDateTime currentHour = LocalDateTime.now().withMinute(0).withSecond(0).withNano(0);
-        String hourString = currentHour.format(DateTimeFormatter.ofPattern("HH:mm"));
-        long time = new Date().getTime();
+        LocalDateTime currentHour = currentShanghaiHour(Instant.now());
+        String hourString = currentHour.format(HOUR_FORMATTER);
+        long time = toEpochMillis(currentHour);
 
-        // 删除48小时前的数据
+        // 删除保留期之前的数据。旧版只保留48小时,无法支持按天和自定义时间段查询。
         long nowMs = new Date().getTime();
-        long cutoffMs = nowMs - 48L * 60 * 60 * 1000;
+        long cutoffMs = nowMs - RETENTION_DAYS * 24L * 60 * 60 * 1000;
         statisticsFlowService.remove(
                 new LambdaQueryWrapper<StatisticsFlow>()
                         .lt(StatisticsFlow::getCreatedTime, cutoffMs)
@@ -85,6 +92,14 @@ public class StatisticsFlowAsync {
         }
 
         statisticsFlowService.saveBatch(statisticsFlowList);
+    }
+
+    static LocalDateTime currentShanghaiHour(Instant now) {
+        return LocalDateTime.ofInstant(now, ZONE).withMinute(0).withSecond(0).withNano(0);
+    }
+
+    static long toEpochMillis(LocalDateTime time) {
+        return time.atZone(ZONE).toInstant().toEpochMilli();
     }
 
 }

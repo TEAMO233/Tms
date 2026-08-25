@@ -1,5 +1,6 @@
 package com.admin.service;
 
+import com.admin.common.lang.R;
 import com.admin.entity.StatisticsFlow;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface StatisticsFlowService extends IService<StatisticsFlow> {
 
+    R queryRange(Long userId, Long startTime, Long endTime);
 }

@@ -4,6 +4,26 @@ export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
+export interface FlowStatisticsRangeQuery {
+  startTime: number;
+  endTime: number;
+}
+
+export interface FlowStatisticsPoint {
+  label: string;
+  startTime: number;
+  endTime: number;
+  flow: number;
+}
+
+export interface FlowStatisticsResponse {
+  granularity: "hour" | "day";
+  startTime: number;
+  endTime: number;
+  totalFlow: number;
+  points: FlowStatisticsPoint[];
+}
+
 // 用户管理相关类型
 export interface User {
   id: number;

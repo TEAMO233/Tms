@@ -3,6 +3,7 @@ package com.admin.common.task;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ import java.sql.Statement;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "schema-migration.enabled", havingValue = "true", matchIfMissing = true)
 @Order(1)
 public class SchemaMigration implements ApplicationRunner {
 

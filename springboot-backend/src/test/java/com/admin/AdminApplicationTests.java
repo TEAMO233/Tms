@@ -1,35 +1,25 @@
 package com.admin;
 
-import com.admin.common.dto.GostDto;
-import com.admin.common.utils.GostUtil;
-import com.admin.entity.Forward;
-import com.admin.entity.Tunnel;
-import com.admin.entity.User;
-import com.admin.entity.UserTunnel;
-import com.admin.service.ForwardService;
-import com.admin.service.TunnelService;
-import com.admin.service.UserService;
-import com.admin.service.UserTunnelService;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 
 import javax.annotation.Resource;
-import java.util.Date;
-import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "jwt-secret=test-secret",
+        "log-dir=/tmp/tms-test-logs",
+        "schema-migration.enabled=false"
+})
 class AdminApplicationTests {
 
-
+    @Resource
+    private ApplicationContext applicationContext;
 
     @Test
-    public void test(){
-
+    void contextLoadsWithoutRunningSchemaMigration() {
+        assertFalse(applicationContext.containsBean("schemaMigration"));
     }
-
-
-
-
 }

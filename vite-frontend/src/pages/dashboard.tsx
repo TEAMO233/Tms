@@ -1,5 +1,6 @@
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { useState, useEffect } from "react";
 import toast from 'react-hot-toast';
@@ -7,7 +8,14 @@ import { copyTextToClipboard } from "@/utils/clipboard";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 
-import { getUserPackageInfo } from "@/api";
+import { getFlowStatisticsRange, getUserPackageInfo } from "@/api";
+import type { FlowStatisticsResponse } from "@/types";
+import {
+  buildFlowStatisticsRange,
+  createLastDaysRange,
+  createTodayRange,
+  type FlowStatisticsDateRange,
+} from "@/utils/dashboard-flow";
 
 interface UserInfo {
   flow: number;
@@ -50,22 +58,17 @@ interface AddressItem {
   copying: boolean;
 }
 
-interface StatisticsFlow {
-  id: number;
-  userId: number;
-  flow: number;
-  totalFlow: number;
-  time: string;
-}
-
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<UserInfo>({} as UserInfo);
   const [userTunnels, setUserTunnels] = useState<UserTunnel[]>([]);
   const [forwardList, setForwardList] = useState<Forward[]>([]);
-  const [statisticsFlows, setStatisticsFlows] = useState<StatisticsFlow[]>([]);
+  const [statisticsRange, setStatisticsRange] = useState<FlowStatisticsDateRange>(() => createTodayRange());
+  const [appliedStatisticsRange, setAppliedStatisticsRange] = useState<FlowStatisticsDateRange>(() => createTodayRange());
+  const [flowStatistics, setFlowStatistics] = useState<FlowStatisticsResponse | null>(null);
+  const [flowStatisticsLoading, setFlowStatisticsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  
+
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [addressModalTitle, setAddressModalTitle] = useState('');
   const [addressList, setAddressList] = useState<AddressItem[]>([]);
@@ -75,32 +78,32 @@ export default function DashboardPage() {
     // 避免重复通知，检查是否已经显示过
     const notificationKey = `expiration-${userInfo.expTime}-${tunnels.map(t => t.expTime).join(',')}`;
     const lastNotified = localStorage.getItem('lastNotified');
-    
+
     if (lastNotified === notificationKey) {
       return; // 已经通知过，不重复显示
     }
-    
+
     let hasNotification = false;
-    
+
     // 检查主账户有效期
     if (userInfo.expTime) {
       const expDate = new Date(userInfo.expTime);
       const now = new Date();
-      
+
       if (!isNaN(expDate.getTime()) && expDate > now) {
         const diffTime = expDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays <= 7 && diffDays > 0) {
           hasNotification = true;
           if (diffDays === 1) {
-            toast('账户将于明天过期，请及时续费', { 
+            toast('账户将于明天过期，请及时续费', {
               icon: '⚠️',
               duration: 6000,
               style: { background: '#f59e0b', color: '#fff' }
             });
           } else {
-            toast(`账户将于${diffDays}天后过期，请及时续费`, { 
+            toast(`账户将于${diffDays}天后过期，请及时续费`, {
               icon: '⚠️',
               duration: 6000,
               style: { background: '#f59e0b', color: '#fff' }
@@ -108,7 +111,7 @@ export default function DashboardPage() {
           }
         } else if (diffDays <= 0) {
           hasNotification = true;
-          toast('账户已过期，请立即续费', { 
+          toast('账户已过期，请立即续费', {
             icon: '⚠️',
             duration: 8000,
             style: { background: '#ef4444', color: '#fff' }
@@ -116,27 +119,27 @@ export default function DashboardPage() {
         }
       }
     }
-    
+
     // 检查隧道有效期
     tunnels.forEach(tunnel => {
       if (tunnel.expTime) {
         const expDate = new Date(tunnel.expTime);
         const now = new Date();
-        
+
         if (!isNaN(expDate.getTime()) && expDate > now) {
           const diffTime = expDate.getTime() - now.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
+
           if (diffDays <= 7 && diffDays > 0) {
             hasNotification = true;
             if (diffDays === 1) {
-              toast(`隧道"${tunnel.tunnelName}"将于明天过期`, { 
+              toast(`隧道"${tunnel.tunnelName}"将于明天过期`, {
                 icon: '⚠️',
                 duration: 5000,
                 style: { background: '#f59e0b', color: '#fff' }
               });
             } else {
-              toast(`隧道"${tunnel.tunnelName}"将于${diffDays}天后过期`, { 
+              toast(`隧道"${tunnel.tunnelName}"将于${diffDays}天后过期`, {
                 icon: '⚠️',
                 duration: 5000,
                 style: { background: '#f59e0b', color: '#fff' }
@@ -144,7 +147,7 @@ export default function DashboardPage() {
             }
           } else if (diffDays <= 0) {
             hasNotification = true;
-            toast(`隧道"${tunnel.tunnelName}"已过期`, { 
+            toast(`隧道"${tunnel.tunnelName}"已过期`, {
               icon: '⚠️',
               duration: 6000,
               style: { background: '#ef4444', color: '#fff' }
@@ -153,7 +156,7 @@ export default function DashboardPage() {
         }
       }
     });
-    
+
     // 如果显示了通知，记录防止重复
     if (hasNotification) {
       localStorage.setItem('lastNotified', notificationKey);
@@ -166,13 +169,17 @@ export default function DashboardPage() {
     setUserInfo({} as UserInfo);
     setUserTunnels([]);
     setForwardList([]);
-    setStatisticsFlows([]);
-    
+    setFlowStatistics(null);
+
     // 检查用户是否是管理员
     const adminStatus = localStorage.getItem('admin');
     setIsAdmin(adminStatus === 'true');
-    
+
+    const today = createTodayRange();
+    setStatisticsRange(today);
+    setAppliedStatisticsRange(today);
     loadPackageData();
+    loadFlowStatistics(today);
     localStorage.setItem('e', '/dashboard');
   }, []);
 
@@ -185,8 +192,7 @@ export default function DashboardPage() {
         setUserInfo(data.userInfo || {});
         setUserTunnels(data.tunnelPermissions || []);
         setForwardList(data.forwards || []);
-        setStatisticsFlows(data.statisticsFlows || []);
-        
+
         // 检查有效期并显示通知
         checkExpirationNotifications(data.userInfo, data.tunnelPermissions || []);
       } else {
@@ -200,12 +206,39 @@ export default function DashboardPage() {
     }
   };
 
+  const loadFlowStatistics = async (range: FlowStatisticsDateRange = statisticsRange) => {
+    setFlowStatisticsLoading(true);
+    try {
+      const query = buildFlowStatisticsRange(range.startDate, range.endDate);
+      const res = await getFlowStatisticsRange(query);
+      if (res.code === 0) {
+        setFlowStatistics(res.data || null);
+        setAppliedStatisticsRange(range);
+      } else {
+        toast.error(res.msg || '获取流量统计失败');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '获取流量统计失败');
+    } finally {
+      setFlowStatisticsLoading(false);
+    }
+  };
+
+  const applyStatisticsShortcut = (range: FlowStatisticsDateRange) => {
+    setStatisticsRange(range);
+    loadFlowStatistics(range);
+  };
+
+  const handleStatisticsQuery = () => {
+    loadFlowStatistics(statisticsRange);
+  };
+
   const formatFlow = (value: number, unit: string = 'bytes'): string => {
     // 99999 表示无限制
     if (value === 99999) {
       return '无限制';
     }
-    
+
     if (unit === 'gb') {
       return value + ' GB';
     } else {
@@ -225,56 +258,41 @@ export default function DashboardPage() {
     return value.toString();
   };
 
-  // 处理24小时流量统计数据
+  // 处理流量统计数据：当天按小时,跨天按自然日
   const processFlowChartData = () => {
-    // 生成最近24小时的时间数组（从当前小时往前推24小时）
-    const now = new Date();
-    const hours: string[] = [];
-    for (let i = 23; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-      const hourString = time.getHours().toString().padStart(2, '0') + ':00';
-      hours.push(hourString);
-    }
-
-    // 创建数据映射
-    const flowMap = new Map<string, number>();
-    statisticsFlows.forEach(item => {
-      flowMap.set(item.time, item.flow || 0);
-    });
-
-    // 生成图表数据，没有数据的小时显示为0
-    return hours.map(hour => ({
-      time: hour,
-      flow: flowMap.get(hour) || 0,
-      // 格式化显示用的流量值
-      formattedFlow: formatFlow(flowMap.get(hour) || 0)
+    return (flowStatistics?.points || []).map(point => ({
+      time: point.label,
+      flow: point.flow || 0,
+      formattedFlow: formatFlow(point.flow || 0)
     }));
   };
 
+  const statisticsRangeText = `${appliedStatisticsRange.startDate} 至 ${appliedStatisticsRange.endDate}`;
+
 
   const getExpStatus = (expTime?: string) => {
-    if (!expTime) return { 
-      color: 'text-green-600 dark:text-green-400', 
+    if (!expTime) return {
+      color: 'text-green-600 dark:text-green-400',
       bg: 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20',
-      text: '永久' 
+      text: '永久'
     };
 
     const now = new Date();
     const expDate = new Date(expTime);
 
     if (isNaN(expDate.getTime())) {
-      return { 
-        color: 'text-gray-600 dark:text-gray-400', 
+      return {
+        color: 'text-gray-600 dark:text-gray-400',
         bg: 'bg-gray-50 dark:bg-black/10 border-gray-200 dark:border-gray-500/20',
-        text: '无效' 
+        text: '无效'
       };
     }
 
     if (expDate < now) {
-      return { 
-        color: 'text-red-600 dark:text-red-400', 
+      return {
+        color: 'text-red-600 dark:text-red-400',
         bg: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20',
-        text: '已过期' 
+        text: '已过期'
       };
     }
 
@@ -282,22 +300,22 @@ export default function DashboardPage() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 7) {
-      return { 
-        color: 'text-red-600 dark:text-red-400', 
+      return {
+        color: 'text-red-600 dark:text-red-400',
         bg: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20',
-        text: `${diffDays}天后过期` 
+        text: `${diffDays}天后过期`
       };
     } else if (diffDays <= 30) {
-      return { 
-        color: 'text-orange-600 dark:text-orange-400', 
+      return {
+        color: 'text-orange-600 dark:text-orange-400',
         bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20',
-        text: `${diffDays}天后过期` 
+        text: `${diffDays}天后过期`
       };
     } else {
-      return { 
-        color: 'text-green-600 dark:text-green-400', 
+      return {
+        color: 'text-green-600 dark:text-green-400',
         bg: 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20',
-        text: `${diffDays}天后过期` 
+        text: `${diffDays}天后过期`
       };
     }
   };
@@ -332,7 +350,7 @@ export default function DashboardPage() {
 
   const renderProgressBar = (percentage: number, size: 'sm' | 'md' = 'md', isUnlimited: boolean = false) => {
     const height = size === 'sm' ? 'h-1.5' : 'h-2';
-    
+
     if (isUnlimited) {
       return (
         <div className="w-full">
@@ -342,11 +360,11 @@ export default function DashboardPage() {
         </div>
       );
     }
-    
+
     return (
       <div className="w-full">
         <div className={`w-full bg-gray-200 dark:bg-gray-800 rounded-full ${height}`}>
-          <div 
+          <div
             className={`${height} rounded-full transition-all duration-300 ${getUsageColor(percentage)}`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           ></div>
@@ -386,10 +404,10 @@ export default function DashboardPage() {
   const formatResetTime = (resetDay?: number): string => {
     if (resetDay === undefined || resetDay === null) return '';
     if (resetDay === 0) return '不重置';
-    
+
     const now = new Date();
     const currentDay = now.getDate();
-    
+
     let daysUntilReset;
     if (resetDay > currentDay) {
       daysUntilReset = resetDay - currentDay;
@@ -400,7 +418,7 @@ export default function DashboardPage() {
     } else {
       daysUntilReset = 0;
     }
-    
+
     if (daysUntilReset === 0) {
       return '今日重置';
     } else if (daysUntilReset === 1) {
@@ -427,11 +445,11 @@ export default function DashboardPage() {
 
   const formatInAddress = (ipString: string, port: number): string => {
     if (!ipString || !port) return '';
-    
+
     const ips = ipString.split(',').map(ip => ip.trim()).filter(ip => ip);
-    
+
     if (ips.length === 0) return '';
-    
+
     if (ips.length === 1) {
       const ip = ips[0];
       if (ip.includes(':') && !ip.startsWith('[')) {
@@ -440,30 +458,30 @@ export default function DashboardPage() {
         return `${ip}:${port}`;
       }
     }
-    
+
     const firstIp = ips[0];
     let formattedFirstIp;
-    
+
     if (firstIp.includes(':') && !firstIp.startsWith('[')) {
       formattedFirstIp = `[${firstIp}]`;
     } else {
       formattedFirstIp = firstIp;
     }
-    
+
     return `${formattedFirstIp}:${port} (+${ips.length - 1})`;
   };
 
   const formatRemoteAddress = (remoteAddr: string): string => {
     if (!remoteAddr) return '';
-    
+
     const addresses = remoteAddr.split(',').map(addr => addr.trim()).filter(addr => addr);
-    
+
     if (addresses.length === 0) return '';
-    
+
     if (addresses.length === 1) {
       return addresses[0];
     }
-    
+
     return `${addresses[0]} (+${addresses.length - 1})`;
   };
 
@@ -481,14 +499,14 @@ export default function DashboardPage() {
 
   const showAddressModal = (ipString: string, port: number, title: string) => {
     if (!ipString || !port) return;
-    
+
     const ips = ipString.split(',').map(ip => ip.trim()).filter(ip => ip);
-    
+
     if (ips.length <= 1) {
               copyToClipboard(formatInAddress(ipString, port));
       return;
     }
-    
+
     const formattedList = ips.map((ip, index) => {
       let formattedAddress;
       if (ip.includes(':') && !ip.startsWith('[')) {
@@ -503,7 +521,7 @@ export default function DashboardPage() {
         copying: false
       };
     });
-    
+
     setAddressList(formattedList);
     setAddressModalTitle(`${title} (${ips.length}个)`);
     setAddressModalOpen(true);
@@ -511,14 +529,14 @@ export default function DashboardPage() {
 
   const showRemoteAddressModal = (remoteAddr: string, title: string) => {
     if (!remoteAddr) return;
-    
+
     const addresses = remoteAddr.split(',').map(addr => addr.trim()).filter(addr => addr);
-    
+
     if (addresses.length <= 1) {
               copyToClipboard(remoteAddr);
       return;
     }
-    
+
     const formattedList = addresses.map((address, index) => {
       return {
         id: index,
@@ -527,7 +545,7 @@ export default function DashboardPage() {
         copying: false
       };
     });
-    
+
     setAddressList(formattedList);
     setAddressModalTitle(`${title} (${addresses.length}个)`);
     setAddressModalOpen(true);
@@ -543,14 +561,14 @@ export default function DashboardPage() {
 
   const copyAddress = async (addressItem: AddressItem) => {
     try {
-      setAddressList(prev => prev.map(item => 
+      setAddressList(prev => prev.map(item =>
         item.id === addressItem.id ? { ...item, copying: true } : item
       ));
       await copyToClipboard(addressItem.address);
     } catch (error) {
       toast.error('复制失败');
     } finally {
-      setAddressList(prev => prev.map(item => 
+      setAddressList(prev => prev.map(item =>
         item.id === addressItem.id ? { ...item, copying: false } : item
       ));
     }
@@ -564,17 +582,17 @@ export default function DashboardPage() {
 
   const calculateForwardBillingFlow = (forward: Forward): number => {
     if (!forward) return 0;
-    
+
     const inFlow = forward.inFlow || 0;
     const outFlow = forward.outFlow || 0;
-    
+
     // 后端已按计费类型处理流量，前端直接使用入站+出站总和
     return inFlow + outFlow;
   };
 
       if (loading) {
       return (
-        
+
           <div className="px-3 lg:px-6 flex-grow pt-2 lg:pt-4">
             <div className="flex items-center justify-center h-64">
               <div className="flex items-center gap-3">
@@ -583,12 +601,12 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        
+
       );
     }
 
       return (
-      
+
         <div className="px-3 lg:px-6 py-2 lg:py-4">
 
                           {/* 响应式统计卡片 */}
@@ -685,19 +703,74 @@ export default function DashboardPage() {
            )}
          </div>
 
-         {/* 24小时流量统计图表 */}
+         {/* 流量统计图表 */}
          <Card className="mb-6 lg:mb-8 border border-gray-200 dark:border-default-200 shadow-md">
            <CardHeader className="pb-3">
-             <div className="flex items-center gap-2">
-               <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                 <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                 <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-               </svg>
-               <h2 className="text-lg lg:text-xl font-semibold text-foreground">24小时流量统计</h2>
+             <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+               <div>
+                 <h2 className="text-lg lg:text-xl font-semibold text-foreground">流量统计</h2>
+                 <p className="mt-1 text-xs text-default-500">
+                   默认展示当天；{flowStatistics?.granularity === 'day' ? '多日按天汇总' : '单日按小时展示'} · 当前范围 {statisticsRangeText} · 合计 {formatFlow(flowStatistics?.totalFlow || 0)}
+                 </p>
+               </div>
+               <div className="flex flex-wrap items-end gap-2">
+                 <Button
+                   isDisabled={flowStatisticsLoading}
+                   size="sm"
+                   variant="flat"
+                   onPress={() => applyStatisticsShortcut(createTodayRange())}
+                 >
+                   今天
+                 </Button>
+                 <Button
+                   isDisabled={flowStatisticsLoading}
+                   size="sm"
+                   variant="flat"
+                   onPress={() => applyStatisticsShortcut(createLastDaysRange(7))}
+                 >
+                   近7天
+                 </Button>
+                 <Button
+                   isDisabled={flowStatisticsLoading}
+                   size="sm"
+                   variant="flat"
+                   onPress={() => applyStatisticsShortcut(createLastDaysRange(30))}
+                 >
+                   近30天
+                 </Button>
+                 <Input
+                   className="w-40"
+                   label="开始日期"
+                   size="sm"
+                   type="date"
+                   value={statisticsRange.startDate}
+                   onChange={(event) => setStatisticsRange(prev => ({ ...prev, startDate: event.target.value }))}
+                 />
+                 <Input
+                   className="w-40"
+                   label="结束日期"
+                   size="sm"
+                   type="date"
+                   value={statisticsRange.endDate}
+                   onChange={(event) => setStatisticsRange(prev => ({ ...prev, endDate: event.target.value }))}
+                 />
+                 <Button
+                   color="primary"
+                   isDisabled={flowStatisticsLoading}
+                   size="sm"
+                   onPress={handleStatisticsQuery}
+                 >
+                   {flowStatisticsLoading ? '查询中' : '查询'}
+                 </Button>
+               </div>
              </div>
            </CardHeader>
            <CardBody className="pt-0">
-             {statisticsFlows.length === 0 ? (
+             {flowStatisticsLoading && !flowStatistics ? (
+               <div className="flex items-center justify-center py-12 text-default-500">
+                 正在加载流量统计...
+               </div>
+             ) : (flowStatistics?.points?.length || 0) === 0 ? (
                <div className="text-center py-12">
                  <svg className="w-12 h-12 text-default-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -706,56 +779,57 @@ export default function DashboardPage() {
                </div>
              ) : (
                <div className="space-y-4">
-
-                                    {/* 流量趋势图 */}
-                   <div className="h-64 lg:h-80 w-full">
-                     <ResponsiveContainer width="100%" height="100%">
-                       <LineChart data={processFlowChartData()}>
-                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                         <XAxis 
-                           dataKey="time" 
-                           tick={{ fontSize: 12 }}
-                           tickLine={false}
-                           axisLine={{ stroke: '#e5e7eb', strokeWidth: 1 }}
-                         />
-                         <YAxis 
-                           tick={{ fontSize: 12 }}
-                           tickLine={false}
-                           axisLine={{ stroke: '#e5e7eb', strokeWidth: 1 }}
-                           tickFormatter={(value) => {
-                             if (value === 0) return '0';
-                             if (value < 1024) return `${value}B`;
-                             if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)}K`;
-                             if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)}M`;
-                             return `${(value / (1024 * 1024 * 1024)).toFixed(1)}G`;
-                           }}
-                         />
-                         <Tooltip 
-                           content={({ active, payload, label }) => {
-                             if (active && payload && payload.length) {
-                               return (
-                                 <div className="bg-white dark:bg-default-100 border border-default-200 rounded-lg shadow-lg p-3">
-                                   <p className="font-medium text-foreground">{`时间: ${label}`}</p>
-                                   <p className="text-primary">
-                                     {`流量: ${formatFlow(payload[0]?.value as number || 0)}`}
-                                   </p>
-                                 </div>
-                               );
-                             }
-                             return null;
-                           }}
-                         />
-                         <Line
-                           type="monotone"
-                           dataKey="flow"
-                           stroke="#8b5cf6"
-                           strokeWidth={3}
-                           dot={false}
-                           activeDot={{ r: 4, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
-                         />
-                       </LineChart>
-                     </ResponsiveContainer>
-                   </div>
+                 {/* 流量趋势图 */}
+                 <div className={`h-64 lg:h-80 w-full ${flowStatisticsLoading ? 'opacity-60' : ''}`}>
+                   <ResponsiveContainer width="100%" height="100%">
+                     <LineChart data={processFlowChartData()}>
+                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                       <XAxis
+                         dataKey="time"
+                         tick={{ fontSize: 12 }}
+                         tickLine={false}
+                         axisLine={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+                       />
+                       <YAxis
+                         tick={{ fontSize: 12 }}
+                         tickLine={false}
+                         axisLine={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+                         tickFormatter={(value) => {
+                           if (value === 0) return '0';
+                           if (value < 1024) return `${value}B`;
+                           if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)}K`;
+                           if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)}M`;
+                           return `${(value / (1024 * 1024 * 1024)).toFixed(1)}G`;
+                         }}
+                       />
+                       <Tooltip
+                         content={({ active, payload, label }) => {
+                           if (active && payload && payload.length) {
+                             return (
+                               <div className="bg-white dark:bg-default-100 border border-default-200 rounded-lg shadow-lg p-3">
+                                 <p className="font-medium text-foreground">
+                                   {`${flowStatistics?.granularity === 'day' ? '日期' : '时间'}: ${label}`}
+                                 </p>
+                                 <p className="text-primary">
+                                   {`流量: ${formatFlow(payload[0]?.value as number || 0)}`}
+                                 </p>
+                               </div>
+                             );
+                           }
+                           return null;
+                         }}
+                       />
+                       <Line
+                         type="monotone"
+                         dataKey="flow"
+                         stroke="#8b5cf6"
+                         strokeWidth={3}
+                         dot={false}
+                         activeDot={{ r: 4, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
+                       />
+                     </LineChart>
+                   </ResponsiveContainer>
+                 </div>
                </div>
              )}
            </CardBody>
@@ -807,7 +881,7 @@ export default function DashboardPage() {
                            </div>
                          </div>
                        </div>
-                       
+
                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                          <div>
                            <p className="text-sm text-default-600 mb-1">流量配额</p>
@@ -873,7 +947,7 @@ export default function DashboardPage() {
                          {group.forwards.length} 个转发
                        </span>
                      </div>
-                     
+
                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                        {group.forwards.map((forward) => (
                          <div key={forward.id} className="bg-white dark:bg-default-100/50 border border-gray-200 dark:border-default-200 rounded-lg p-3 hover:shadow-md transition-shadow">
@@ -881,7 +955,7 @@ export default function DashboardPage() {
                             <div>
                               <h4 className="font-medium text-foreground text-sm mb-2 truncate">{forward.name}</h4>
                               <div className="space-y-1">
-                                <code 
+                                <code
                                   className={`block px-2 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 rounded font-mono text-xs truncate ${hasMultipleIps(forward.inIp) ? 'cursor-pointer hover:bg-green-200 dark:hover:bg-green-500/30' : ''}`}
                                   onClick={() => hasMultipleIps(forward.inIp) && showAddressModal(forward.inIp, forward.inPort, '入口地址')}
                                   title={formatInAddress(forward.inIp, forward.inPort)}
@@ -889,7 +963,7 @@ export default function DashboardPage() {
                                   {formatInAddress(forward.inIp, forward.inPort)}
                                 </code>
                                 <div className="text-center text-default-400 text-xs">↓</div>
-                                <code 
+                                <code
                                   className={`block px-2 py-1 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded font-mono text-xs truncate ${hasMultipleRemoteAddresses(forward.remoteAddr) ? 'cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-500/30' : ''}`}
                                   onClick={() => hasMultipleRemoteAddresses(forward.remoteAddr) && showRemoteAddressModal(forward.remoteAddr, '出口地址')}
                                   title={formatRemoteAddress(forward.remoteAddr)}
@@ -898,7 +972,7 @@ export default function DashboardPage() {
                                 </code>
                               </div>
                             </div>
-                            
+
                             <div className="pt-2 border-t border-gray-200 dark:border-default-200">
                               <div className="grid grid-cols-3 gap-1 text-xs">
                                 <div className="text-center">
@@ -928,7 +1002,7 @@ export default function DashboardPage() {
         )}
 
         {/* 地址列表弹窗 */}
-        <Modal isOpen={addressModalOpen} onClose={() => setAddressModalOpen(false)} size="2xl" 
+        <Modal isOpen={addressModalOpen} onClose={() => setAddressModalOpen(false)} size="2xl"
         scrollBehavior="outside"
         backdrop="blur"
         placement="center">
@@ -940,7 +1014,7 @@ export default function DashboardPage() {
                   复制全部
                 </Button>
               </div>
-              
+
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {addressList.map((item) => (
                   <div key={item.id} className="flex justify-between items-center p-3 border border-default-200 dark:border-default-100 rounded-lg">
@@ -960,6 +1034,6 @@ export default function DashboardPage() {
           </ModalContent>
         </Modal>
       </div>
-          
+
   );
-} 
+}
