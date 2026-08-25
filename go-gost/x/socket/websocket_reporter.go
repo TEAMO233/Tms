@@ -41,6 +41,12 @@ type SystemInfo struct {
 	// 该机没搭协议时 sing-box 本来就不该跑,是否异常由面板结合有无入站来判断。
 	SingboxRunning bool `json:"singbox_running"`
 
+	// SingboxInstalling / SingboxInstallErr 覆盖「正在装」和「装失败了为什么」。
+	// 没有这两个的话,刚建完协议的那一两分钟(sing-box 正在下 57MB 二进制)
+	// 面板只会显示血红的「协议全部不可用」,新用户第一眼就以为装坏了。
+	SingboxInstalling bool   `json:"singbox_installing"`
+	SingboxInstallErr string `json:"singbox_install_err,omitempty"`
+
 	// SingboxInstalled 区分「压根没装」和「装了但没跑」。
 	// 只报 running 的话,面板只能给一句 systemctl enable --now sing-box,
 	// 而没装的机器执行它会得到 "Unit file sing-box.service does not exist" ——
@@ -322,9 +328,21 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 		BytesTransmitted: networkStats.BytesTransmitted,
 		CPUUsage:         cpuInfo.Usage,
 		MemoryUsage:      memoryInfo.Usage,
-		SingboxRunning:   isSingboxRunning(),
-		SingboxInstalled: isSingboxInstalled(),
+		SingboxRunning:    isSingboxRunning(),
+		SingboxInstalled:  isSingboxInstalled(),
+		SingboxInstalling: singboxInstallingNow(),
+		SingboxInstallErr: singboxLastInstallErr(),
 	}
+}
+
+func singboxInstallingNow() bool {
+	installing, _ := SingboxProgress()
+	return installing
+}
+
+func singboxLastInstallErr() string {
+	_, err := SingboxProgress()
+	return err
 }
 
 // isSingboxInstalled 判断这台机上到底装没装 sing-box。

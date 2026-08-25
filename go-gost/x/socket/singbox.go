@@ -34,6 +34,41 @@ const (
 // 串行化配置写入 + 重载,避免并发下发时打架
 var singboxMu sync.Mutex
 
+// sing-box 的安装进度。存在的理由是「刚建完协议」那一小段:
+// sing-box 不是装节点时就有的,而是面板下发配置后才现下 57MB 的二进制,
+// 这中间它当然没在跑 —— 面板只看 running 的话会立刻弹血红的
+// 「协议全部不可用」,新用户第一眼就以为装坏了,而实际上只是还没装完。
+// 报出「正在安装」,面板就能显示成灰色的等待态,只有真失败才转红。
+var (
+	singboxStateMu    sync.Mutex
+	singboxInstalling bool
+	// 上一次安装失败的原因。装成功或重新开始安装时清空 ——
+	// 留着旧错误会让已经修好的机器一直显示红字。
+	singboxInstallErr string
+)
+
+func setSingboxInstalling(v bool) {
+	singboxStateMu.Lock()
+	singboxInstalling = v
+	if v {
+		singboxInstallErr = ""
+	}
+	singboxStateMu.Unlock()
+}
+
+func setSingboxInstallErr(msg string) {
+	singboxStateMu.Lock()
+	singboxInstallErr = msg
+	singboxStateMu.Unlock()
+}
+
+// SingboxProgress 给上报用:是否正在安装、以及上次安装失败的原因(没有则空)
+func SingboxProgress() (installing bool, lastErr string) {
+	singboxStateMu.Lock()
+	defer singboxStateMu.Unlock()
+	return singboxInstalling, singboxInstallErr
+}
+
 // SetSingboxConfig 命令下发的数据:面板给完整 sing-box 配置 + 可选国内下载镜像
 type singboxConfigRequest struct {
 	Config json.RawMessage `json:"config"`           // 完整 sing-box 配置(log/inbounds/outbounds…)
@@ -193,6 +228,10 @@ func ensureSingboxInstalled(mirror string) error {
 		return nil
 	}
 
+	// 走到这说明二进制不在,真要下载了 —— 从这一刻起面板显示「安装中」
+	setSingboxInstalling(true)
+	defer setSingboxInstalling(false)
+
 	// 下载和解压当成一件事:任一步失败就换下一个源,
 	// 免得国内机留下半个包却只报"解压失败",让人以为是归档坏了
 	tmp := filepath.Join(installDir, "sing-box.tar.gz")
@@ -217,7 +256,11 @@ func ensureSingboxInstalled(mirror string) error {
 		fmt.Printf("✅ sing-box %s 安装完成(源: %s)\n", singboxVersion, url)
 		return nil
 	}
-	return fmt.Errorf("所有下载源都失败,最后一个 %v", lastErr)
+	msg := fmt.Sprintf("所有下载源都失败,最后一个 %v", lastErr)
+	// 记下来报给面板:否则那台机只会显示「没装上」,而为什么装不上
+	// 只能上机器翻 journalctl,这正是几个用户卡住的地方。
+	setSingboxInstallErr(msg)
+	return fmt.Errorf("%s", msg)
 }
 
 // GitHub 加速镜像,给国内机器兜底 —— 拼在完整 github 地址前面即可。

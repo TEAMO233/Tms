@@ -33,6 +33,10 @@ interface Node {
   singboxRunning?: boolean;
   /** 该机装没装 sing-box。undefined = 老节点没上报这个字段,提示里两种情况都要提 */
   singboxInstalled?: boolean;
+  /** 正在下载安装 sing-box(刚建完协议那一两分钟)。这时候不该报红 */
+  singboxInstalling?: boolean;
+  /** 上次安装失败的原因,有值就直接摆出来,省得上机器翻 journalctl */
+  singboxInstallErr?: string;
   portSta: number;
   portEnd: number;
   version?: string;
@@ -696,18 +700,32 @@ export default function NodePage() {
                   {/* 「在线」只代表 gost 活着。sing-box 是另一个服务,它挂了这里照样绿,
                       但那台机上的协议全都用不了 —— 必须单独标出来 */}
                   {node.connectionStatus === 'online' && node.singboxRunning === false && (
-                    <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-2">
-                      <div className="text-xs font-semibold text-danger">⚠️ sing-box 未运行</div>
-                      <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
-                        {node.singboxInstalled === false ? (
-                          <>这台机上的协议全部不可用。<span className="text-danger">sing-box 没装上</span>(装节点时下载 GitHub 失败,国内机常见)——
-                          在这台机器上重跑一次节点安装脚本即可。</>
-                        ) : (
-                          <>这台机上的协议全部不可用。执行 <code className="font-mono">systemctl enable --now sing-box</code> 恢复;
-                          若提示 unit 不存在,说明没装上,重跑节点安装脚本。</>
-                        )}
+                    node.singboxInstalling ? (
+                      <div className="mb-3 rounded-lg border border-default-300 bg-default-100 px-2.5 py-2">
+                        <div className="text-xs font-medium text-default-600">⏳ sing-box 安装中</div>
+                        <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
+                          首次建协议时会现下约 57MB,一般 1-2 分钟,装好自动恢复。
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-2">
+                        <div className="text-xs font-semibold text-danger">
+                          ⚠️ sing-box {node.singboxInstallErr ? '安装失败' : '未运行'}
+                        </div>
+                        <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
+                          {node.singboxInstallErr ? (
+                            <>这台机上的协议全部不可用。节点报的原因:<code className="font-mono break-all">{node.singboxInstallErr}</code>
+                            。多半是下载 GitHub 失败,国内机改用镜像版命令重跑节点安装脚本。</>
+                          ) : node.singboxInstalled === false ? (
+                            <>这台机上的协议全部不可用。<span className="text-danger">sing-box 没装上</span>(装节点时下载 GitHub 失败,
+                            国内机常见)—— 在这台机器上重跑一次节点安装脚本即可。</>
+                          ) : (
+                            <>这台机上的协议全部不可用。执行 <code className="font-mono">systemctl enable --now sing-box</code> 恢复;
+                            若提示 unit 不存在,说明没装上,重跑节点安装脚本。</>
+                          )}
+                        </div>
+                      </div>
+                    )
                   )}
                   {/* 基础信息 */}
                   <div className="space-y-2 mb-4">

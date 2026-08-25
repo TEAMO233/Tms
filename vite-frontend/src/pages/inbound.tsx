@@ -248,30 +248,44 @@ export default function InboundPage() {
                     这里照样显示「在线」,但这台机上所有协议全都连不上。必须单独标出来 —— 
                     不然只会以为是协议参数配错了,往那个方向查很久都查不出来 */}
                 {online && n.singboxRunning === false && nodeInbounds.length > 0 && (
-                  <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
-                    <div className="text-sm font-semibold text-danger">
-                      ⚠️ sing-box 未运行,这台机的协议全部不可用
+                  n.singboxInstalling ? (
+                    <div className="rounded-lg border border-default-300 bg-default-100 px-3 py-2 space-y-1">
+                      <div className="text-sm font-medium text-default-600">⏳ sing-box 正在安装,请稍候…</div>
+                      <div className="text-xs text-default-500">
+                        首次建协议时会现下 sing-box(约 57MB),一般 1-2 分钟。装好后这里自动恢复正常,不用管。
+                      </div>
                     </div>
-                    {/* 分两种情况给命令。没装的机器执行 enable 只会得到
-                        "Unit file sing-box.service does not exist",提示等于把人引到死路上。
-                        singboxInstalled 为 undefined = 老节点没上报,两种可能都列出来。 */}
-                    {n.singboxInstalled === false ? (
-                      <div className="text-xs text-default-500">
-                        这台机上<span className="text-danger font-medium">根本没装 sing-box</span> ——
-                        装节点时从 GitHub 下载失败了(国内机常见)。到这台机上重跑一次节点安装脚本即可,
-                        装好后面板会自动把协议配置推下去,不用重新分配。
+                  ) : n.singboxInstallErr ? (
+                    <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
+                      <div className="text-sm font-semibold text-danger">⚠️ sing-box 安装失败,这台机的协议全部不可用</div>
+                      <div className="text-xs text-default-500 break-all">
+                        节点报的原因:<code className="font-mono">{n.singboxInstallErr}</code>
                       </div>
-                    ) : (
                       <div className="text-xs text-default-500">
-                        节点本身在线(gost 正常),但跑协议的 sing-box 没起来。到这台机上执行:
-                        <code className="font-mono bg-default-200 px-1 rounded ml-1">systemctl enable --now sing-box</code>
-                        <div className="mt-1">
-                          若报 <code className="font-mono">Unit file sing-box.service does not exist</code>,
-                          说明根本没装上(下载 GitHub 失败),重跑一次节点安装脚本即可。
+                        多半是这台机下载 GitHub 失败。国内机器改用镜像版命令重跑节点安装脚本(见 README)。
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
+                      <div className="text-sm font-semibold text-danger">⚠️ sing-box 未运行,这台机的协议全部不可用</div>
+                      {n.singboxInstalled === false ? (
+                        <div className="text-xs text-default-500">
+                          这台机上<span className="text-danger font-medium">根本没装 sing-box</span> —— 装节点时从 GitHub
+                          下载失败了(国内机常见)。到这台机上重跑一次节点安装脚本即可,装好后面板会自动把协议配置推下去,
+                          不用重新分配。
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      ) : (
+                        <div className="text-xs text-default-500">
+                          节点本身在线(gost 正常),但跑协议的 sing-box 没起来。到这台机上执行:
+                          <code className="font-mono bg-default-200 px-1 rounded ml-1">systemctl enable --now sing-box</code>
+                          <div className="mt-1">
+                            若报 <code className="font-mono">Unit file sing-box.service does not exist</code>,说明根本没装上
+                            (下载 GitHub 失败),重跑一次节点安装脚本即可。
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
                 )}
                 <div className="flex flex-wrap gap-1">
                   {nodeInbounds.map((ib) => (

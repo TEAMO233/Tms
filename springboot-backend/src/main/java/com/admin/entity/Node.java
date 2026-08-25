@@ -52,6 +52,14 @@ public class Node extends BaseEntity {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Boolean singboxInstalled;
 
+    /** sing-box 正在下载安装中。刚建完协议的那一两分钟就是这个状态,界面上该显示等待而不是报错 */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean singboxInstalling;
+
+    /** 上次安装失败的原因(节点上报)。有值时直接显示给车主,省得上机器翻 journalctl */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String singboxInstallErr;
+
     private String version;
 
     private Integer portSta;

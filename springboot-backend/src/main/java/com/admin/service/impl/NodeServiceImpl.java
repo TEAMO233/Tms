@@ -111,6 +111,8 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         for (Node n : nodeList) {
             n.setSingboxRunning(com.admin.common.utils.WebSocketServer.getSingboxRunning(n.getId()));
             n.setSingboxInstalled(com.admin.common.utils.WebSocketServer.getSingboxInstalled(n.getId()));
+            n.setSingboxInstalling(com.admin.common.utils.WebSocketServer.getSingboxInstalling(n.getId()));
+            n.setSingboxInstallErr(com.admin.common.utils.WebSocketServer.getSingboxInstallErr(n.getId()));
         }
         return R.ok(nodeList);
     }
