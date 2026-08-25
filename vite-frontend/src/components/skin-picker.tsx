@@ -1,6 +1,12 @@
 import { useState } from "react";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
 import { Button } from "@heroui/button";
+
 import { SKINS, savedSkin, applySkin } from "@/config/skins";
 
 // 头部的主题(皮肤)选择器,自包含状态,不依赖布局。
@@ -20,12 +26,13 @@ export default function SkinPicker() {
     />
   );
 
-  const currentSwatch = SKINS.find((s) => s.id === current)?.swatch ?? SKINS[0].swatch;
+  const currentSwatch =
+    SKINS.find((s) => s.id === current)?.swatch ?? SKINS[0].swatch;
 
   return (
     <Dropdown placement="bottom-end">
       <DropdownTrigger>
-        <Button isIconOnly variant="light" aria-label="主题">
+        <Button isIconOnly aria-label="主题" variant="light">
           {swatch(currentSwatch)}
         </Button>
       </DropdownTrigger>

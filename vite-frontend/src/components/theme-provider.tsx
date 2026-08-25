@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { applySkin, savedSkin } from '@/config/skins';
+import React, { useEffect } from "react";
+
+import { applySkin, savedSkin } from "@/config/skins";
 
 interface ThemeProviderProps {
   children: React.ReactNode;

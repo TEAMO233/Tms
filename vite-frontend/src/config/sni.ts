@@ -32,8 +32,12 @@ export const DEFAULT_SNI = "www.apple.com";
  */
 export function cleanSni(input: string | null | undefined): string {
   const s = (input || "").trim();
+
   if (!s) return DEFAULT_SNI;
   // 取第一段合法域名(字母数字、点、连字符),丢掉后面跟的任何说明文字
-  const m = s.match(/^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+/);
+  const m = s.match(
+    /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+/,
+  );
+
   return m ? m[0] : DEFAULT_SNI;
 }

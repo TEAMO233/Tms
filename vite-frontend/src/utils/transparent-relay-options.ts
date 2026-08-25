@@ -14,7 +14,9 @@ export const UDP_QUIC_PROXY_PROTOCOLS = new Set<ProxyProtocol>([
 
 export const isUdpQuicProxyProtocol = (protocol?: string | null) =>
   UDP_QUIC_PROXY_PROTOCOLS.has(
-    String(protocol || "").trim().toLowerCase() as ProxyProtocol,
+    String(protocol || "")
+      .trim()
+      .toLowerCase() as ProxyProtocol,
   );
 
 export type TransparentRelayNodeLike = {

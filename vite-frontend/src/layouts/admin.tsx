@@ -19,7 +19,7 @@ import { Input } from "@heroui/input";
 import { toast } from "react-hot-toast";
 
 import { copyTextToClipboard } from "@/utils/clipboard";
-import { Logo } from "@/components/icons";
+import { Logo, UserIcon } from "@/components/icons";
 import { updatePassword, getVersionInfo } from "@/api";
 import { safeLogout } from "@/utils/logout";
 import { siteConfig, SITE_CONFIG_UPDATED } from "@/config/site";
@@ -48,12 +48,14 @@ export default function AdminLayout({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isDashboard = location.pathname === "/dashboard";
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   // 更新弹窗单独一个开关,别和改密码那个共用
   const updateModal = useDisclosure();
 
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
+  const [desktopMenuCollapsed, setDesktopMenuCollapsed] = useState(false);
   const [username, setUsername] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   // 面板名:先用本地值渲染,后台校验到新名字时(SITE_CONFIG_UPDATED)实时刷新,
@@ -412,7 +414,7 @@ export default function AdminLayout({
 
   return (
     <div
-      className={`flex ${isMobile ? "min-h-screen" : "h-screen"} bg-transparent`}
+      className={`flex ${isMobile ? "min-h-screen" : "h-screen"} ${isDashboard ? "bg-[#f4f6f8] text-slate-900" : "bg-transparent"}`}
     >
       {/* 移动端遮罩层 */}
       {isMobile && mobileMenuVisible && (
@@ -427,10 +429,9 @@ export default function AdminLayout({
         className={`
         ${isMobile ? "fixed" : "relative"}
         ${isMobile && !mobileMenuVisible ? "-translate-x-full" : "translate-x-0"}
-        ${isMobile ? "w-64" : "w-72"}
-        bg-white/70 dark:bg-black/40 backdrop-blur-xl
-        shadow-lg
-        border-r border-gray-200 dark:border-gray-600
+        ${isMobile ? "w-64" : desktopMenuCollapsed ? "w-[72px]" : isDashboard ? "w-[208px]" : "w-72"}
+        ${isDashboard ? "bg-white border-slate-200 shadow-none" : "bg-white/70 dark:bg-black/40 backdrop-blur-xl shadow-lg border-gray-200 dark:border-gray-600"}
+        border-r
         z-50
         transition-transform duration-300 ease-in-out
         flex flex-col
@@ -439,40 +440,54 @@ export default function AdminLayout({
       `}
       >
         {/* Logo 区域 */}
-        <div className="px-3 py-3 h-14 flex items-center">
-          <div className="flex items-center gap-2 w-full">
-            <Logo size={24} />
-            <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-bold text-foreground overflow-hidden whitespace-nowrap">
-                {appName}
-              </h1>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs text-default-500">
-                  v{versionInfo?.panelVersion || siteConfig.version}
-                  {versionInfo?.commit && versionInfo.commit !== "dev" && (
-                    <span className="text-default-400">
-                      -{versionInfo.commit}
-                    </span>
-                  )}
-                </p>
-                {versionInfo?.updateAvailable && (
-                  <button
-                    className="flex items-center gap-1 text-[10px] text-warning hover:opacity-70 transition-opacity"
-                    title="点击查看怎么更新"
-                    type="button"
-                    onClick={updateModal.onOpen}
+        <div
+          className={`px-4 h-16 flex items-center ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-[10px] ${isDashboard ? "bg-[#1465f5] text-white" : "bg-primary text-primary-foreground"}`}
+            >
+              <Logo size={21} />
+            </span>
+            {(!desktopMenuCollapsed || isMobile) && (
+              <div className="min-w-0">
+                <h1
+                  className={`truncate text-sm font-bold ${isDashboard ? "text-slate-900" : "text-foreground"}`}
+                >
+                  {appName}
+                </h1>
+                <div className="flex items-center gap-1.5">
+                  <p
+                    className={`text-[11px] ${isDashboard ? "text-slate-400" : "text-default-500"}`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
-                    有更新
-                  </button>
-                )}
+                    v{versionInfo?.panelVersion || siteConfig.version}
+                    {versionInfo?.commit && versionInfo.commit !== "dev" && (
+                      <span className="text-default-400">
+                        -{versionInfo.commit}
+                      </span>
+                    )}
+                  </p>
+                  {versionInfo?.updateAvailable && (
+                    <button
+                      className="flex items-center gap-1 text-[10px] text-warning hover:opacity-70 transition-opacity"
+                      title="点击查看怎么更新"
+                      type="button"
+                      onClick={updateModal.onOpen}
+                    >
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />
+                      有更新
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* 菜单导航 */}
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
+        <nav
+          className={`flex-1 overflow-y-auto py-5 ${desktopMenuCollapsed && !isMobile ? "px-3" : "px-3"}`}
+        >
           <ul className="space-y-1">
             {filteredMenuItems.map((item) => {
               const isActive = location.pathname === item.path;
@@ -481,18 +496,26 @@ export default function AdminLayout({
                 <li key={item.path}>
                   <button
                     className={`
-                       w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left
-                       transition-colors duration-200 min-h-[44px]
+                       w-full flex min-h-[42px] items-center gap-3 rounded-[10px] px-3 py-2.5 text-left
+                       transition-colors duration-200
+                       ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}
                        ${
                          isActive
-                           ? "bg-primary-100 dark:bg-primary-600/20 text-primary-600 dark:text-primary-300"
-                           : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
+                           ? isDashboard
+                             ? "bg-[#eaf2ff] text-[#1465f5]"
+                             : "bg-primary-100 dark:bg-primary-600/20 text-primary-600 dark:text-primary-300"
+                           : isDashboard
+                             ? "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                             : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
                        }
                      `}
+                    title={desktopMenuCollapsed && !isMobile ? item.label : undefined}
                     onClick={() => handleMenuClick(item.path)}
                   >
-                    <div className="flex-shrink-0">{item.icon}</div>
-                    <span className="font-medium text-sm">{item.label}</span>
+                    <div className="shrink-0">{item.icon}</div>
+                    {(!desktopMenuCollapsed || isMobile) && (
+                      <span className="text-sm font-medium">{item.label}</span>
+                    )}
                   </button>
                 </li>
               );
@@ -501,13 +524,16 @@ export default function AdminLayout({
         </nav>
 
         {/* 底部版权信息 */}
-        <div className="px-4 py-2 pb-4 mt-auto flex-shrink-0">
-          <div className="text-center">
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              Powered by{" "}
-              <span className="text-gray-500 dark:text-gray-400">TMS</span>
-            </p>
-          </div>
+        <div className="mt-auto shrink-0 px-3 pb-4 pt-3">
+          <button
+            aria-label={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
+            className={`flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-xs transition-colors ${isDashboard ? "text-slate-400 hover:bg-slate-50 hover:text-slate-600" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900"} ${desktopMenuCollapsed && !isMobile ? "justify-center" : ""}`}
+            title={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
+            type="button"
+            onClick={() => setDesktopMenuCollapsed((collapsed) => !collapsed)}
+          >
+            {desktopMenuCollapsed && !isMobile ? "菜单" : "收起菜单"}
+          </button>
         </div>
       </aside>
 
@@ -516,7 +542,9 @@ export default function AdminLayout({
         className={`flex flex-col flex-1 ${isMobile ? "min-h-0" : "h-full overflow-hidden"}`}
       >
         {/* 顶部导航栏 */}
-        <header className="bg-white/60 dark:bg-black/30 backdrop-blur-xl shadow-md border-b border-gray-200 dark:border-gray-600 h-14 flex items-center justify-between px-4 lg:px-6 relative z-10">
+        <header
+          className={`relative z-10 flex h-16 items-center justify-between border-b px-4 lg:px-6 ${isDashboard ? "border-slate-200 bg-white shadow-none" : "border-gray-200 bg-white/60 shadow-md backdrop-blur-xl dark:border-gray-600 dark:bg-black/30"}`}
+        >
           <div className="flex items-center gap-4">
             {/* 移动端菜单按钮 */}
             {isMobile && (
@@ -543,17 +571,22 @@ export default function AdminLayout({
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {/* 主题选择 */}
             <SkinPicker />
             {/* 用户菜单 */}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
-                  className="text-sm font-medium text-foreground"
+                  className={`text-sm font-medium ${isDashboard ? "text-slate-700 hover:bg-slate-50" : "text-foreground"}`}
                   variant="light"
                 >
-                  {username}
+                  {isDashboard && (
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-[#1465f5] text-white">
+                      <UserIcon size={16} />
+                    </span>
+                  )}
+                  <span className="hidden sm:inline">{username}</span>
                   <svg
                     className="w-4 h-4 ml-1"
                     fill="currentColor"
@@ -615,7 +648,7 @@ export default function AdminLayout({
 
         {/* 主内容 */}
         <main
-          className={`flex-1 bg-transparent ${isMobile ? "" : "overflow-y-auto"}`}
+          className={`flex-1 ${isDashboard ? "bg-[#f4f6f8]" : "bg-transparent"} ${isMobile ? "" : "overflow-y-auto"}`}
         >
           {children}
         </main>

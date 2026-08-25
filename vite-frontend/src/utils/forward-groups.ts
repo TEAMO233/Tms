@@ -8,12 +8,17 @@ export interface ForwardDisplayGroups {
   protocolManagedForwards: Forward[];
 }
 
-export const isProtocolManagedForward = (forward: Pick<Forward, "name" | "tunnelName" | "protocolManaged">): boolean => {
+export const isProtocolManagedForward = (
+  forward: Pick<Forward, "name" | "tunnelName" | "protocolManaged">,
+): boolean => {
   if (forward.protocolManaged === true) return true;
   const name = forward.name || "";
   const tunnelName = forward.tunnelName || "";
 
-  return PROTOCOL_FORWARD_NAME_PATTERN.test(name) || PROTOCOL_TUNNEL_NAME_PATTERN.test(tunnelName);
+  return (
+    PROTOCOL_FORWARD_NAME_PATTERN.test(name) ||
+    PROTOCOL_TUNNEL_NAME_PATTERN.test(tunnelName)
+  );
 };
 
 export const splitForwardGroups = (forwards: Forward[]): ForwardDisplayGroups =>
@@ -24,6 +29,7 @@ export const splitForwardGroups = (forwards: Forward[]): ForwardDisplayGroups =>
       } else {
         groups.manualForwards.push(forward);
       }
+
       return groups;
     },
     { manualForwards: [], protocolManagedForwards: [] },

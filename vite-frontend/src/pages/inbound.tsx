@@ -3,12 +3,19 @@ import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/modal";
 import { Chip } from "@heroui/chip";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
 import toast from "react-hot-toast";
+
 import {
   getInboundList,
   createInbound,
@@ -37,7 +44,13 @@ export default function InboundPage() {
   const [speedRules, setSpeedRules] = useState<any[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<any>({ nodeId: null, protocol: "vless", sni: DEFAULT_SNI, dest: "", remark: "" });
+  const [createForm, setCreateForm] = useState<any>({
+    nodeId: null,
+    protocol: "vless",
+    sni: DEFAULT_SNI,
+    dest: "",
+    remark: "",
+  });
   const [createLoading, setCreateLoading] = useState(false);
 
   const [oneClickOpen, setOneClickOpen] = useState(false);
@@ -47,7 +60,15 @@ export default function InboundPage() {
 
   // 机器卡「分配用户」:把整台机器的协议分给车友(只分配,链接去「用户管理」拿)
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignForm, setAssignForm] = useState<any>({ nodeId: null, nodeName: "", protocolCount: 0, userId: null, speedId: null, expDate: null, flowGb: null });
+  const [assignForm, setAssignForm] = useState<any>({
+    nodeId: null,
+    nodeName: "",
+    protocolCount: 0,
+    userId: null,
+    speedId: null,
+    expDate: null,
+    flowGb: null,
+  });
   const [assignLoading, setAssignLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState<number | null>(null);
 
@@ -64,8 +85,11 @@ export default function InboundPage() {
     setSelfNodeName(nodeName || "");
     try {
       const res = await assignSelf({ nodeId });
+
       if (res.code === 0 && res.data?.subToken) {
-        setSelfSubUrl(`${window.location.origin}/api/v1/open_api/sub?token=${res.data.subToken}`);
+        setSelfSubUrl(
+          `${window.location.origin}/api/v1/open_api/sub?token=${res.data.subToken}`,
+        );
         setSelfOpen(true);
         loadAll();
       } else {
@@ -85,11 +109,13 @@ export default function InboundPage() {
         getAllUsers(),
         getSpeedLimitList(),
       ]);
+
       if (ib.code === 0) setInbounds(ib.data || []);
       if (nd.code === 0) setNodes(nd.data || []);
       if (us.code === 0) {
         const d: any = us.data;
-        setUsers(Array.isArray(d) ? d : (d && d.records ? d.records : []));
+
+        setUsers(Array.isArray(d) ? d : d && d.records ? d.records : []);
       }
       if (sp.code === 0) setSpeedRules(sp.data || []);
     } catch (e) {
@@ -102,12 +128,23 @@ export default function InboundPage() {
   }, []);
 
   const protoLabel = (p: string) =>
-    (({ vless: "VLESS-Reality", trojan: "Trojan-Reality", vmess: "VMess", shadowsocks: "Shadowsocks-2022", hysteria2: "Hysteria2", tuic: "TUIC", anytls: "AnyTLS" } as any)[p] || p);
+    (
+      ({
+        vless: "VLESS-Reality",
+        trojan: "Trojan-Reality",
+        vmess: "VMess",
+        shadowsocks: "Shadowsocks-2022",
+        hysteria2: "Hysteria2",
+        tuic: "TUIC",
+        anytls: "AnyTLS",
+      }) as any
+    )[p] || p;
   const isReality = (p: string) => p === "vless" || p === "trojan";
 
   const handleCreate = async () => {
     if (!createForm.nodeId) return toast.error("请选择节点");
-    if (isReality(createForm.protocol) && !createForm.sni) return toast.error("Reality 协议需要填 SNI");
+    if (isReality(createForm.protocol) && !createForm.sni)
+      return toast.error("Reality 协议需要填 SNI");
     setCreateLoading(true);
     try {
       const payload: any = {
@@ -115,11 +152,13 @@ export default function InboundPage() {
         protocol: createForm.protocol,
         remark: createForm.remark,
       };
+
       if (isReality(createForm.protocol)) {
         payload.sni = cleanSni(createForm.sni);
         payload.dest = createForm.dest;
       }
       const res = await createInbound(payload);
+
       if (res.code === 0) {
         toast.success("入站已创建");
         setCreateOpen(false);
@@ -138,6 +177,7 @@ export default function InboundPage() {
     setOneClickLoading(true);
     try {
       const res = await oneClickInbound(oneClickNodeId, cleanSni(oneClickSni));
+
       if (res.code === 0) {
         toast.success("一键添加完成:整机全套协议已建好");
         setOneClickOpen(false);
@@ -152,7 +192,15 @@ export default function InboundPage() {
   };
 
   const openNodeAssign = (n: any, count: number) => {
-    setAssignForm({ nodeId: n.id, nodeName: n.name, protocolCount: count, userId: null, speedId: null, expDate: null, flowGb: null });
+    setAssignForm({
+      nodeId: n.id,
+      nodeName: n.name,
+      protocolCount: count,
+      userId: null,
+      speedId: null,
+      expDate: null,
+      flowGb: null,
+    });
     setAssignOpen(true);
   };
 
@@ -160,21 +208,31 @@ export default function InboundPage() {
     if (!assignForm.userId) return toast.error("请选择车友");
     setAssignLoading(true);
     try {
-      const payload: any = { userId: assignForm.userId, nodeId: assignForm.nodeId };
+      const payload: any = {
+        userId: assignForm.userId,
+        nodeId: assignForm.nodeId,
+      };
+
       if (assignForm.speedId) payload.speedId = assignForm.speedId;
       // 到期直接选日期(当天 23:59:59 截止),比填"多少天"直观,续费也只是把日期往后改
-      if (assignForm.expDate) payload.expTime = new Date(`${assignForm.expDate}T23:59:59`).getTime();
+      if (assignForm.expDate)
+        payload.expTime = new Date(`${assignForm.expDate}T23:59:59`).getTime();
       if (assignForm.flowGb) payload.flow = Math.round(assignForm.flowGb); // 单位 GB(线路配额按 GB 存)
       const res = await assignAllToUser(payload);
+
       if (res.code === 0) {
         {
-          const a = res.data?.assigned ?? 0, u = res.data?.updated ?? 0;
+          const a = res.data?.assigned ?? 0,
+            u = res.data?.updated ?? 0;
+
           toast.success(
             a > 0
-              ? `已分配 ${a} 个协议` + (u ? `,更新 ${u} 个` : "") + " · 订阅链接去「用户管理」拿"
+              ? `已分配 ${a} 个协议` +
+                  (u ? `,更新 ${u} 个` : "") +
+                  " · 订阅链接去「用户管理」拿"
               : u > 0
-              ? `已更新这条线路的限速/到期/流量(${u} 个协议)`
-              : "配额和到期已更新"
+                ? `已更新这条线路的限速/到期/流量(${u} 个协议)`
+                : "配额和到期已更新",
           );
         }
         setAssignOpen(false);
@@ -189,11 +247,17 @@ export default function InboundPage() {
   };
 
   const handleClearNode = async (nodeId: number, nodeName: string) => {
-    if (!window.confirm(`确定清空「${nodeName}」上的直连协议?(连带其转发/用户;中转协议不受影响)`)) return;
+    if (
+      !window.confirm(
+        `确定清空「${nodeName}」上的直连协议?(连带其转发/用户;中转协议不受影响)`,
+      )
+    )
+      return;
     if (clearLoading !== null) return;
     setClearLoading(nodeId);
     try {
       const res = await deleteInboundsByNode(nodeId, false);
+
       if (res.code === 0) {
         toast.success("已清空该机协议");
         loadAll();
@@ -208,7 +272,9 @@ export default function InboundPage() {
   };
 
   // 协议管理只管【直连】协议(landingId 为空);中转的协议在「中转」页管
-  const machineNodes = nodes.filter((n) => inbounds.some((ib) => ib.nodeId === n.id && !ib.landingId));
+  const machineNodes = nodes.filter((n) =>
+    inbounds.some((ib) => ib.nodeId === n.id && !ib.landingId),
+  );
 
   return (
     <div className="p-4 space-y-4">
@@ -228,7 +294,13 @@ export default function InboundPage() {
             color="primary"
             variant="flat"
             onPress={() => {
-              setCreateForm({ nodeId: null, protocol: "vless", sni: DEFAULT_SNI, dest: "", remark: "" });
+              setCreateForm({
+                nodeId: null,
+                protocol: "vless",
+                sni: DEFAULT_SNI,
+                dest: "",
+                remark: "",
+              });
               setCreateOpen(true);
             }}
           >
@@ -240,61 +312,102 @@ export default function InboundPage() {
       {/* 一机一卡:每台机器的全套协议折叠成一条记录,卡上直接分配用户 */}
       <div className="grid gap-3 md:grid-cols-2">
         {machineNodes.map((n) => {
-          const nodeInbounds = inbounds.filter((ib) => ib.nodeId === n.id && !ib.landingId);
+          const nodeInbounds = inbounds.filter(
+            (ib) => ib.nodeId === n.id && !ib.landingId,
+          );
           const online = n.status === 1;
-          const firstIp = n.ip ? String(n.ip).split(",")[0].trim() : (n.serverIp || "");
+          const firstIp = n.ip
+            ? String(n.ip).split(",")[0].trim()
+            : n.serverIp || "";
+
           return (
             <Card key={n.id}>
               <CardBody className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold truncate">🖥️ {n.name}</span>
-                  <Chip size="sm" variant="flat" color={online ? "success" : "default"}>{online ? "在线" : "离线"}</Chip>
-                  <Chip size="sm" variant="flat" color="primary" className="ml-auto">{nodeInbounds.length} 协议</Chip>
+                  <span className="text-lg font-semibold truncate">
+                    🖥️ {n.name}
+                  </span>
+                  <Chip
+                    color={online ? "success" : "default"}
+                    size="sm"
+                    variant="flat"
+                  >
+                    {online ? "在线" : "离线"}
+                  </Chip>
+                  <Chip
+                    className="ml-auto"
+                    color="primary"
+                    size="sm"
+                    variant="flat"
+                  >
+                    {nodeInbounds.length} 协议
+                  </Chip>
                 </div>
-                {firstIp && <div className="text-xs text-default-500 font-mono">{firstIp}</div>}
+                {firstIp && (
+                  <div className="text-xs text-default-500 font-mono">
+                    {firstIp}
+                  </div>
+                )}
 
                 {/* 节点在线 ≠ 协议可用:gost 和 sing-box 是两个服务,sing-box 挂了
                     这里照样显示「在线」,但这台机上所有协议全都连不上。必须单独标出来 —— 
                     不然只会以为是协议参数配错了,往那个方向查很久都查不出来 */}
-                {online && n.singboxRunning === false && nodeInbounds.length > 0 && (
-                  <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
-                    <div className="text-sm font-semibold text-danger">
-                      ⚠️ sing-box 未运行,这台机的协议全部不可用
+                {online &&
+                  n.singboxRunning === false &&
+                  nodeInbounds.length > 0 && (
+                    <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 space-y-1">
+                      <div className="text-sm font-semibold text-danger">
+                        ⚠️ sing-box 未运行,这台机的协议全部不可用
+                      </div>
+                      <div className="text-xs text-default-500">
+                        节点本身在线(gost 正常),但跑协议的 sing-box
+                        没起来。到这台机上执行:
+                        <code className="font-mono bg-default-200 px-1 rounded ml-1">
+                          systemctl enable --now sing-box
+                        </code>
+                      </div>
                     </div>
-                    <div className="text-xs text-default-500">
-                      节点本身在线(gost 正常),但跑协议的 sing-box 没起来。到这台机上执行:
-                      <code className="font-mono bg-default-200 px-1 rounded ml-1">systemctl enable --now sing-box</code>
-                    </div>
-                  </div>
-                )}
+                  )}
                 <div className="flex flex-wrap gap-1">
                   {nodeInbounds.map((ib) => (
-                    <Chip key={ib.id} size="sm" variant="flat" color="secondary">{protoLabel(ib.protocol)}</Chip>
+                    <Chip
+                      key={ib.id}
+                      color="secondary"
+                      size="sm"
+                      variant="flat"
+                    >
+                      {protoLabel(ib.protocol)}
+                    </Chip>
                   ))}
                 </div>
                 <div className="text-xs text-default-400">
                   整机一条订阅:分配给车友后,一条订阅链接导入客户端即拿到上面全部协议,以后加新协议自动更新。
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" color="primary" className="flex-1" onPress={() => openNodeAssign(n, nodeInbounds.length)}>
+                  <Button
+                    className="flex-1"
+                    color="primary"
+                    size="sm"
+                    onPress={() => openNodeAssign(n, nodeInbounds.length)}
+                  >
                     👤 分配用户
                   </Button>
                   {/* 自己用不必先建车友再分配:一键开给当前管理员,不限速不限量不到期 */}
                   <Button
-                    size="sm"
                     color="success"
-                    variant="flat"
                     isLoading={selfLoading === n.id}
+                    size="sm"
+                    variant="flat"
                     onPress={() => handleAssignSelf(n.id, n.name)}
                   >
                     🔑 我自己用
                   </Button>
                   <Button
-                    size="sm"
                     color="danger"
-                    variant="flat"
-                    isLoading={clearLoading === n.id}
                     isDisabled={clearLoading !== null}
+                    isLoading={clearLoading === n.id}
+                    size="sm"
+                    variant="flat"
                     onPress={() => handleClearNode(n.id, n.name)}
                   >
                     清空该机
@@ -306,11 +419,13 @@ export default function InboundPage() {
         })}
       </div>
       {machineNodes.length === 0 && (
-        <div className="text-center text-default-400 py-8">还没有协议,点右上角「⚡ 一键搭建整机协议」在某台机器上把全套协议建出来</div>
+        <div className="text-center text-default-400 py-8">
+          还没有协议,点右上角「⚡ 一键搭建整机协议」在某台机器上把全套协议建出来
+        </div>
       )}
 
       {/* 「我自己用」结果:直接把订阅链接给出来,不用再去用户管理找 */}
-      <Modal isOpen={selfOpen} onClose={() => setSelfOpen(false)} size="2xl">
+      <Modal isOpen={selfOpen} size="2xl" onClose={() => setSelfOpen(false)}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
             <span>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</span>
@@ -322,21 +437,27 @@ export default function InboundPage() {
           </ModalHeader>
           <ModalBody className="space-y-2">
             <div className="text-sm text-default-500">
-              这条订阅是给你自己用的,复制到 v2rayN / 小火箭 里就能用。以后随时在「我的订阅」页也能找到。
+              这条订阅是给你自己用的,复制到 v2rayN / 小火箭
+              里就能用。以后随时在「我的订阅」页也能找到。
             </div>
             <div className="text-xs text-default-400 bg-default-100 rounded-lg px-3 py-2">
-              💡 链接前半段是<b>面板地址</b>,所以每台机器点出来都一样 —— 真正区分线路的是末尾的
+              💡 链接前半段是<b>面板地址</b>,所以每台机器点出来都一样 ——
+              真正区分线路的是末尾的
               <b> token</b>。拉下来的节点才是这台机器的。
             </div>
             <Input
               readOnly
               value={selfSubUrl}
-              onClick={(e: any) => { if (e.target?.select) e.target.select(); }}
+              onClick={(e: any) => {
+                if (e.target?.select) e.target.select();
+              }}
             />
             <SubQr url={selfSubUrl} />
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setSelfOpen(false)}>关闭</Button>
+            <Button variant="light" onPress={() => setSelfOpen(false)}>
+              关闭
+            </Button>
             <Button
               color="primary"
               onPress={async () => {
@@ -357,46 +478,87 @@ export default function InboundPage() {
           <ModalHeader>👤 给车友分配「{assignForm.nodeName}」</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
-              把这台机器上的 <b>{assignForm.protocolCount} 个协议</b> 一次分给车友。分配完到「用户管理」页,点该车友的「🔗 订阅链接」拿链接发给他。
+              把这台机器上的 <b>{assignForm.protocolCount} 个协议</b>{" "}
+              一次分给车友。分配完到「用户管理」页,点该车友的「🔗
+              订阅链接」拿链接发给他。
             </div>
             <Select
               label="子账号(车友)"
               placeholder="选一个车友"
-              selectedKeys={assignForm.userId ? [String(assignForm.userId)] : []}
-              onSelectionChange={(k) => setAssignForm({ ...assignForm, userId: Number(Array.from(k)[0]) })}
+              selectedKeys={
+                assignForm.userId ? [String(assignForm.userId)] : []
+              }
+              onSelectionChange={(k) =>
+                setAssignForm({
+                  ...assignForm,
+                  userId: Number(Array.from(k)[0]),
+                })
+              }
             >
-              {users.map((u) => (<SelectItem key={u.id}>{u.user}</SelectItem>))}
+              {users.map((u) => (
+                <SelectItem key={u.id}>{u.user}</SelectItem>
+              ))}
             </Select>
             <Select
               label="限速规则(可空)"
               placeholder="不限速"
-              selectedKeys={assignForm.speedId ? [String(assignForm.speedId)] : []}
-              onSelectionChange={(k) => setAssignForm({ ...assignForm, speedId: Number(Array.from(k)[0]) })}
+              selectedKeys={
+                assignForm.speedId ? [String(assignForm.speedId)] : []
+              }
+              onSelectionChange={(k) =>
+                setAssignForm({
+                  ...assignForm,
+                  speedId: Number(Array.from(k)[0]),
+                })
+              }
             >
-              {speedRules.map((s) => (<SelectItem key={s.id}>{s.name}</SelectItem>))}
+              {speedRules.map((s) => (
+                <SelectItem key={s.id}>{s.name}</SelectItem>
+              ))}
             </Select>
             <DatePicker
-              label="到期日期(留空=永久)"
-              value={assignForm.expDate ? parseDate(assignForm.expDate) as any : null}
-              onChange={(d: any) => setAssignForm({
-                ...assignForm,
-                expDate: d ? `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}` : null,
-              })}
               showMonthAndYearPickers
               className="cursor-pointer"
               description="到这天 23:59 自动停;续费直接把日期往后改再点一次分配"
+              label="到期日期(留空=永久)"
+              value={
+                assignForm.expDate
+                  ? (parseDate(assignForm.expDate) as any)
+                  : null
+              }
+              onChange={(d: any) =>
+                setAssignForm({
+                  ...assignForm,
+                  expDate: d
+                    ? `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`
+                    : null,
+                })
+              }
             />
             <Input
-              type="number"
-              label="这条线路的流量配额(GB,留空=不单独限)"
-              value={assignForm.flowGb ?? ""}
-              onChange={(e) => setAssignForm({ ...assignForm, flowGb: e.target.value ? Number(e.target.value) : null })}
               description="只算这条线路的用量,超了只停这条,车友其它线路照用;留空则只受账号总流量约束"
+              label="这条线路的流量配额(GB,留空=不单独限)"
+              type="number"
+              value={assignForm.flowGb ?? ""}
+              onChange={(e) =>
+                setAssignForm({
+                  ...assignForm,
+                  flowGb: e.target.value ? Number(e.target.value) : null,
+                })
+              }
             />
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setAssignOpen(false)}>关闭</Button>
-            <Button color="primary" isLoading={assignLoading} onPress={handleNodeAssign}>分配</Button>
+            <Button variant="light" onPress={() => setAssignOpen(false)}>
+              关闭
+            </Button>
+            <Button
+              color="primary"
+              isLoading={assignLoading}
+              onPress={handleNodeAssign}
+            >
+              分配
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -407,13 +569,19 @@ export default function InboundPage() {
           <ModalHeader>⚡ 一键搭建整机协议</ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
-              在选中的机器上一键建好全部协议:<b>VLESS-Reality、Trojan-Reality、VMess、Hysteria2、TUIC、AnyTLS</b>(端口、密钥、自签证书全自动;端口被占自动上移)。建好后就是一张机器卡,点「分配用户」出订阅即可。
+              在选中的机器上一键建好全部协议:
+              <b>
+                VLESS-Reality、Trojan-Reality、VMess、Hysteria2、TUIC、AnyTLS
+              </b>
+              (端口、密钥、自签证书全自动;端口被占自动上移)。建好后就是一张机器卡,点「分配用户」出订阅即可。
             </div>
             <Select
               label="机器"
               placeholder="选一台机器(需在线)"
               selectedKeys={oneClickNodeId ? [String(oneClickNodeId)] : []}
-              onSelectionChange={(k) => setOneClickNodeId(Number(Array.from(k)[0]))}
+              onSelectionChange={(k) =>
+                setOneClickNodeId(Number(Array.from(k)[0]))
+              }
             >
               {nodes.map((n) => (
                 <SelectItem key={n.id}>{n.name}</SelectItem>
@@ -421,20 +589,37 @@ export default function InboundPage() {
             </Select>
             {/* Reality 借壳域名:给个常用列表,也允许自己输 */}
             <Autocomplete
-              label="伪装域名(Reality 借壳)"
               allowsCustomValue
               defaultItems={SNI_PRESETS}
-              inputValue={oneClickSni}
-              onInputChange={(v) => setOneClickSni(v)}
-              onSelectionChange={(k) => { if (k) setOneClickSni(String(k)); }}
               description="只影响 VLESS / Trojan 这两个 Reality 协议。可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,握不上手)"
+              inputValue={oneClickSni}
+              label="伪装域名(Reality 借壳)"
+              onInputChange={(v) => setOneClickSni(v)}
+              onSelectionChange={(k) => {
+                if (k) setOneClickSni(String(k));
+              }}
             >
-              {(item: any) => <AutocompleteItem key={item.value} description={item.desc || undefined}>{item.label}</AutocompleteItem>}
+              {(item: any) => (
+                <AutocompleteItem
+                  key={item.value}
+                  description={item.desc || undefined}
+                >
+                  {item.label}
+                </AutocompleteItem>
+              )}
             </Autocomplete>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setOneClickOpen(false)}>取消</Button>
-            <Button color="secondary" isLoading={oneClickLoading} onPress={handleOneClick}>一键全建</Button>
+            <Button variant="light" onPress={() => setOneClickOpen(false)}>
+              取消
+            </Button>
+            <Button
+              color="secondary"
+              isLoading={oneClickLoading}
+              onPress={handleOneClick}
+            >
+              一键全建
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -445,31 +630,47 @@ export default function InboundPage() {
           <ModalHeader>单独加一个协议</ModalHeader>
           <ModalBody className="space-y-3">
             <Select
-              label="协议"
-              selectedKeys={[createForm.protocol]}
-              onSelectionChange={(k) => setCreateForm({ ...createForm, protocol: String(Array.from(k)[0]) })}
               description={
                 isReality(createForm.protocol)
                   ? "无域名借 Reality(SNI 借壳),抗封锁强(推荐)"
                   : createForm.protocol === "vmess"
-                  ? "VMess:TCP 无 TLS,无域名,兼容各种老客户端"
-                  : ["hysteria2", "tuic", "anytls"].includes(createForm.protocol)
-                  ? "自签证书(无域名);客户端需勾选\"允许不安全/insecure\"。Hy2/TUIC 是 QUIC,快"
-                  : "Shadowsocks-2022:无 TLS、任何客户端都通,简单稳"
+                    ? "VMess:TCP 无 TLS,无域名,兼容各种老客户端"
+                    : ["hysteria2", "tuic", "anytls"].includes(
+                          createForm.protocol,
+                        )
+                      ? '自签证书(无域名);客户端需勾选"允许不安全/insecure"。Hy2/TUIC 是 QUIC,快'
+                      : "Shadowsocks-2022:无 TLS、任何客户端都通,简单稳"
+              }
+              label="协议"
+              selectedKeys={[createForm.protocol]}
+              onSelectionChange={(k) =>
+                setCreateForm({
+                  ...createForm,
+                  protocol: String(Array.from(k)[0]),
+                })
               }
             >
               <SelectItem key="vless">VLESS-Reality(无域名,推荐)</SelectItem>
               <SelectItem key="trojan">Trojan-Reality(无域名)</SelectItem>
               <SelectItem key="vmess">VMess(无域名,兼容老客户端)</SelectItem>
-              <SelectItem key="hysteria2">Hysteria2(QUIC,快,自签证书)</SelectItem>
+              <SelectItem key="hysteria2">
+                Hysteria2(QUIC,快,自签证书)
+              </SelectItem>
               <SelectItem key="tuic">TUIC(QUIC,自签证书)</SelectItem>
               <SelectItem key="anytls">AnyTLS(自签证书)</SelectItem>
             </Select>
             <Select
               label="机器"
               placeholder="选一台机器"
-              selectedKeys={createForm.nodeId ? [String(createForm.nodeId)] : []}
-              onSelectionChange={(k) => setCreateForm({ ...createForm, nodeId: Number(Array.from(k)[0]) })}
+              selectedKeys={
+                createForm.nodeId ? [String(createForm.nodeId)] : []
+              }
+              onSelectionChange={(k) =>
+                setCreateForm({
+                  ...createForm,
+                  nodeId: Number(Array.from(k)[0]),
+                })
+              }
             >
               {nodes.map((n) => (
                 <SelectItem key={n.id}>{n.name}</SelectItem>
@@ -478,32 +679,55 @@ export default function InboundPage() {
             {isReality(createForm.protocol) && (
               <>
                 <Autocomplete
-                  label="伪装域名(Reality 借壳)"
                   allowsCustomValue
                   defaultItems={SNI_PRESETS}
-                  inputValue={createForm.sni}
-                  onInputChange={(v) => setCreateForm({ ...createForm, sni: v })}
-                  onSelectionChange={(k) => { if (k) setCreateForm({ ...createForm, sni: String(k) }); }}
                   description="可以直接输入别的域名;别用 www.microsoft.com(它上了后量子,Reality 握不上手)"
+                  inputValue={createForm.sni}
+                  label="伪装域名(Reality 借壳)"
+                  onInputChange={(v) =>
+                    setCreateForm({ ...createForm, sni: v })
+                  }
+                  onSelectionChange={(k) => {
+                    if (k) setCreateForm({ ...createForm, sni: String(k) });
+                  }}
                 >
-                  {(item: any) => <AutocompleteItem key={item.value} description={item.desc || undefined}>{item.label}</AutocompleteItem>}
+                  {(item: any) => (
+                    <AutocompleteItem
+                      key={item.value}
+                      description={item.desc || undefined}
+                    >
+                      {item.label}
+                    </AutocompleteItem>
+                  )}
                 </Autocomplete>
                 <Input
                   label="Reality 目标(留空=同 SNI)"
                   value={createForm.dest}
-                  onChange={(e) => setCreateForm({ ...createForm, dest: e.target.value })}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, dest: e.target.value })
+                  }
                 />
               </>
             )}
             <Input
               label="备注"
               value={createForm.remark}
-              onChange={(e) => setCreateForm({ ...createForm, remark: e.target.value })}
+              onChange={(e) =>
+                setCreateForm({ ...createForm, remark: e.target.value })
+              }
             />
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setCreateOpen(false)}>取消</Button>
-            <Button color="primary" isLoading={createLoading} onPress={handleCreate}>创建</Button>
+            <Button variant="light" onPress={() => setCreateOpen(false)}>
+              取消
+            </Button>
+            <Button
+              color="primary"
+              isLoading={createLoading}
+              onPress={handleCreate}
+            >
+              创建
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

@@ -2,7 +2,7 @@
 
 ## 结论
 
-final result: passed
+historical final result: passed
 
 本次 QA 覆盖了选定视觉方向 1「订阅指挥台」的桌面首屏和移动端折叠布局。P0/P1/P2 视觉问题已处理；剩余差异属于内容数据或全局品牌范围内的 P3 polish，不阻塞交付。
 
@@ -127,4 +127,65 @@ The repository-wide `npm run build` cannot reach Vite bundling because unrelated
 
 - [ ] Re-run the repository-wide build after the unrelated `forward.tsx` and `node.tsx` syntax errors are resolved.
 
-final result: passed
+historical final result: passed
+# Dashboard「数据工作台」设计 QA（当前轮）
+
+## 结论
+
+final result: blocked
+
+## Source visual truth
+
+- 选定视觉方向 2「数据工作台」：[/Users/teamo/.codex/generated_images/01a03783-dffe-73a3-a9f8-f24e5b449f33/exec-0128af21-a291-4088-85c1-347168913b78.png](/Users/teamo/.codex/generated_images/01a03783-dffe-73a3-a9f8-f24e5b449f33/exec-0128af21-a291-4088-85c1-347168913b78.png)
+- 源图尺寸：1487 × 1058
+
+## Implementation evidence
+
+- 本地 URL：`http://127.0.0.1:3000/dashboard`
+- 实现截图：[/tmp/tms-dashboard-auth-blocked.png](/tmp/tms-dashboard-auth-blocked.png)
+- 实现截图尺寸：1280 × 720
+- 当前状态：Vite 已正常启动且 `npm run build` 通过；本地 API `http://127.0.0.1:6365` 未启动，页面停留在登录页，无法进入 dashboard 数据态。
+
+## Full-view comparison evidence
+
+源视觉目标已打开检查；实现截图也已捕获，但实现截图是登录页，不是 dashboard，和源视觉不处于同一路由/认证/数据状态。因此不能据此宣称 dashboard 视觉通过，也没有把登录页差异误判成设计偏差。
+
+## Focused-region comparison evidence
+
+未执行 dashboard 局部对照。核心图表、指标卡、转发配置表和侧栏都无法在当前本地认证/API 状态下捕获；需要 API 启动或用户在本地预览中完成登录后再继续。
+
+## Required fidelity surfaces
+
+- Fonts and typography：实现已配置数据工作台的无衬线字体栈和清晰的标题/辅助文字层级；未能在 dashboard 渲染态确认字重、行高和截断效果。
+- Spacing and layout rhythm：实现已加入浅色侧栏、四项指标带、图表面板和转发表格的间距/圆角/阴影结构；未能在目标 viewport 的真实截图中确认整体节奏。
+- Colors and visual tokens：实现按源图采用白色 surface、浅灰背景、cobalt blue、emerald、amber、violet 语义色；未能对渲染结果做像素级/对比度复核。
+- Image quality and asset fidelity：未新增产品图片；导航和操作图标复用项目现有 icon components，没有用占位图替换源图中的图标语义。
+- Copy and content：保留「总流量」「已用流量」「转发配额」「已用转发」「流量统计」「转发配置」等产品文案，并接入刚拉取的流量统计接口；真实接口数据态尚未可见。
+
+## Findings
+
+- [P0] 本地 dashboard 渲染态不可验证
+  Location：`/dashboard` 本地预览。
+  Evidence：浏览器打开后显示登录页；登录请求返回「检查验证码状态失败，请重试 Network Error」，同时 `127.0.0.1:6365` 无监听服务。
+  Impact：无法比较 dashboard 的全局布局、图表、转发配置表和交互状态。
+  Fix：启动后端/API，或在已有本地登录会话下重新打开 `/dashboard`，再补采同 viewport 的桌面截图和重点区域截图。
+
+## Patches made since previous QA pass
+
+- 先拉取 `origin/main` 最新提交 `170ef19`，保留其新的流量统计区间接口和 `dashboard-flow` 数据转换逻辑。
+- 将 dashboard 改为方向 2 的浅色「数据工作台」：桌面侧栏、四项指标卡、日期快捷筛选、浅色折线图和按节点折叠的转发表格。
+- 仅清理 `forward.tsx` / `node.tsx` 中阻塞 Vite 的明确 JSX 残留括号，并移除 dashboard 重设计后不再使用的旧辅助函数；`npm run build` 已通过。
+
+## Implementation checklist
+
+- [x] 最新远端代码已拉取并以 `170ef19` 为基线
+- [x] dashboard 视觉结构与数据统计接口保留并完成重设计
+- [x] TypeScript 检查与 Vite production build
+- [ ] 已登录 dashboard 桌面截图
+- [ ] 图表筛选、日期查询、侧栏收起、转发分组展开的浏览器 smoke check
+- [ ] 同 viewport 源图与实现图的 full-view / focused-region 对照
+
+## Follow-up polish
+
+- API 可用后再核对真实数据长度、图表 tooltip、长地址截断与窄桌面宽度。
+- 若实际数据密度明显高于视觉稿，再微调转发表格行高和分组默认展开状态。

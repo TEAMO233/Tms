@@ -153,13 +153,13 @@ export interface TransparentRelay {
   entryPort: number;
   targetHost: string;
   targetPort: number;
-  protocol: 'tcp' | 'udp' | 'tcp_udp' | 'hysteria2' | 'tuic';
+  protocol: "tcp" | "udp" | "tcp_udp" | "hysteria2" | "tuic";
   masquerade: boolean;
   lastError?: string | null;
   createdTime?: number;
   updatedTime?: number;
   status: number;
-  relayType?: 'l4' | 'udp_quic';
+  relayType?: "l4" | "udp_quic";
   inboundId?: number;
   landingId?: number;
   forwardId?: number;
@@ -174,7 +174,7 @@ export interface TransparentRelayForm {
   entryPort: number | null;
   targetHost: string;
   targetPort: number | null;
-  protocol: 'tcp' | 'udp' | 'tcp_udp';
+  protocol: "tcp" | "udp" | "tcp_udp";
 }
 
 export interface TransparentRelayBatchForm {

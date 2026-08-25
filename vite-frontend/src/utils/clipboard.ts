@@ -19,6 +19,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
+
       return true;
     }
   } catch {
@@ -34,11 +35,13 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
       e.preventDefault();
       wrote = true;
     };
+
     document.addEventListener("copy", onCopy, true);
 
     // 用文档级 Range 选中临时节点,保证 execCommand('copy') 会触发 copy 事件。
     // Range 选区是文档级的,不像 <input>.select() 那样依赖元素焦点,弹窗抢焦点也在。
     const span = document.createElement("span");
+
     span.textContent = text;
     span.style.position = "fixed";
     span.style.top = "0";
@@ -50,11 +53,13 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 
     const selection = window.getSelection();
     const range = document.createRange();
+
     range.selectNodeContents(span);
     selection?.removeAllRanges();
     selection?.addRange(range);
 
     let ok = false;
+
     try {
       ok = document.execCommand("copy");
     } catch {
@@ -64,6 +69,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
     selection?.removeAllRanges();
     document.body.removeChild(span);
     document.removeEventListener("copy", onCopy, true);
+
     return ok || wrote;
   } catch {
     return false;

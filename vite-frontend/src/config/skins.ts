@@ -8,26 +8,98 @@ export interface Skin {
 }
 
 export const SKINS: Skin[] = [
-  { id: "aurora", name: "极光", base: "dark", swatch: "linear-gradient(135deg,#302b63,#a855f7)" },
-  { id: "mesh", name: "流光", base: "light", swatch: "linear-gradient(135deg,#c2e9fb,#fbc2eb)" },
-  { id: "deepsea", name: "深海", base: "dark", swatch: "linear-gradient(135deg,#0e3a5f,#38bdf8)" },
-  { id: "sunrise", name: "晨曦", base: "light", swatch: "linear-gradient(135deg,#ffaa96,#b4a0ff)" },
-  { id: "cyber", name: "赛博", base: "dark", swatch: "linear-gradient(135deg,#ec4899,#22d3ee)" },
-  { id: "mint", name: "薄荷", base: "light", swatch: "linear-gradient(135deg,#a7f3d0,#bae6fd)" },
-  { id: "midnight", name: "午夜", base: "dark", swatch: "linear-gradient(135deg,#0b0e14,#1f2937)" },
-  { id: "clean", name: "简白", base: "light", swatch: "linear-gradient(135deg,#f8fafc,#e5e7eb)" },
-  { id: "forest", name: "森林", base: "dark", swatch: "linear-gradient(135deg,#065f46,#10b981)" },
-  { id: "lava", name: "熔岩", base: "dark", swatch: "linear-gradient(135deg,#b91c1c,#f97316)" },
-  { id: "sakura", name: "樱花", base: "light", swatch: "linear-gradient(135deg,#fbcfe8,#e9d5ff)" },
-  { id: "grape", name: "葡萄", base: "dark", swatch: "linear-gradient(135deg,#6d28d9,#db2777)" },
-  { id: "sand", name: "暖沙", base: "light", swatch: "linear-gradient(135deg,#fde8c8,#f5d0a9)" },
-  { id: "steel", name: "钢蓝", base: "dark", swatch: "linear-gradient(135deg,#1e293b,#475569)" },
+  {
+    id: "aurora",
+    name: "极光",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#302b63,#a855f7)",
+  },
+  {
+    id: "mesh",
+    name: "流光",
+    base: "light",
+    swatch: "linear-gradient(135deg,#c2e9fb,#fbc2eb)",
+  },
+  {
+    id: "deepsea",
+    name: "深海",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#0e3a5f,#38bdf8)",
+  },
+  {
+    id: "sunrise",
+    name: "晨曦",
+    base: "light",
+    swatch: "linear-gradient(135deg,#ffaa96,#b4a0ff)",
+  },
+  {
+    id: "cyber",
+    name: "赛博",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#ec4899,#22d3ee)",
+  },
+  {
+    id: "mint",
+    name: "薄荷",
+    base: "light",
+    swatch: "linear-gradient(135deg,#a7f3d0,#bae6fd)",
+  },
+  {
+    id: "midnight",
+    name: "午夜",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#0b0e14,#1f2937)",
+  },
+  {
+    id: "clean",
+    name: "简白",
+    base: "light",
+    swatch: "linear-gradient(135deg,#f8fafc,#e5e7eb)",
+  },
+  {
+    id: "forest",
+    name: "森林",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#065f46,#10b981)",
+  },
+  {
+    id: "lava",
+    name: "熔岩",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#b91c1c,#f97316)",
+  },
+  {
+    id: "sakura",
+    name: "樱花",
+    base: "light",
+    swatch: "linear-gradient(135deg,#fbcfe8,#e9d5ff)",
+  },
+  {
+    id: "grape",
+    name: "葡萄",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#6d28d9,#db2777)",
+  },
+  {
+    id: "sand",
+    name: "暖沙",
+    base: "light",
+    swatch: "linear-gradient(135deg,#fde8c8,#f5d0a9)",
+  },
+  {
+    id: "steel",
+    name: "钢蓝",
+    base: "dark",
+    swatch: "linear-gradient(135deg,#1e293b,#475569)",
+  },
 ];
 
 export const DEFAULT_SKIN = "aurora";
 
 export function savedSkin(): Skin {
-  const id = typeof localStorage !== "undefined" ? localStorage.getItem("skin") : null;
+  const id =
+    typeof localStorage !== "undefined" ? localStorage.getItem("skin") : null;
+
   return SKINS.find((s) => s.id === id) ?? SKINS[0];
 }
 
@@ -35,6 +107,7 @@ export function savedSkin(): Skin {
 export function applySkin(id: string): void {
   const skin = SKINS.find((s) => s.id === id) ?? SKINS[0];
   const html = document.documentElement;
+
   SKINS.forEach((s) => html.classList.remove(s.id));
   html.classList.add(skin.id);
   if (skin.base === "dark") html.classList.add("dark");
