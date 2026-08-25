@@ -48,8 +48,26 @@ public class WebSocketServer extends TextWebSocketHandler {
      * 没必要为此写库。null = 还没收到过上报(老节点或刚连上)。
      */
     private static final ConcurrentHashMap<Long, Boolean> singboxRunning = new ConcurrentHashMap<>();
+    /** 这台机到底装没装 sing-box。老节点不报这个字段,取到 null 表示「不知道」 */
+    private static final ConcurrentHashMap<Long, Boolean> singboxInstalled = new ConcurrentHashMap<>();
+    /** sing-box 正在下载安装中 —— 刚建完协议那一两分钟就是这个状态,不该报红 */
+    private static final ConcurrentHashMap<Long, Boolean> singboxInstalling = new ConcurrentHashMap<>();
+    /** 上次安装失败的原因,空表示没失败过 */
+    private static final ConcurrentHashMap<Long, String> singboxInstallErr = new ConcurrentHashMap<>();
 
     /** 取某节点的 sing-box 运行状态;null 表示未知(该节点还没上报过) */
+    public static Boolean getSingboxInstalled(Long nodeId) {
+        return nodeId == null ? null : singboxInstalled.get(nodeId);
+    }
+
+    public static Boolean getSingboxInstalling(Long nodeId) {
+        return nodeId == null ? null : singboxInstalling.get(nodeId);
+    }
+
+    public static String getSingboxInstallErr(Long nodeId) {
+        return nodeId == null ? null : singboxInstallErr.get(nodeId);
+    }
+
     public static Boolean getSingboxRunning(Long nodeId) {
         return nodeId == null ? null : singboxRunning.get(nodeId);
     }
@@ -140,6 +158,22 @@ public class WebSocketServer extends TextWebSocketHandler {
                     // 顺手记下 sing-box 运行状态(节点在系统信息里带上来的)
                     try {
                         JSONObject info = JSON.parseObject(decryptedPayload);
+                        if (info != null && info.containsKey("singbox_installed")) {
+                            singboxInstalled.put(Long.valueOf(id), info.getBooleanValue("singbox_installed"));
+                        }
+                        if (info != null && info.containsKey("singbox_installing")) {
+                            singboxInstalling.put(Long.valueOf(id), info.getBooleanValue("singbox_installing"));
+                        }
+                        if (info != null) {
+                            // 失败原因用 put/remove 而不是只 put:装好之后这条要消失,
+                            // 否则修好的机器会一直挂着上次的红字。
+                            String err = info.getString("singbox_install_err");
+                            if (err != null && !err.isEmpty()) {
+                                singboxInstallErr.put(Long.valueOf(id), err);
+                            } else {
+                                singboxInstallErr.remove(Long.valueOf(id));
+                            }
+                        }
                         if (info != null && info.containsKey("singbox_running")) {
                             singboxRunning.put(Long.valueOf(id), info.getBooleanValue("singbox_running"));
                         }

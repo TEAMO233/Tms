@@ -1,6 +1,5 @@
 package com.admin.entity;
 
-import java.io.Serializable;
 import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -49,6 +48,23 @@ public class Node extends BaseEntity {
     private Boolean singboxRunning;
 
     /**
+     * 这台机装没装 sing-box。null = 节点版本较老、没上报过这个字段。
+     * 区分它是因为「没装」和「装了没跑」的修法完全不同:前者要重跑安装脚本
+     * (国内机常见于下载 GitHub 失败),后者 systemctl enable --now 就行,
+     * 而对没装的机器执行后者只会得到 "Unit file does not exist"。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean singboxInstalled;
+
+    /** sing-box 正在下载安装中。刚建完协议的那一两分钟就是这个状态,界面上该显示等待而不是报错 */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean singboxInstalling;
+
+    /** 上次安装失败的原因(节点上报)。有值时直接显示给车主,省得上机器翻 journalctl */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String singboxInstallErr;
+
+    /**
      * 协议管理页派生字段：该节点直连协议已分配的去重用户数。
      * 不入库，由 /node/list 查询时根据 inbound_user 聚合填充。
      */
@@ -70,5 +86,4 @@ public class Node extends BaseEntity {
     private Integer tls;
 
     private Integer socks;
-
 }

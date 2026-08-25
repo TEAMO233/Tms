@@ -141,8 +141,22 @@ export const assignSelf = (data: any) =>
   Network.post("/inbound/assign-self", data);
 export const unassignInboundUser = (id: number) =>
   Network.post("/inbound/unassign", { id });
+// 按【线路】操作(线路 = 车友 × 机器 × 落地;landingId 传 null 表示这台机器的直连)。
+// unassignInboundUser 取消的是单个协议,一条线路有六个,挨个点太蠢。
+export const setLineStatus = (
+  userId: number,
+  nodeId: number,
+  landingId: number | null,
+  status: number,
+) => Network.post("/inbound/line-status", { userId, nodeId, landingId, status });
+export const deleteLine = (
+  userId: number,
+  nodeId: number,
+  landingId: number | null,
+) => Network.post("/inbound/line-delete", { userId, nodeId, landingId });
 export const getUserSub = (userId: number) =>
   Network.post("/inbound/user-sub", { userId });
+
 
 // 中转(前置机协议 + 落地出口):落地内联粘贴、测试、搭建
 export const oneClickRelay = (

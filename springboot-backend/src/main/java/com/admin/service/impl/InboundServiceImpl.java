@@ -9,8 +9,10 @@ import com.admin.common.dto.UdpQuicRelayCreateDto;
 import com.admin.common.dto.UdpQuicRelayResultDto;
 import com.admin.common.lang.R;
 import com.admin.common.utils.ClientLinkUtil;
+import com.admin.common.utils.ClashUtil;
 import com.admin.common.utils.JwtUtil;
 import com.admin.common.utils.LandingUtil;
+
 import com.admin.common.utils.SingboxUtil;
 import com.admin.entity.Forward;
 import com.admin.entity.Inbound;
@@ -37,6 +39,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -686,6 +689,12 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             qw.isNull("landing_id");             // 直连组:本机出网的协议
         }
         List<Inbound> inbounds = this.list(qw);
+        // 协议级分配:只保留选中的入站(同属这条线路);空=整条线路全部协议。
+        // 线路额度/到期照常在下面按 dto.flow/expTime 写 InboundLine,和整条分配完全一致。
+        if (dto.getInboundIds() != null && !dto.getInboundIds().isEmpty()) {
+            java.util.Set<Long> pick = new java.util.HashSet<>(dto.getInboundIds());
+            inbounds = inbounds.stream().filter(x -> pick.contains(x.getId())).collect(java.util.stream.Collectors.toList());
+        }
         if (inbounds.isEmpty()) {
             return R.err(relay ? "这条中转还没有协议" : "这台机器还没有直连协议,先去「一键添加」");
         }
@@ -932,6 +941,121 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
                 .encodeToString(joined.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
+    /**
+     * Clash / Mihomo 订阅(YAML)。
+     *
+     * 和 buildSubscription 走同一套数据,只是输出格式不同 —— Mihomo 系客户端
+     * (Clash Verge Rev、ClashMeta)不认 base64 链接列表,贴进去是空的。
+     * token 既可能是聚合订阅的,也可能是单条线路的,两种都支持。
+     */
+    @Override
+    public String buildClashSubscription(String token) {
+        if (token == null || token.isEmpty()) {
+            return "";
+        }
+        List<InboundUser> ius;
+        User aggUser = userMapper.selectOne(
+                new QueryWrapper<User>().eq("all_sub_token", token).last("limit 1"));
+        if (aggUser != null) {
+            ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("user_id", aggUser.getId()));
+        } else {
+            ius = inboundUserMapper.selectList(new QueryWrapper<InboundUser>().eq("sub_token", token));
+        }
+
+        List<java.util.Map<String, Object>> proxies = new java.util.ArrayList<>();
+        java.util.Set<String> usedNames = ClashUtil.newNameSet();
+        java.util.Map<String, Boolean> lineStopped = new HashMap<>();
+        java.util.Map<Long, Node> nodeCache = new HashMap<>();
+        java.util.Map<Long, String> landingNames = new HashMap<>();
+
+        for (InboundUser iu : ius) {
+            if (iu.getStatus() != null && iu.getStatus() == 0) {
+                continue;
+            }
+            Inbound in = this.getById(iu.getInboundId());
+            if (in == null || iu.getGostForwardId() == null) {
+                continue;
+            }
+            if (isTransparentRelayManagedInbound(in)) {
+                // 透明中转页创建的 HY2/TUIC 协议托管中转有独立 transparent_relay_sub，
+                // 不混入 Clash / Mihomo 普通订阅。
+                continue;
+            }
+            Long lid = in.getLandingId();
+            String lineKey = in.getNodeId() + "|" + (lid == null ? 0L : lid);
+            Boolean stopped = lineStopped.get(lineKey);
+            if (stopped == null) {
+                InboundLine line = getLine(iu.getUserId(), in.getNodeId(), lid);
+                stopped = (line != null && line.getStatus() != null && line.getStatus() == 0);
+                lineStopped.put(lineKey, stopped);
+            }
+            if (stopped) {
+                continue;
+            }
+            Node node = nodeCache.get(in.getNodeId());
+            if (node == null) {
+                node = nodeMapper.selectById(in.getNodeId());
+                if (node == null) {
+                    continue;
+                }
+                nodeCache.put(in.getNodeId(), node);
+            }
+            Forward forward = forwardMapper.selectById(iu.getGostForwardId());
+            if (forward == null) {
+                continue;
+            }
+
+            // 名字规则和链接订阅保持一致:聚合订阅带线路前缀,单条不带。
+            // 两种订阅里同一个节点应该叫同一个名字,不然车友对不上。
+            String remark = (in.getRemark() != null && !in.getRemark().isEmpty())
+                    ? in.getRemark()
+                    : protocolDisplayName(in.getProtocol());
+            if (aggUser != null) {
+                StringBuilder prefix = new StringBuilder(node.getName());
+                if (lid != null) {
+                    String ln = landingNames.get(lid);
+                    if (ln == null) {
+                        com.admin.entity.Landing l = landingMapper.selectById(lid);
+                        ln = (l != null && l.getName() != null) ? l.getName() : ("落地#" + lid);
+                        landingNames.put(lid, ln);
+                    }
+                    prefix.append("→").append(ln);
+                }
+                prefix.append(" ");
+                remark = prefix + remark;
+            }
+
+            String ip = (node.getDomain() != null && !node.getDomain().trim().isEmpty())
+                    ? node.getDomain().trim()
+                    : node.getServerIp();
+            String ssMethod = null;
+            if ("shadowsocks".equals(in.getProtocol())) {
+                JSONObject cfg = JSON.parseObject(in.getConfigJson() == null ? "{}" : in.getConfigJson());
+                ssMethod = cfg.getString("method");
+            }
+            java.util.Map<String, Object> proxy = ClashUtil.toProxy(
+                    in.getProtocol(),
+                    ClashUtil.uniqueName(remark, usedNames),
+                    ip, forward.getInPort(),
+                    iu.getUuid(), iu.getPassword(), in.getSni(),
+                    in.getPublicKey(), in.getShortId(), ssMethod);
+            if (proxy != null) {
+                proxies.add(proxy);
+            }
+        }
+        if (proxies.isEmpty()) {
+            // 空 proxies 的配置 Mihomo 会直接报错。给一条 DIRECT 占位,
+            // 至少订阅能导进去,车友看到的是「没有节点」而不是「订阅损坏」。
+            StringBuilder empty = new StringBuilder();
+            empty.append("proxies: []").append(System.lineSeparator());
+            empty.append("proxy-groups: []").append(System.lineSeparator());
+            empty.append("rules:").append(System.lineSeparator());
+            empty.append("  - MATCH,DIRECT").append(System.lineSeparator());
+            return empty.toString();
+        }
+        return ClashUtil.buildConfig(proxies);
+    }
+
     /** 取(必要时生成)该车友的「全部线路」聚合订阅 token */
     private String ensureAllSubToken(User u) {
         if (u.getAllSubToken() != null && !u.getAllSubToken().isEmpty()) {
@@ -1017,6 +1141,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
         List<InboundUser> ius = inboundUserMapper.selectList(
                 new QueryWrapper<InboundUser>().eq("sub_token", token));
         List<String> links = new java.util.ArrayList<>();
+        // 线路停用状态查一次缓存起来:一条订阅里六个协议同属一条线路,
+        // 挨个去查线路表纯属浪费。
+        java.util.Map<String, Boolean> lineStopped = new HashMap<>();
         for (InboundUser iu : ius) {
             if (iu.getStatus() != null && iu.getStatus() == 0) {
                 continue;
@@ -1027,6 +1154,20 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             }
             if (isTransparentRelayManagedInbound(in)) {
                 // 透明中转协议托管线路只通过 /open_api/transparent_relay_sub 暴露。
+                continue;
+            }
+            // 线路被停用时这条订阅也要空掉。聚合订阅早就这么做了,单条这边一直没查 ——
+            // 结果车主停用之后,对方更新订阅照样看得到节点,只是连不上(转发已暂停),
+            // 反而像是节点坏了。
+            Long lid = in.getLandingId();
+            String lineKey = in.getNodeId() + "|" + (lid == null ? 0L : lid);
+            Boolean stopped = lineStopped.get(lineKey);
+            if (stopped == null) {
+                InboundLine line = getLine(iu.getUserId(), in.getNodeId(), lid);
+                stopped = (line != null && line.getStatus() != null && line.getStatus() == 0);
+                lineStopped.put(lineKey, stopped);
+            }
+            if (stopped) {
                 continue;
             }
             Node node = nodeMapper.selectById(in.getNodeId());
@@ -1117,6 +1258,9 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             JSONObject line = new JSONObject();
             line.put("nodeId", nodeId);
             line.put("nodeName", node != null ? node.getName() : ("机器#" + nodeId));
+            // landingId 要发给前端:线路的身份是「机器 × 落地」,只有名字的话
+            // 两个同名落地就分不开,前端也没法指定要停哪一条。
+            line.put("landingId", landingId);
             line.put("type", landingId != null ? "relay" : "direct");
             line.put("landingName", landingName);
             line.put("flow", lineFlow); // 该线路已用流量(字节)
@@ -1258,6 +1402,118 @@ public class InboundServiceImpl extends ServiceImpl<InboundMapper, Inbound> impl
             pushNodeSingbox(in.getNodeId());
         }
         return R.ok();
+    }
+
+    /**
+     * 停用 / 恢复某个车友的一条线路(机器 × 落地)。
+     *
+     * 停用不删数据:该线路的转发停掉、订阅里不再出现,流量和到期原样留着,
+     * 想恢复就恢复。车主临时不想给某人用某台机器时用这个 —— 比删掉再重新
+     * 分配安全得多,重分配会换掉 UUID 和端口,等于让对方重新导一次订阅。
+     *
+     * 注意和「账号总闸」的区别:User.status 一关是这个人所有线路一起停,
+     * 这里只动一条。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R setLineStatus(Long userId, Long nodeId, Long landingId, Integer status) {
+        if (userId == null || nodeId == null || status == null) {
+            return R.err("参数不全");
+        }
+        InboundLine line = getLine(userId, nodeId, landingId);
+        if (line == null) {
+            return R.err("线路不存在");
+        }
+        line.setStatus(status);
+        inboundLineMapper.updateById(line);
+
+        // 转发跟着一起停/起:光改线路标记的话订阅里是没了,但对方手上已经导入的
+        // 旧链接还能连 —— 端口还开着,gost 照转不误。
+        for (InboundUser iu : lineInboundUsers(userId, nodeId, landingId)) {
+            if (iu.getGostForwardId() == null) {
+                continue;
+            }
+            try {
+                if (status != null && status == 0) {
+                    forwardService.pauseForward(iu.getGostForwardId());
+                } else {
+                    forwardService.resumeForward(iu.getGostForwardId());
+                }
+            } catch (Exception e) {
+                log.warn("线路[" + userId + "/" + nodeId + "/" + landingId + "] 转发["
+                        + iu.getGostForwardId() + "] 状态切换失败: " + e.getMessage());
+            }
+        }
+        return R.ok();
+    }
+
+    /**
+     * 彻底收回某个车友的一条线路:删掉该线路下所有协议的分配记录和对应转发,
+     * 端口一并释放。和停用不同,这个不可逆 —— 之后要再给他用,得重新分配,
+     * UUID 和端口都会是新的。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R deleteLine(Long userId, Long nodeId, Long landingId) {
+        if (userId == null || nodeId == null) {
+            return R.err("参数不全");
+        }
+        List<InboundUser> ius = lineInboundUsers(userId, nodeId, landingId);
+        if (ius.isEmpty()) {
+            return R.err("线路不存在");
+        }
+        for (InboundUser iu : ius) {
+            if (iu.getGostForwardId() != null) {
+                try {
+                    forwardService.deleteForward(iu.getGostForwardId());
+                } catch (Exception e) {
+                    // 转发可能早就被手工删了。这里不能中断:剩下的分配记录不清掉的话,
+                    // 线路会半死不活地卡在订阅里。
+                    log.warn("删除转发[" + iu.getGostForwardId() + "]失败(继续清理): " + e.getMessage());
+                }
+            }
+            inboundUserMapper.deleteById(iu.getId());
+        }
+        InboundLine line = getLine(userId, nodeId, landingId);
+        if (line != null) {
+            inboundLineMapper.deleteById(line.getId());
+        }
+        pushNodeSingbox(nodeId);
+        return R.ok();
+    }
+
+    /** 给协议改显示名:只写 Inbound.remark。订阅链接按需从 remark 生成,不必重推 sing-box。 */
+    @Override
+    public R renameInbound(Long id, String remark) {
+        if (id == null) {
+            return R.err("参数不全");
+        }
+        Inbound in = this.getById(id);
+        if (in == null) {
+            return R.err("协议不存在");
+        }
+        in.setRemark(remark == null ? "" : remark.trim());
+        this.updateById(in);
+        return R.ok();
+    }
+
+    /** 该车友在这条线路(机器 × 落地)下的所有协议分配记录 */
+    private List<InboundUser> lineInboundUsers(Long userId, Long nodeId, Long landingId) {
+        List<InboundUser> all = inboundUserMapper.selectList(
+                new QueryWrapper<InboundUser>().eq("user_id", userId));
+        List<InboundUser> hit = new java.util.ArrayList<>();
+        for (InboundUser iu : all) {
+            Inbound in = this.getById(iu.getInboundId());
+            if (in == null || !nodeId.equals(in.getNodeId())) {
+                continue;
+            }
+            Long lid = in.getLandingId();
+            boolean same = (landingId == null) ? (lid == null) : landingId.equals(lid);
+            if (same) {
+                hit.add(iu);
+            }
+        }
+        return hit;
     }
 
     // -------- helpers --------

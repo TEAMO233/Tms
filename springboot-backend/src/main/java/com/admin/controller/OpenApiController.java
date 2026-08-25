@@ -89,6 +89,16 @@ public class OpenApiController extends BaseController {
         return transparentRelayService.buildSubscription(token);
     }
 
+    /**
+     * Clash / Mihomo 订阅(YAML)。用独立路径而不是靠 User-Agent 猜 ——
+     * 有些客户端的 UA 不带 clash 字样,猜错就发错格式,排查起来还很费劲。
+     * 3x-ui 和 s-ui 也都是独立路径。
+     */
+    @GetMapping(value = "/clash", produces = "text/yaml; charset=utf-8")
+    public String clash(@RequestParam("token") String token) {
+        return inboundService.buildClashSubscription(token);
+    }
+
     @LogAnnotation
     @GetMapping("/sub_store")
     public Object create(

@@ -153,4 +153,49 @@ public class InboundController extends BaseController {
     public R unassign(@RequestBody Map<String, Object> body) {
         return inboundService.unassignUser(Long.valueOf(String.valueOf(body.get("id"))));
     }
+
+    /**
+     * 停用 / 恢复某车友的一条线路。
+     * landingId 允许缺省或为 null —— 那表示这台机器的直连线路。
+     */
+    @LogAnnotation
+    @RequireRole
+    @PostMapping("/line-status")
+    public R lineStatus(@RequestBody Map<String, Object> body) {
+        return inboundService.setLineStatus(
+                asLong(body.get("userId")),
+                asLong(body.get("nodeId")),
+                asLong(body.get("landingId")),
+                body.get("status") == null ? null : Integer.valueOf(String.valueOf(body.get("status"))));
+    }
+
+    /** 彻底收回某车友的一条线路(不可逆) */
+    @LogAnnotation
+    @RequireRole
+    @PostMapping("/line-delete")
+    public R lineDelete(@RequestBody Map<String, Object> body) {
+        return inboundService.deleteLine(asLong(body.get("userId")), asLong(body.get("nodeId")),
+                asLong(body.get("landingId")));
+    }
+
+    /** 给协议改显示名(写 Inbound.remark,车友订阅里的节点名随之变干净) */
+    @LogAnnotation
+    @RequireRole
+    @PostMapping("/rename")
+    public R rename(@RequestBody Map<String, Object> body) {
+        return inboundService.renameInbound(asLong(body.get("id")),
+                body.get("remark") == null ? "" : String.valueOf(body.get("remark")));
+    }
+
+    /** null / 空串都当没传。直连线路的 landingId 本来就是空的,不能当成参数错误。 */
+    private static Long asLong(Object v) {
+        if (v == null) {
+            return null;
+        }
+        String s = String.valueOf(v).trim();
+        if (s.isEmpty() || "null".equals(s)) {
+            return null;
+        }
+        return Long.valueOf(s);
+    }
 }

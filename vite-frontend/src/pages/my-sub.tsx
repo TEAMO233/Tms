@@ -77,6 +77,10 @@ export default function MySubPage() {
 
   const subUrl = (token: string): string =>
     `${window.location.origin}/api/v1/open_api/sub?token=${token}`;
+  // Clash / Mihomo 是另一套格式(YAML),和上面那条 base64 链接列表不通用。
+  // 用 Clash Verge、ClashMeta 的人贴上面那条会得到一个空订阅。
+  const clashUrl = (token: string): string =>
+    `${window.location.origin}/api/v1/open_api/clash?token=${token}`;
 
   const copySubscription = async (url: string, successMessage: string) => {
     if (!url) {
@@ -93,6 +97,7 @@ export default function MySubPage() {
       toast.error("复制失败,点框内已全选,按 Ctrl+C");
     }
   };
+
 
   const load = async () => {
     try {
@@ -263,12 +268,32 @@ export default function MySubPage() {
                   复制订阅链接
                 </Button>
                 <SubQrToggle url={subUrl(allSubToken)} />
+                <Button
+                  size="sm"
+                  variant="flat"
+                  onPress={() =>
+                    copySubscription(clashUrl(allSubToken), "已复制 Clash / Mihomo 版")
+                  }
+                >
+                  Clash / Mihomo 版
+                </Button>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-default-500">
               <span>节点名会带线路标识,方便区分出口。</span>
               <span>线路到期或用尽配额后会从聚合订阅中自动消失。</span>
+            </div>
+            <div className="text-xs text-default-400">
+              用 <span className="text-default-500">v2rayN / 小火箭 / v2rayNG</span> 复制上面那条;
+              用 <span className="text-default-500">Clash Verge / ClashMeta / Mihomo</span> 复制「Clash / Mihomo 版」——
+              两种格式不通用,贴错了客户端里会是空的。
+
+            </div>
+            <div className="text-xs text-default-400">
+              用 <span className="text-default-500">v2rayN / 小火箭 / v2rayNG</span> 复制上面那条;
+              用 <span className="text-default-500">Clash Verge / ClashMeta / Mihomo</span> 复制「Clash / Mihomo 版」——
+              两种格式不通用,贴错了客户端里会是空的。
             </div>
           </CardBody>
         </Card>
