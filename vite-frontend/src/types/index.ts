@@ -14,6 +14,8 @@ export interface FlowStatisticsPoint {
   startTime: number;
   endTime: number;
   flow: number;
+  downloadFlow: number;
+  uploadFlow: number;
 }
 
 export interface FlowStatisticsResponse {
@@ -21,6 +23,8 @@ export interface FlowStatisticsResponse {
   startTime: number;
   endTime: number;
   totalFlow: number;
+  downloadFlow: number;
+  uploadFlow: number;
   points: FlowStatisticsPoint[];
 }
 

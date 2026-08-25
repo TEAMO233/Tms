@@ -105,7 +105,11 @@ CREATE TABLE `statistics_flow` (
   `id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
   `flow` bigint(20) NOT NULL,
+  `in_flow` bigint(20) DEFAULT NULL COMMENT '下载方向增量',
+  `out_flow` bigint(20) DEFAULT NULL COMMENT '上传方向增量',
   `total_flow` bigint(20) NOT NULL,
+  `total_in_flow` bigint(20) DEFAULT NULL COMMENT '下载方向累计流量',
+  `total_out_flow` bigint(20) DEFAULT NULL COMMENT '上传方向累计流量',
   `time` varchar(100) NOT NULL,
   `created_time` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

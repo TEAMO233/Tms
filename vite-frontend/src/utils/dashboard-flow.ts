@@ -8,6 +8,20 @@ export interface FlowStatisticsQueryRange {
   endTime: number;
 }
 
+export interface FlowStatisticsPointLike {
+  label: string;
+  flow?: number;
+  downloadFlow?: number;
+  uploadFlow?: number;
+}
+
+export interface FlowChartPoint {
+  time: string;
+  flow: number;
+  downloadFlow: number;
+  uploadFlow: number;
+}
+
 const pad2 = (value: number): string => value.toString().padStart(2, '0');
 
 export const toLocalDateInputValue = (date: Date = new Date()): string =>
@@ -84,3 +98,20 @@ export const buildFlowStatisticsRange = (
     endTime,
   };
 };
+
+const safeNumber = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+export const toFlowChartData = (points: FlowStatisticsPointLike[] = []): FlowChartPoint[] =>
+  points.map((point) => {
+    const downloadFlow = safeNumber(point.downloadFlow);
+    const uploadFlow = safeNumber(point.uploadFlow);
+    const flow = safeNumber(point.flow) || downloadFlow + uploadFlow;
+
+    return {
+      time: point.label,
+      flow,
+      downloadFlow,
+      uploadFlow,
+    };
+  });

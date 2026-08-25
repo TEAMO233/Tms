@@ -3,6 +3,7 @@ import {
   buildFlowStatisticsRange,
   createLastDaysRange,
   createTodayRange,
+  toFlowChartData,
   toLocalDateInputValue,
 } from './dashboard-flow.ts';
 
@@ -31,6 +32,19 @@ assert.equal(pastRange.endTime, new Date(2026, 7, 21, 23, 59, 59, 999).getTime()
 assert.throws(
   () => buildFlowStatisticsRange('2026-08-22', '2026-08-21', now),
   /开始日期不能晚于结束日期/,
+);
+
+assert.deepEqual(
+  toFlowChartData([
+    { label: '00:00', flow: 3072, uploadFlow: 1024, downloadFlow: 2048 },
+    { label: '01:00', uploadFlow: 512, downloadFlow: 256 },
+    { label: '02:00' },
+  ]),
+  [
+    { time: '00:00', flow: 3072, uploadFlow: 1024, downloadFlow: 2048 },
+    { time: '01:00', flow: 768, uploadFlow: 512, downloadFlow: 256 },
+    { time: '02:00', flow: 0, uploadFlow: 0, downloadFlow: 0 },
+  ],
 );
 
 console.log('dashboard flow date helpers: ok');

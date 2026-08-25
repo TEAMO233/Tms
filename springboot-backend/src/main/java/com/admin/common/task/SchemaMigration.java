@@ -55,6 +55,16 @@ public class SchemaMigration implements ApplicationRunner {
         addColumnIfMissing("user", "transparent_relay_sub_token",
                 "ALTER TABLE `user` ADD COLUMN `transparent_relay_sub_token` VARCHAR(64) NULL COMMENT '透明中转聚合订阅token'");
 
+        // 仪表板流量趋势拆分:保留每小时上传/下载增量和方向累计值,用于下一次计算增量。
+        addColumnIfMissing("statistics_flow", "in_flow",
+                "ALTER TABLE `statistics_flow` ADD COLUMN `in_flow` BIGINT(20) NULL COMMENT '下载方向增量' AFTER `flow`");
+        addColumnIfMissing("statistics_flow", "out_flow",
+                "ALTER TABLE `statistics_flow` ADD COLUMN `out_flow` BIGINT(20) NULL COMMENT '上传方向增量' AFTER `in_flow`");
+        addColumnIfMissing("statistics_flow", "total_in_flow",
+                "ALTER TABLE `statistics_flow` ADD COLUMN `total_in_flow` BIGINT(20) NULL COMMENT '下载方向累计流量' AFTER `total_flow`");
+        addColumnIfMissing("statistics_flow", "total_out_flow",
+                "ALTER TABLE `statistics_flow` ADD COLUMN `total_out_flow` BIGINT(20) NULL COMMENT '上传方向累计流量' AFTER `total_in_flow`");
+
         // 透明中转/线路机模式:入口节点用 nftables DNAT+SNAT 转到目标服务器端口。
         createTableIfMissing("transparent_relay",
                 "CREATE TABLE `transparent_relay` ("

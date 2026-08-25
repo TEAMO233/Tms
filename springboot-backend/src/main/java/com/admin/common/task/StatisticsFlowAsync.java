@@ -1,6 +1,5 @@
 package com.admin.common.task;
 
-
 import com.admin.entity.StatisticsFlow;
 import com.admin.entity.User;
 import com.admin.service.StatisticsFlowService;
@@ -11,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -51,47 +49,66 @@ public class StatisticsFlowAsync {
                         .lt(StatisticsFlow::getCreatedTime, cutoffMs)
         );
 
-
-
-
-
         List<User> list = userService.list();
         List<StatisticsFlow> statisticsFlowList = new ArrayList<>();
 
         for (User user : list) {
-            long currentFlow = user.getInFlow() + user.getOutFlow();
-
             // 从数据库获取上一次记录
             StatisticsFlow lastFlowRecord = statisticsFlowService.getOne(
                     new LambdaQueryWrapper<StatisticsFlow>()
-                            .eq(StatisticsFlow::getUserId, user.getId()) 
-                            .orderByDesc(StatisticsFlow::getId)         
-                            .last("LIMIT 1")                     
+                            .eq(StatisticsFlow::getUserId, user.getId())
+                            .orderByDesc(StatisticsFlow::getId)
+                            .last("LIMIT 1")
             );
 
-            long currentTotalFlow = currentFlow;
-            long incrementFlow = currentTotalFlow;
-            
-            if (lastFlowRecord != null) {
-                long lastTotalFlow = lastFlowRecord.getTotalFlow();
-                incrementFlow = currentTotalFlow - lastTotalFlow;
-                
-                if (incrementFlow < 0) {
-                    incrementFlow = currentTotalFlow; 
-                }
-            }
-
-            StatisticsFlow statisticsFlow = new StatisticsFlow();
-            statisticsFlow.setUserId(user.getId());
-            statisticsFlow.setFlow(incrementFlow);        
-            statisticsFlow.setTotalFlow(currentTotalFlow); 
-            statisticsFlow.setTime(hourString);
-            statisticsFlow.setCreatedTime(time);
-
-            statisticsFlowList.add(statisticsFlow);
+            statisticsFlowList.add(buildStatisticsFlow(user, lastFlowRecord, time, hourString));
         }
 
         statisticsFlowService.saveBatch(statisticsFlowList);
+    }
+
+    static StatisticsFlow buildStatisticsFlow(User user, StatisticsFlow lastFlowRecord, long time, String hourString) {
+        long currentInFlow = safe(user.getInFlow());
+        long currentOutFlow = safe(user.getOutFlow());
+        long currentTotalFlow = currentInFlow + currentOutFlow;
+
+        boolean hasDirectionBaseline = lastFlowRecord == null
+                || (lastFlowRecord.getTotalInFlow() != null && lastFlowRecord.getTotalOutFlow() != null);
+
+        long incrementInFlow;
+        long incrementOutFlow;
+        long incrementFlow;
+        if (lastFlowRecord == null) {
+            incrementInFlow = currentInFlow;
+            incrementOutFlow = currentOutFlow;
+            incrementFlow = currentTotalFlow;
+        } else if (hasDirectionBaseline) {
+            incrementInFlow = incrementFromCounter(currentInFlow, lastFlowRecord.getTotalInFlow());
+            incrementOutFlow = incrementFromCounter(currentOutFlow, lastFlowRecord.getTotalOutFlow());
+            incrementFlow = incrementInFlow + incrementOutFlow;
+        } else {
+            // 老版本快照只有 total_flow,没有分方向累计值。首次升级后的一个整点无法准确拆分方向,
+            // 因此沿用 total_flow 计算总量,并把当前方向累计值写入本次快照作为下一小时的基线。
+            long lastTotalFlow = safe(lastFlowRecord.getTotalFlow());
+            incrementFlow = currentTotalFlow - lastTotalFlow;
+            if (incrementFlow < 0) {
+                incrementFlow = currentTotalFlow;
+            }
+            incrementInFlow = 0L;
+            incrementOutFlow = 0L;
+        }
+
+        StatisticsFlow statisticsFlow = new StatisticsFlow();
+        statisticsFlow.setUserId(user.getId());
+        statisticsFlow.setFlow(incrementFlow);
+        statisticsFlow.setInFlow(incrementInFlow);
+        statisticsFlow.setOutFlow(incrementOutFlow);
+        statisticsFlow.setTotalFlow(currentTotalFlow);
+        statisticsFlow.setTotalInFlow(currentInFlow);
+        statisticsFlow.setTotalOutFlow(currentOutFlow);
+        statisticsFlow.setTime(hourString);
+        statisticsFlow.setCreatedTime(time);
+        return statisticsFlow;
     }
 
     static LocalDateTime currentShanghaiHour(Instant now) {
@@ -102,4 +119,13 @@ public class StatisticsFlowAsync {
         return time.atZone(ZONE).toInstant().toEpochMilli();
     }
 
+    private static long incrementFromCounter(long current, Long previous) {
+        long prev = safe(previous);
+        long increment = current - prev;
+        return increment < 0 ? current : increment;
+    }
+
+    private static long safe(Long value) {
+        return value == null ? 0L : value;
+    }
 }

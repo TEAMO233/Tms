@@ -11,7 +11,12 @@ public class FlowStatisticsResultDto {
     private String granularity;
     private Long startTime;
     private Long endTime;
+    /** 上传+下载合计 */
     private Long totalFlow;
+    /** 下载方向合计 */
+    private Long downloadFlow;
+    /** 上传方向合计 */
+    private Long uploadFlow;
     private List<Point> points = new ArrayList<>();
 
     @Data
@@ -19,16 +24,23 @@ public class FlowStatisticsResultDto {
         private String label;
         private Long startTime;
         private Long endTime;
+        /** 上传+下载合计 */
         private Long flow;
+        /** 下载方向 */
+        private Long downloadFlow;
+        /** 上传方向 */
+        private Long uploadFlow;
 
         public Point() {
         }
 
-        public Point(String label, Long startTime, Long endTime, Long flow) {
+        public Point(String label, Long startTime, Long endTime, Long flow, Long downloadFlow, Long uploadFlow) {
             this.label = label;
             this.startTime = startTime;
             this.endTime = endTime;
             this.flow = flow;
+            this.downloadFlow = downloadFlow;
+            this.uploadFlow = uploadFlow;
         }
     }
 }

@@ -5,7 +5,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { useState, useEffect } from "react";
 import toast from 'react-hot-toast';
 import { copyTextToClipboard } from "@/utils/clipboard";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
 import { getFlowStatisticsRange, getUserPackageInfo } from "@/api";
@@ -14,6 +14,7 @@ import {
   buildFlowStatisticsRange,
   createLastDaysRange,
   createTodayRange,
+  toFlowChartData,
   type FlowStatisticsDateRange,
 } from "@/utils/dashboard-flow";
 
@@ -258,14 +259,8 @@ export default function DashboardPage() {
     return value.toString();
   };
 
-  // 处理流量统计数据：当天按小时,跨天按自然日
-  const processFlowChartData = () => {
-    return (flowStatistics?.points || []).map(point => ({
-      time: point.label,
-      flow: point.flow || 0,
-      formattedFlow: formatFlow(point.flow || 0)
-    }));
-  };
+  // 处理流量统计数据：当天按小时,跨天按自然日,并拆分上传/下载
+  const processFlowChartData = () => toFlowChartData(flowStatistics?.points || []);
 
   const statisticsRangeText = `${appliedStatisticsRange.startDate} 至 ${appliedStatisticsRange.endDate}`;
 
@@ -710,7 +705,7 @@ export default function DashboardPage() {
                <div>
                  <h2 className="text-lg lg:text-xl font-semibold text-foreground">流量统计</h2>
                  <p className="mt-1 text-xs text-default-500">
-                   默认展示当天；{flowStatistics?.granularity === 'day' ? '多日按天汇总' : '单日按小时展示'} · 当前范围 {statisticsRangeText} · 合计 {formatFlow(flowStatistics?.totalFlow || 0)}
+                   默认展示当天；{flowStatistics?.granularity === 'day' ? '多日按天汇总' : '单日按小时展示'} · 当前范围 {statisticsRangeText} · 合计 {formatFlow(flowStatistics?.totalFlow || 0)} · 下载 {formatFlow(flowStatistics?.downloadFlow || 0)} · 上传 {formatFlow(flowStatistics?.uploadFlow || 0)}
                  </p>
                </div>
                <div className="flex flex-wrap items-end gap-2">
@@ -806,24 +801,47 @@ export default function DashboardPage() {
                          content={({ active, payload, label }) => {
                            if (active && payload && payload.length) {
                              return (
-                               <div className="bg-white dark:bg-default-100 border border-default-200 rounded-lg shadow-lg p-3">
+                               <div className="bg-white dark:bg-default-100 border border-default-200 rounded-lg shadow-lg p-3 space-y-1">
                                  <p className="font-medium text-foreground">
                                    {`${flowStatistics?.granularity === 'day' ? '日期' : '时间'}: ${label}`}
                                  </p>
-                                 <p className="text-primary">
-                                   {`流量: ${formatFlow(payload[0]?.value as number || 0)}`}
-                                 </p>
+                                 {payload.map((item) => (
+                                   <p key={item.dataKey?.toString()} style={{ color: item.color }}>
+                                     {`${item.name || item.dataKey}: ${formatFlow(item.value as number || 0)}`}
+                                   </p>
+                                 ))}
                                </div>
                              );
                            }
                            return null;
                          }}
                        />
+                       <Legend />
+                       <Line
+                         type="monotone"
+                         dataKey="downloadFlow"
+                         name="下载"
+                         stroke="#2563eb"
+                         strokeWidth={3}
+                         dot={false}
+                         activeDot={{ r: 4, stroke: '#2563eb', strokeWidth: 2, fill: '#fff' }}
+                       />
+                       <Line
+                         type="monotone"
+                         dataKey="uploadFlow"
+                         name="上传"
+                         stroke="#f97316"
+                         strokeWidth={3}
+                         dot={false}
+                         activeDot={{ r: 4, stroke: '#f97316', strokeWidth: 2, fill: '#fff' }}
+                       />
                        <Line
                          type="monotone"
                          dataKey="flow"
+                         name="总量"
                          stroke="#8b5cf6"
-                         strokeWidth={3}
+                         strokeDasharray="5 5"
+                         strokeWidth={2}
                          dot={false}
                          activeDot={{ r: 4, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
                        />

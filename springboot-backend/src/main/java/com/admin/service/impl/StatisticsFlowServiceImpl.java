@@ -85,10 +85,10 @@ public class StatisticsFlowServiceImpl extends ServiceImpl<StatisticsFlowMapper,
 
     private void fillHourlyResult(FlowStatisticsResultDto result, List<StatisticsFlow> records,
                                   LocalDateTime start, LocalDateTime end) {
-        Map<LocalDateTime, Long> flowByHour = new LinkedHashMap<>();
+        Map<LocalDateTime, FlowBucket> flowByHour = new LinkedHashMap<>();
         LocalDateTime cursor = start;
         while (!cursor.isAfter(end)) {
-            flowByHour.put(cursor, 0L);
+            flowByHour.put(cursor, new FlowBucket());
             cursor = cursor.plusHours(1);
         }
 
@@ -98,34 +98,37 @@ public class StatisticsFlowServiceImpl extends ServiceImpl<StatisticsFlowMapper,
                     continue;
                 }
                 LocalDateTime hour = toLocalDateTime(record.getCreatedTime()).truncatedTo(ChronoUnit.HOURS);
-                if (flowByHour.containsKey(hour)) {
-                    flowByHour.put(hour, flowByHour.get(hour) + safeFlow(record));
+                FlowBucket bucket = flowByHour.get(hour);
+                if (bucket != null) {
+                    bucket.add(record);
                 }
             }
         }
 
-        long total = 0L;
-        for (Map.Entry<LocalDateTime, Long> entry : flowByHour.entrySet()) {
+        FlowBucket total = new FlowBucket();
+        for (Map.Entry<LocalDateTime, FlowBucket> entry : flowByHour.entrySet()) {
             LocalDateTime bucketStart = entry.getKey();
             LocalDateTime bucketEnd = bucketStart.plusHours(1).minusNanos(1);
-            long flow = entry.getValue();
-            total += flow;
+            FlowBucket bucket = entry.getValue();
+            total.add(bucket);
             result.getPoints().add(new FlowStatisticsResultDto.Point(
                     bucketStart.format(HOUR_LABEL),
                     toMillis(bucketStart),
                     toMillis(bucketEnd),
-                    flow
+                    bucket.flow,
+                    bucket.downloadFlow,
+                    bucket.uploadFlow
             ));
         }
-        result.setTotalFlow(total);
+        applyTotals(result, total);
     }
 
     private void fillDailyResult(FlowStatisticsResultDto result, List<StatisticsFlow> records,
                                  LocalDate startDate, LocalDate endDate) {
-        Map<LocalDate, Long> flowByDay = new LinkedHashMap<>();
+        Map<LocalDate, FlowBucket> flowByDay = new LinkedHashMap<>();
         LocalDate cursor = startDate;
         while (!cursor.isAfter(endDate)) {
-            flowByDay.put(cursor, 0L);
+            flowByDay.put(cursor, new FlowBucket());
             cursor = cursor.plusDays(1);
         }
 
@@ -135,31 +138,51 @@ public class StatisticsFlowServiceImpl extends ServiceImpl<StatisticsFlowMapper,
                     continue;
                 }
                 LocalDate day = toLocalDateTime(record.getCreatedTime()).toLocalDate();
-                if (flowByDay.containsKey(day)) {
-                    flowByDay.put(day, flowByDay.get(day) + safeFlow(record));
+                FlowBucket bucket = flowByDay.get(day);
+                if (bucket != null) {
+                    bucket.add(record);
                 }
             }
         }
 
-        long total = 0L;
-        for (Map.Entry<LocalDate, Long> entry : flowByDay.entrySet()) {
+        FlowBucket total = new FlowBucket();
+        for (Map.Entry<LocalDate, FlowBucket> entry : flowByDay.entrySet()) {
             LocalDate day = entry.getKey();
             LocalDateTime bucketStart = day.atStartOfDay();
             LocalDateTime bucketEnd = day.plusDays(1).atStartOfDay().minusNanos(1);
-            long flow = entry.getValue();
-            total += flow;
+            FlowBucket bucket = entry.getValue();
+            total.add(bucket);
             result.getPoints().add(new FlowStatisticsResultDto.Point(
                     day.format(DAY_LABEL),
                     toMillis(bucketStart),
                     toMillis(bucketEnd),
-                    flow
+                    bucket.flow,
+                    bucket.downloadFlow,
+                    bucket.uploadFlow
             ));
         }
-        result.setTotalFlow(total);
+        applyTotals(result, total);
+    }
+
+    private void applyTotals(FlowStatisticsResultDto result, FlowBucket total) {
+        result.setTotalFlow(total.flow);
+        result.setDownloadFlow(total.downloadFlow);
+        result.setUploadFlow(total.uploadFlow);
     }
 
     private long safeFlow(StatisticsFlow flow) {
-        return flow.getFlow() == null ? 0L : flow.getFlow();
+        if (flow.getFlow() != null) {
+            return flow.getFlow();
+        }
+        return safeDownloadFlow(flow) + safeUploadFlow(flow);
+    }
+
+    private long safeDownloadFlow(StatisticsFlow flow) {
+        return flow.getInFlow() == null ? 0L : flow.getInFlow();
+    }
+
+    private long safeUploadFlow(StatisticsFlow flow) {
+        return flow.getOutFlow() == null ? 0L : flow.getOutFlow();
     }
 
     private LocalDateTime toLocalDateTime(long epochMs) {
@@ -168,5 +191,23 @@ public class StatisticsFlowServiceImpl extends ServiceImpl<StatisticsFlowMapper,
 
     private long toMillis(LocalDateTime time) {
         return time.atZone(ZONE).toInstant().toEpochMilli();
+    }
+
+    private class FlowBucket {
+        private long flow;
+        private long downloadFlow;
+        private long uploadFlow;
+
+        private void add(StatisticsFlow record) {
+            this.flow += safeFlow(record);
+            this.downloadFlow += safeDownloadFlow(record);
+            this.uploadFlow += safeUploadFlow(record);
+        }
+
+        private void add(FlowBucket bucket) {
+            this.flow += bucket.flow;
+            this.downloadFlow += bucket.downloadFlow;
+            this.uploadFlow += bucket.uploadFlow;
+        }
     }
 }
