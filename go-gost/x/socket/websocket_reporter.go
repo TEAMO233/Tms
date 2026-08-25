@@ -19,6 +19,7 @@ import (
 	"github.com/go-gost/x/service"
 	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	psnet "github.com/shirou/gopsutil/v3/net"
@@ -32,6 +33,9 @@ type SystemInfo struct {
 	BytesTransmitted uint64  `json:"bytes_transmitted"` // 发送字节数
 	CPUUsage         float64 `json:"cpu_usage"`         // CPU使用率（百分比）
 	MemoryUsage      float64 `json:"memory_usage"`      // 内存使用率（百分比）
+	DiskTotal        uint64  `json:"disk_total"`        // 根文件系统总容量（字节）
+	DiskUsed         uint64  `json:"disk_used"`         // 根文件系统已用容量（字节）
+	DiskUsage        float64 `json:"disk_usage"`        // 根文件系统使用率（百分比）
 
 	// SingboxRunning 报的是【本机 sing-box 服务是否在运行】。
 	// gost 和 sing-box 是两个独立服务:sing-box 挂了/被停了,gost 照样活着、
@@ -55,6 +59,13 @@ type CPUInfo struct {
 // MemoryInfo 内存信息
 type MemoryInfo struct {
 	Usage float64 `json:"usage"` // 内存使用率（百分比）
+}
+
+// DiskInfo 磁盘信息
+type DiskInfo struct {
+	Total uint64  `json:"total"` // 根文件系统总容量（字节）
+	Used  uint64  `json:"used"`  // 根文件系统已用容量（字节）
+	Usage float64 `json:"usage"` // 根文件系统使用率（百分比）
 }
 
 // CommandMessage 命令消息结构体
@@ -307,6 +318,7 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 	networkStats := getNetworkStats()
 	cpuInfo := getCPUInfo()
 	memoryInfo := getMemoryInfo()
+	diskInfo := getDiskInfo()
 
 	return SystemInfo{
 		Uptime:           getUptime(),
@@ -314,6 +326,9 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 		BytesTransmitted: networkStats.BytesTransmitted,
 		CPUUsage:         cpuInfo.Usage,
 		MemoryUsage:      memoryInfo.Usage,
+		DiskTotal:        diskInfo.Total,
+		DiskUsed:         diskInfo.Used,
+		DiskUsage:        diskInfo.Usage,
 		SingboxRunning:   isSingboxRunning(),
 	}
 }
@@ -1087,6 +1102,22 @@ func getMemoryInfo() MemoryInfo {
 	memInfo.Usage = vmStat.UsedPercent
 
 	return memInfo
+}
+
+// getDiskInfo 获取根文件系统磁盘信息
+func getDiskInfo() DiskInfo {
+	var diskInfo DiskInfo
+
+	usage, err := disk.Usage("/")
+	if err != nil {
+		return diskInfo
+	}
+
+	diskInfo.Total = usage.Total
+	diskInfo.Used = usage.Used
+	diskInfo.Usage = usage.UsedPercent
+
+	return diskInfo
 }
 
 // StartWebSocketReporterWithConfig 使用配置字段启动WebSocket报告器

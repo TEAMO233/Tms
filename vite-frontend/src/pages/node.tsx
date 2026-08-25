@@ -50,6 +50,9 @@ interface Node {
   systemInfo?: {
     cpuUsage: number;
     memoryUsage: number;
+    diskTotal: number;
+    diskUsed: number;
+    diskUsage: number;
     uploadTraffic: number;
     downloadTraffic: number;
     uploadSpeed: number;
@@ -289,6 +292,9 @@ export default function NodePage() {
                 systemInfo: {
                   cpuUsage: parseFloat(systemInfo.cpu_usage) || 0,
                   memoryUsage: parseFloat(systemInfo.memory_usage) || 0,
+                  diskTotal: parseInt(systemInfo.disk_total) || 0,
+                  diskUsed: parseInt(systemInfo.disk_used) || 0,
+                  diskUsage: parseFloat(systemInfo.disk_usage) || 0,
                   uploadTraffic: currentUpload,
                   downloadTraffic: currentDownload,
                   uploadSpeed: uploadSpeed,
@@ -391,6 +397,13 @@ export default function NodePage() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  // 磁盘容量按用户习惯显示为 G
+  const formatDiskSize = (bytes: number): string => {
+    if (!bytes || bytes <= 0) return "0G";
+
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}G`;
   };
 
   // 获取进度条颜色
@@ -911,6 +924,34 @@ export default function NodePage() {
                         aria-label="内存使用率"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>磁盘</span>
+                      <span className="font-mono text-right">
+                        {node.connectionStatus === "online" &&
+                        node.systemInfo &&
+                        node.systemInfo.diskTotal > 0
+                          ? `${formatDiskSize(node.systemInfo.diskUsed)} / ${formatDiskSize(node.systemInfo.diskTotal)} (${node.systemInfo.diskUsage.toFixed(1)}%)`
+                          : "-"}
+                      </span>
+                    </div>
+                    <Progress
+                      value={
+                        node.connectionStatus === "online" && node.systemInfo
+                          ? node.systemInfo.diskUsage
+                          : 0
+                      }
+                      color={getProgressColor(
+                        node.connectionStatus === "online" && node.systemInfo
+                          ? node.systemInfo.diskUsage
+                          : 0,
+                        node.connectionStatus !== "online",
+                      )}
+                      size="sm"
+                      aria-label="磁盘使用率"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">

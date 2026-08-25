@@ -45,6 +45,24 @@ public class SystemInfoDto {
      */
     @JsonProperty("memory_usage")
     private Double memoryUsage;
+
+    /**
+     * 根文件系统总容量（字节）
+     */
+    @JsonProperty("disk_total")
+    private Long diskTotal;
+
+    /**
+     * 根文件系统已用容量（字节）
+     */
+    @JsonProperty("disk_used")
+    private Long diskUsed;
+
+    /**
+     * 根文件系统使用率（百分比）
+     */
+    @JsonProperty("disk_usage")
+    private Double diskUsage;
     
     /**
      * 上报时间戳
