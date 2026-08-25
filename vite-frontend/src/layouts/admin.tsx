@@ -560,7 +560,7 @@ export default function AdminLayout({
       >
         {/* 顶部导航栏 */}
         <header
-          className={`flex shrink-0 items-center justify-between px-3 sm:px-4 lg:pl-10 lg:pr-[52px] ${isMobile ? "relative h-14 border-b border-white/10 bg-[#0f141f]" : "absolute inset-x-0 top-0 z-20 h-20 bg-transparent"}`}
+          className={`flex shrink-0 items-center justify-between px-3 sm:px-4 lg:pl-10 lg:pr-[52px] ${isMobile ? "relative h-14 border-b border-white/10 bg-[#0f141f]" : isDashboard ? "absolute inset-x-0 top-0 z-20 h-20 bg-transparent" : "relative z-20 h-16 border-b border-white/10 bg-[#0f141f]/85 backdrop-blur-xl"}`}
         >
           <div className="flex items-center gap-3">
             {/* 移动端菜单按钮 */}
@@ -589,7 +589,7 @@ export default function AdminLayout({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-4">
+          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-4">
             {isDashboard && (
               <div className="hidden items-center gap-2 px-1 text-xs text-default-400 sm:flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.75)]" />
@@ -597,12 +597,16 @@ export default function AdminLayout({
               </div>
             )}
             {/* 主题选择 */}
-            {!isDashboard && <SkinPicker />}
+            {!isDashboard && (
+              <div className="shrink-0">
+                <SkinPicker />
+              </div>
+            )}
             {/* 用户菜单 */}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
-                  className="min-w-[142px] justify-between rounded-full border border-white/[0.07] bg-white/[0.04] pl-1.5 pr-2.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.08]"
+                  className="min-w-[142px] max-w-[220px] justify-between overflow-hidden rounded-full border border-white/[0.07] bg-white/[0.04] pl-1.5 pr-2.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.08]"
                   variant="light"
                 >
                   {isDashboard && (
@@ -610,7 +614,9 @@ export default function AdminLayout({
                       <UserIcon size={16} />
                     </span>
                   )}
-                  <span className="hidden sm:inline">{username}</span>
+                  <span className="hidden min-w-0 max-w-[9rem] truncate sm:inline">
+                    {username}
+                  </span>
                   <svg
                     className="w-4 h-4 ml-1"
                     fill="currentColor"
