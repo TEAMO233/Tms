@@ -1,81 +1,115 @@
 # TMS 面板
 
-> 一个面板同时搞定**翻墙协议**(VLESS-Reality / Trojan / VMess / Hysteria2 / TUIC / AnyTLS)、**转发中转**、以及**每用户限速 / 流量 / 到期**。
+> 一个面板同时搞定**翻墙协议**、**转发中转**、以及**每用户限速 / 流量 / 到期**。
 
-## 关注作者(三月)
-
-- 🌐 博客 / 导航站:**[3yuedaohang.com](https://3yuedaohang.com)**
-- ▶️ YouTube:**[@zhanzhang3yue](https://www.youtube.com/@zhanzhang3yue)**
+<p>
+  <a href="https://3yuedaohang.com">站长博客</a> ·
+  <a href="https://www.youtube.com/@zhanzhang3yue">YouTube</a> ·
+  <a href="https://3yuedaohang.com/cn2/banwagong">机器推荐</a>
+</p>
 
 ---
 
-## 特性
+## 能做什么
 
-- **协议管理**:一键在机器上搭全套翻墙协议(VLESS-Reality / Trojan / VMess / Hysteria2 / TUIC / AnyTLS),出订阅给用户
-- **中转**:前置机搭协议 + 落地出口(住宅 socks / 机场节点 / 你的节点),给用户干净出口 IP,自带在线测落地
-- **端口转发 / 隧道转发**:通用端口搬运、两级加密中转
-- **限速 / 流量 / 到期**:每个用户独立限速(TCP+UDP 都限)、流量配额、到期时间
-- **订阅按线路**:一个用户可有多条订阅,直连 / 各中转各自独立
-- **中央管理**:一台面板管所有转发机,节点一条命令上线
+| | 说明 |
+|---|---|
+| **协议管理** | 一键搭全套协议(VLESS-Reality / Trojan / VMess / Hysteria2 / TUIC / AnyTLS),出订阅给用户 |
+| **中转** | 前置机搭协议 + 落地出口(住宅 socks / 机场节点 / 自己的节点),给用户干净出口 IP,自带在线测落地 |
+| **端口转发 / 隧道转发** | 通用端口搬运、两级加密中转 |
+| **限速 / 流量 / 到期** | 每个用户独立限速(TCP + UDP 都限)、流量配额、到期时间 |
+| **订阅按线路** | 一个用户可以有多条订阅,直连 / 各中转各自独立,互不影响 |
+| **中央管理** | 一台面板管所有转发机,节点一条命令上线 |
 
-本项目基于 [go-gost/gost](https://github.com/go-gost/gost) 和 [go-gost/x](https://github.com/go-gost/x) 两个开源库。
+订阅同时支持两种格式:**通用**(v2rayN / 小火箭 / v2rayNG)和 **Clash / Mihomo**(Clash Verge、ClashMeta)。
+
+<sub>本项目基于 [go-gost/gost](https://github.com/go-gost/gost) 和 [go-gost/x](https://github.com/go-gost/x) 两个开源库。</sub>
 
 
-## 部署流程
----
-### Docker Compose部署
-#### 快速部署
-只有两条命令。先在一台机器装**面板端**,再到每台转发机装**节点端**。
+## 部署
 
-**面板端**(中央管理面板,一台即可,全自动;需要 Docker,脚本会自动装):
+要装两样东西:
+
+| | 装在哪 | 装什么 | 需要 Docker |
+|---|---|---|---|
+| **面板端** | 一台机器即可 | 中央管理面板 | 是(脚本自动装) |
+| **节点端** | 每台转发机 | gost 裸二进制 | 否 |
+
+<br>
+
+### 第一步 · 装面板端
+
+找一台机器执行:
+
 ```bash
 curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/panel_install.sh -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
 ```
 
-**节点端**(转发机,每台要做转发的机器都装;裸二进制,不需要 Docker):
+装完会打印访问地址。默认账号 **admin_user** / **admin_user**。
 
-装好面板后,**在面板里生成节点端命令**,不用手敲——
-> 登录面板 → 左侧「转发机监控」→「新增」填该机器的 IP → 保存 → 点该机器的「安装」→ **复制弹出的命令**,到那台机器上执行即可。
+> [!WARNING]
+> 首次登录后**立刻改密码**。面板是公网可访问的,默认口令等于没有口令。
 
-弹出的命令已自动带上「面板地址 + 该机器专属密钥」,全自动、无需手输(密钥是新增转发机时才生成的,只有面板知道,所以节点端必须从面板生成)。
+<br>
 
-<details><summary>手动方式(不推荐)</summary>
+### 第二步 · 装节点端
 
-也可直接在机器上跑下面裸命令,它会 **交互式询问** 面板地址和密钥(密钥同样得先在面板「转发机监控」新增该转发机才有):
+**不用手敲命令,在面板里生成:**
+
+```
+登录面板 → 左侧「转发机监控」→「新增」填这台机器的 IP → 保存
+        → 点该机器的「安装」→ 复制弹出的命令 → 到那台机器上执行
+```
+
+弹出的命令已经带好了「面板地址 + 该机器专属密钥」,全自动、无需手输。
+
+> [!NOTE]
+> 密钥是**新增转发机时才生成的、只有面板知道**,所以节点端命令必须从面板里拿,
+> 没法自己拼出来。
+
+<br>
+
+> [!IMPORTANT]
+> **国内机器(阿里云 / 腾讯云 / 华为云等)看这里**
+>
+> 直连 GitHub 会超时,表现是卡在下载那一步不动,或者装完面板报
+> 「sing-box 未运行」。用镜像加速,并加 `-c` 强制内部下载也走国内镜像:
+>
+> ```bash
+> curl -L https://ghfast.top/https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh -c -a 面板地址:端口 -s 你的密钥
+> ```
+>
+> `面板地址` 和 `密钥` 就从上面「点安装」弹出的那条命令里抄。
+>
+> **镜像失效了怎么办**:把命令里的 `ghfast.top` 整体换成下面任一个,
+> 并在命令最前面加 `GH_MIRROR=https://新镜像/`(让内部下载 gost 也走它):
+> `gh-proxy.com` · `ghproxy.net` · `mirror.ghproxy.com`
+
+<details>
+<summary>手动装节点端(不推荐)</summary>
+
+<br>
+
+也可以直接在机器上跑裸命令,它会**交互式询问**面板地址和密钥
+(密钥同样得先在面板「转发机监控」新增该转发机才有):
+
 ```bash
 curl -L https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
+
 </details>
 
-#### 国内机器安装(GitHub 连不上时)
+<br>
 
-国内机器直连 GitHub 会超时(卡在下载那一步)。用 **ghfast.top 镜像 + `-c` 参数**(`-c` 强制内部下载 gost 也走国内镜像,不靠自动检测),把面板给你的「面板地址」「密钥」填进去:
+### 装完之后 · tms 命令
 
-```bash
-curl -L https://ghfast.top/https://raw.githubusercontent.com/Teminuosi/Tms/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh -c -a 面板地址:端口 -s 你的密钥
-```
-
-- 面板地址、密钥从面板「转发机监控 → 新增该机器 → 点安装」弹出的命令里拿;
-- 若 `ghfast.top` 某天失效,换个镜像重试:把命令里的 `ghfast.top` 整体替换,并在前面加 `GH_MIRROR=https://新镜像/`(让内部下 gost 也走它)。常见备选:`gh-proxy.com`、`ghproxy.net`、`mirror.ghproxy.com`。
-
-#### 默认管理员账号
-
-- **账号**: admin_user
-- **密码**: admin_user
-
-> ⚠️ 首次登录后请立即修改默认密码！
-
-#### 面板管理(tms 命令)
-
-装好面板后,服务器上会生成一个 `tms` 管理命令(类似 x-ui),随时输入即可打开管理菜单:
+面板机上会生成一个 `tms` 命令(类似 x-ui),直接输入打开管理菜单:
 
 ```bash
 tms
 ```
 
-菜单里可以:更新 / 卸载 / **彻底清理(purge)** / 查看运行状态 / 查看访问信息(地址、账号) / **配置域名**。
-
-也可以直接带参数用:
+也可以带参数直接用:
 
 | 命令 | 作用 |
 |---|---|
@@ -87,7 +121,10 @@ tms
 | `tms domain` | 查看当前域名状态 |
 | `tms domain off` | 关闭域名,回到 IP:端口 |
 | `tms export` | 导出数据库备份 |
-| `tms purge` | 彻底清理(卸载并清空容器/镜像/卷/命令) |
+| `tms purge` | 彻底清理(卸载并清空容器 / 镜像 / 卷 / 命令) |
+
+---
+
 
 ## 域名配置
 
