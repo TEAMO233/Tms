@@ -1,7 +1,0 @@
-{"file":".trellis/spec/backend/quality-guidelines.md","reason":"后端编译、日志、依赖和跨层联动检查。"}
-{"file":".trellis/spec/backend/database-guidelines.md","reason":"核验新装 SQL、存量迁移和实体映射的一致性。"}
-{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"前端 lint/build、类型和页面验收。"}
-{"file":".trellis/spec/frontend/type-safety.md","reason":"检查新增 API/表单字段没有扩大重复 any 或类型漂移。"}
-{"file":".trellis/tasks/08-23-forward-subscription-link/prd.md","reason":"逐条核对验收标准和边界。"}
-{"file":".trellis/tasks/08-23-forward-subscription-link/design.md","reason":"核对 API、权限、链接改写和回滚设计是否落地。"}
-{"file":".trellis/tasks/08-23-forward-subscription-link/implement.md","reason":"执行实施清单和验证命令。"}

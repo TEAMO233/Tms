@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/backend/index.md", "reason": "后端总规范:分层、R 信封、fastjson2、schema 双写约定"}
-{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Node 实体加列与四条 schema 迁移路径的既有约定"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "node.tsx 改动前的前端规范入口"}

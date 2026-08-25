@@ -1,5 +1,0 @@
-{"file": ".trellis/spec/frontend/index.md", "reason": "前端质量门槛和页面改动检查清单"}
-{"file": ".trellis/spec/frontend/state-management.md", "reason": "筛选、二维码展开和主题状态回归检查"}
-{"file": ".trellis/spec/frontend/type-safety.md", "reason": "strict TypeScript 类型与 any 使用检查"}
-{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "lint/build、响应式和可维护性检查"}
-{"file": ".trellis/spec/guides/index.md", "reason": "共享复用和跨层风险检查"}
