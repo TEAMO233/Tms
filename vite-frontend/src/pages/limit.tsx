@@ -13,6 +13,11 @@ import {
 import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import toast from "react-hot-toast";
+import {
+  ClockIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 
 import {
   createSpeedLimit,
@@ -226,10 +231,20 @@ export default function LimitPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-3">
-          <Spinner size="sm" />
-          <span className="text-default-600">正在加载...</span>
+      <div className="px-3 py-8 lg:px-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            限速管理
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            为不同隧道配置可复用的速度限制规则
+          </p>
+        </div>
+        <div className="flex h-64 items-center justify-center">
+          <div className="flex items-center gap-3">
+            <Spinner size="sm" />
+            <span className="text-default-600">正在加载...</span>
+          </div>
         </div>
       </div>
     );
@@ -239,7 +254,14 @@ export default function LimitPage() {
     <div className="px-3 lg:px-6 py-8">
       {/* 页面头部 */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex-1" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            限速管理
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            为不同隧道配置可复用的速度限制规则
+          </p>
+        </div>
 
         <Button color="primary" size="sm" variant="flat" onPress={handleAdd}>
           新增
@@ -301,15 +323,7 @@ export default function LimitPage() {
                     className="flex-1"
                     color="primary"
                     size="sm"
-                    startContent={
-                      <svg
-                        className="w-4 h-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                      </svg>
-                    }
+                    startContent={<PencilSquareIcon className="w-4 h-4" />}
                     variant="flat"
                     onPress={() => handleEdit(rule)}
                   >
@@ -319,24 +333,7 @@ export default function LimitPage() {
                     className="flex-1"
                     color="danger"
                     size="sm"
-                    startContent={
-                      <svg
-                        className="w-4 h-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          clipRule="evenodd"
-                          d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
-                          fillRule="evenodd"
-                        />
-                        <path
-                          clipRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v4a1 1 0 11-2 0V7zM12 7a1 1 0 012 0v4a1 1 0 11-2 0V7z"
-                          fillRule="evenodd"
-                        />
-                      </svg>
-                    }
+                    startContent={<TrashIcon className="w-4 h-4" />}
                     variant="flat"
                     onPress={() => handleDelete(rule)}
                   >
@@ -353,19 +350,7 @@ export default function LimitPage() {
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-default-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M12 6v6l4 2m6-6a9 9 0 11-18 0 9 9 0 0118 0z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                  />
-                </svg>
+                <ClockIcon className="w-8 h-8 text-default-400" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-foreground">
@@ -382,7 +367,7 @@ export default function LimitPage() {
 
       {/* 新增/编辑模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={modalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -535,7 +520,7 @@ export default function LimitPage() {
 
       {/* 删除确认模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={deleteModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -552,7 +537,7 @@ export default function LimitPage() {
                 <p className="text-default-600">
                   确定要删除限速规则{" "}
                   <span className="font-semibold text-foreground">
-                    "{ruleToDelete?.name}"
+                    “{ruleToDelete?.name}”
                   </span>{" "}
                   吗？
                 </p>

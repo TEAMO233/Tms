@@ -18,9 +18,6 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
-    minify: false,
-    rollupOptions: {
-      treeshake: false,
-    },
+    minify: "esbuild",
   },
 });

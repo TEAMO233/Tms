@@ -26,14 +26,10 @@ import {
   getSpeedLimitList,
 } from "@/api";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import { isProtocolDesignPreview as getIsProtocolDesignPreview } from "@/config/design-preview";
 import { SNI_PRESETS, DEFAULT_SNI, cleanSni } from "@/config/sni";
 import { SubQr } from "@/components/sub-qr";
-import {
-  DeleteIcon,
-  PlusIcon,
-  SearchIcon,
-  UserIcon,
-} from "@/components/icons";
+import { DeleteIcon, PlusIcon, SearchIcon, UserIcon } from "@/components/icons";
 import DeviceDesktop from "@spectrum-icons/workflow/DeviceDesktop";
 import MoreVertical from "@spectrum-icons/workflow/MoreVertical";
 import Refresh from "@spectrum-icons/workflow/Refresh";
@@ -47,10 +43,7 @@ import ChevronRight from "@spectrum-icons/workflow/ChevronRight";
 import ColumnSettings from "@spectrum-icons/workflow/ColumnSettings";
 import Copy from "@spectrum-icons/workflow/Copy";
 
-const isProtocolDesignPreview =
-  import.meta.env.DEV &&
-  new URLSearchParams(window.location.search).get("preview") ===
-    "protocol-board";
+const isProtocolDesignPreview = getIsProtocolDesignPreview();
 
 const protocolDesignPreviewNodes = [
   {
@@ -200,17 +193,17 @@ const protocolDesignPreviewUsers = Array.from({ length: 8 }, (_, index) => ({
 }));
 
 const protocolTableColumns = [
-  { key: "machine", label: "机器", width: "225px" },
-  { key: "nodeStatus", label: "节点状态", width: "120px" },
-  { key: "ip", label: "IP 地址", width: "180px" },
+  { key: "machine", label: "机器", width: "175px" },
+  { key: "nodeStatus", label: "节点状态", width: "85px" },
+  { key: "ip", label: "IP 地址", width: "125px" },
   {
     key: "protocolStatus",
     label: "协议运行状态（运行 / 总数）",
-    width: "232px",
+    width: "150px",
   },
-  { key: "protocols", label: "协议列表", width: "minmax(460px, 1fr)" },
-  { key: "users", label: "分配用户", width: "175px" },
-  { key: "actions", label: "操作", width: "328px" },
+  { key: "protocols", label: "协议列表", width: "minmax(320px, 1fr)" },
+  { key: "users", label: "分配用户", width: "105px" },
+  { key: "actions", label: "操作", width: "225px" },
 ];
 
 /**
@@ -272,7 +265,9 @@ export default function InboundPage() {
   const [page, setPage] = useState(1);
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
-    Object.fromEntries(protocolTableColumns.map((column) => [column.key, true])),
+    Object.fromEntries(
+      protocolTableColumns.map((column) => [column.key, true]),
+    ),
   );
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>(
     {},
@@ -531,8 +526,13 @@ export default function InboundPage() {
   const getNodeInbounds = (nodeId: number) =>
     inbounds.filter((ib) => ib.nodeId === nodeId && !ib.landingId);
 
-  const getNodeProtocolTotal = (node: any, nodeInbounds = getNodeInbounds(node.id)) =>
-    typeof node.protocolTotal === "number" ? node.protocolTotal : nodeInbounds.length;
+  const getNodeProtocolTotal = (
+    node: any,
+    nodeInbounds = getNodeInbounds(node.id),
+  ) =>
+    typeof node.protocolTotal === "number"
+      ? node.protocolTotal
+      : nodeInbounds.length;
 
   const getNodeHealthyProtocolCount = (
     node: any,
@@ -546,10 +546,7 @@ export default function InboundPage() {
   const getNodeHealth = (node: any): "healthy" | "warning" | "offline" => {
     if (node.status !== 1) return "offline";
     if (node.singboxRunning === false) return "warning";
-    if (
-      getNodeHealthyProtocolCount(node) <
-      getNodeProtocolTotal(node)
-    )
+    if (getNodeHealthyProtocolCount(node) < getNodeProtocolTotal(node))
       return "warning";
 
     return "healthy";
@@ -582,7 +579,9 @@ export default function InboundPage() {
     (sum, node) => sum + getNodeInbounds(node.id).length,
     0,
   );
-  const onlineNodeCount = machineNodes.filter((node) => node.status === 1).length;
+  const onlineNodeCount = machineNodes.filter(
+    (node) => node.status === 1,
+  ).length;
   const runtimeIssueCount = machineNodes.filter(
     (node) => getNodeHealth(node) !== "healthy",
   ).length;
@@ -633,7 +632,9 @@ export default function InboundPage() {
     (page - 1) * pageSize,
     page * pageSize,
   );
-  const summaryOnlineMachineCount = isProtocolDesignPreview ? 2 : onlineNodeCount;
+  const summaryOnlineMachineCount = isProtocolDesignPreview
+    ? 2
+    : onlineNodeCount;
   const summaryProtocolTotal = isProtocolDesignPreview ? 18 : protocolTotal;
   const summaryUnavailableProtocolCount = isProtocolDesignPreview
     ? 2
@@ -661,9 +662,7 @@ export default function InboundPage() {
       <section className="protocol-operations-table">
         <div className="protocol-operations-header">
           <div>
-            <h1 className="protocol-operations-title">
-              线路总览 <span>/ Operations Table</span>
-            </h1>
+            <h1 className="protocol-operations-title">协议管理</h1>
             <p className="protocol-operations-subtitle">
               按机器维度管理协议运行状态、分配用户与执行常用操作。
             </p>
@@ -678,7 +677,7 @@ export default function InboundPage() {
                 setOneClickOpen(true);
               }}
             >
-              一键搭建整机协议
+              一键搭建
             </Button>
             <Button
               className="protocol-operations-secondary"
@@ -695,12 +694,15 @@ export default function InboundPage() {
                 setCreateOpen(true);
               }}
             >
-              单独加一个协议
+              新增协议
             </Button>
           </div>
         </div>
 
-        <section className="protocol-operations-summary" aria-label="线路运行概览">
+        <section
+          className="protocol-operations-summary"
+          aria-label="线路运行概览"
+        >
           <div className="protocol-operations-summary-item">
             <span className="protocol-operations-summary-icon protocol-summary-blue">
               <DeviceDesktop size="S" />
@@ -757,7 +759,11 @@ export default function InboundPage() {
               value={healthFilter}
               onChange={(event) => {
                 setHealthFilter(
-                  event.target.value as "all" | "healthy" | "warning" | "offline",
+                  event.target.value as
+                    | "all"
+                    | "healthy"
+                    | "warning"
+                    | "offline",
                 );
                 setPage(1);
               }}
@@ -773,7 +779,11 @@ export default function InboundPage() {
               value={protocolFilter}
               onChange={(event) => {
                 setProtocolFilter(
-                  event.target.value as "all" | "healthy" | "warning" | "offline",
+                  event.target.value as
+                    | "all"
+                    | "healthy"
+                    | "warning"
+                    | "offline",
                 );
                 setPage(1);
               }}
@@ -796,7 +806,11 @@ export default function InboundPage() {
               <option value="local">节点类型　本机</option>
               <option value="cloud">节点类型　云服务器</option>
             </select>
-            <button className="protocol-operations-reset" type="button" onClick={resetTableFilters}>
+            <button
+              className="protocol-operations-reset"
+              type="button"
+              onClick={resetTableFilters}
+            >
               重置
             </button>
           </div>
@@ -826,7 +840,9 @@ export default function InboundPage() {
                     <label key={column.key}>
                       <input
                         checked={Boolean(visibleColumns[column.key])}
-                        disabled={column.key === "machine" || column.key === "actions"}
+                        disabled={
+                          column.key === "machine" || column.key === "actions"
+                        }
                         type="checkbox"
                         onChange={() =>
                           setVisibleColumns((current) => ({
@@ -845,7 +861,10 @@ export default function InboundPage() {
         </div>
 
         <div className="protocol-operations-table-scroll">
-          <div className="protocol-operations-table-grid protocol-operations-table-head" role="table">
+          <div
+            className="protocol-operations-table-grid protocol-operations-table-head"
+            role="table"
+          >
             <div
               className="protocol-operations-table-grid protocol-operations-table-header-row"
               role="row"
@@ -865,13 +884,18 @@ export default function InboundPage() {
                 ? String(n.ip).split(",")[0].trim()
                 : n.serverIp || "";
               const totalProtocols = getNodeProtocolTotal(n, nodeInbounds);
-              const healthyProtocols = getNodeHealthyProtocolCount(n, nodeInbounds);
+              const healthyProtocols = getNodeHealthyProtocolCount(
+                n,
+                nodeInbounds,
+              );
               const expanded = Boolean(expandedNodes[n.id]);
               const nodeType = n.nodeType || "cloud";
               const assignedUsers =
                 typeof n.assignedUsers === "number" ? n.assignedUsers : null;
               const assignedUserNames = Array.isArray(n.assignedUserNames)
-                ? n.assignedUserNames.filter(Boolean).map((name: any) => String(name))
+                ? n.assignedUserNames
+                    .filter(Boolean)
+                    .map((name: any) => String(name))
                 : [];
               const assignedUserLabel = assignedUserNames.length
                 ? `${assignedUserNames.slice(0, 2).join("、")}${assignedUserNames.length > 2 ? ` 等 ${assignedUserNames.length} 人` : ""}`
@@ -887,7 +911,10 @@ export default function InboundPage() {
                   style={{ gridTemplateColumns: tableGridTemplate }}
                 >
                   {visibleColumns.machine && (
-                    <div className="protocol-table-cell protocol-table-machine-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-machine-cell"
+                      role="cell"
+                    >
                       <DeviceDesktop size="S" />
                       <div>
                         <div className="protocol-table-machine-name">
@@ -895,7 +922,11 @@ export default function InboundPage() {
                           <span
                             className={`protocol-table-node-tag ${health === "offline" ? "offline" : nodeType}`}
                           >
-                            {nodeType === "local" ? "本机" : health === "offline" ? "离线" : "在线"}
+                            {nodeType === "local"
+                              ? "本机"
+                              : health === "offline"
+                                ? "离线"
+                                : "在线"}
                           </span>
                         </div>
                         <small>ID: {n.machineId || n.id}</small>
@@ -904,22 +935,32 @@ export default function InboundPage() {
                   )}
 
                   {visibleColumns.nodeStatus && (
-                    <div className="protocol-table-cell protocol-table-status-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-status-cell"
+                      role="cell"
+                    >
                       <div className={`protocol-table-status-label ${health}`}>
                         <span className={`protocol-health-dot ${health}`} />
-                        <strong>{health === "offline" ? "离线" : "在线"}</strong>
+                        <strong>
+                          {health === "offline" ? "离线" : "在线"}
+                        </strong>
                       </div>
                       <small>
                         {health === "offline"
                           ? n.lastOnline || "最后在线：未知"
                           : "运行中"}
                       </small>
-                      {health !== "offline" && <small>{n.uptime || "Uptime —"}</small>}
+                      {health !== "offline" && (
+                        <small>{n.uptime || "Uptime —"}</small>
+                      )}
                     </div>
                   )}
 
                   {visibleColumns.ip && (
-                    <div className="protocol-table-cell protocol-table-ip-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-ip-cell"
+                      role="cell"
+                    >
                       <span>{firstIp || "—"}</span>
                       <button
                         aria-label={`复制 ${n.name} IP 地址`}
@@ -933,7 +974,10 @@ export default function InboundPage() {
                   )}
 
                   {visibleColumns.protocolStatus && (
-                    <div className="protocol-table-cell protocol-table-health-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-health-cell"
+                      role="cell"
+                    >
                       <div className={`protocol-table-health-count ${health}`}>
                         {health === "healthy" ? (
                           <CheckmarkCircle size="S" />
@@ -955,7 +999,10 @@ export default function InboundPage() {
                   )}
 
                   {visibleColumns.protocols && (
-                    <div className="protocol-table-cell protocol-table-protocols-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-protocols-cell"
+                      role="cell"
+                    >
                       <div className="protocol-table-protocol-list">
                         {nodeInbounds.map((ib) => {
                           const protocolHealth = getInboundHealth(n, ib);
@@ -996,10 +1043,17 @@ export default function InboundPage() {
                   )}
 
                   {visibleColumns.users && (
-                    <div className="protocol-table-cell protocol-table-users-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-users-cell"
+                      role="cell"
+                    >
                       <div
                         className="protocol-table-user-count"
-                        title={assignedUserNames.length ? assignedUserNames.join("、") : undefined}
+                        title={
+                          assignedUserNames.length
+                            ? assignedUserNames.join("、")
+                            : undefined
+                        }
                       >
                         <UserIcon size={15} />
                         <strong>{assignedUserLabel}</strong>
@@ -1014,18 +1068,24 @@ export default function InboundPage() {
                           }))
                         }
                       >
-                        {expanded ? "收起详情" : "查看详情"} <ChevronRight size="S" />
+                        {expanded ? "收起详情" : "查看详情"}{" "}
+                        <ChevronRight size="S" />
                       </button>
                       {expanded && (
                         <div className="protocol-table-inline-detail">
-                          {nodeInbounds.map((ib) => protoLabel(ib.protocol)).join("、")}
+                          {nodeInbounds
+                            .map((ib) => protoLabel(ib.protocol))
+                            .join("、")}
                         </div>
                       )}
                     </div>
                   )}
 
                   {visibleColumns.actions && (
-                    <div className="protocol-table-cell protocol-table-actions-cell" role="cell">
+                    <div
+                      className="protocol-table-cell protocol-table-actions-cell"
+                      role="cell"
+                    >
                       <Button
                         className="protocol-table-action protocol-table-action-assign"
                         size="sm"
@@ -1092,7 +1152,12 @@ export default function InboundPage() {
         <div className="protocol-operations-pagination">
           <span>共 {filteredMachineNodes.length} 条</span>
           <div>
-            <select aria-label="每页条数" value={pageSize} disabled onChange={() => undefined}>
+            <select
+              aria-label="每页条数"
+              value={pageSize}
+              disabled
+              onChange={() => undefined}
+            >
               <option value={10}>10 条/页</option>
             </select>
             <button
@@ -1103,12 +1168,16 @@ export default function InboundPage() {
             >
               <ChevronLeft size="S" />
             </button>
-            <span className="protocol-operations-page-number">{Math.min(page, totalPages)}</span>
+            <span className="protocol-operations-page-number">
+              {Math.min(page, totalPages)}
+            </span>
             <button
               aria-label="下一页"
               disabled={page >= totalPages}
               type="button"
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
             >
               <ChevronRight size="S" />
             </button>
@@ -1310,7 +1379,11 @@ export default function InboundPage() {
                       }))
                     }
                   >
-                    {expanded ? <ChevronUp size="S" /> : <ChevronDown size="S" />}
+                    {expanded ? (
+                      <ChevronUp size="S" />
+                    ) : (
+                      <ChevronDown size="S" />
+                    )}
                   </button>
                 </div>
                 <div className="protocol-machine-facts">
@@ -1434,7 +1507,9 @@ export default function InboundPage() {
                             <span className={`protocol-health-dot ${tone}`} />
                             <span>{state}</span>
                             <span className="protocol-tile-port">
-                              {ib.listenPort ? `端口 ${ib.listenPort}` : "端口待同步"}
+                              {ib.listenPort
+                                ? `端口 ${ib.listenPort}`
+                                : "端口待同步"}
                             </span>
                           </div>
                         </div>
@@ -1455,7 +1530,10 @@ export default function InboundPage() {
                   <div className="protocol-detail-list">
                     <div className="protocol-detail-heading">协议详情</div>
                     {nodeInbounds.map((ib) => (
-                      <div className="protocol-detail-row" key={`detail-${ib.id}`}>
+                      <div
+                        className="protocol-detail-row"
+                        key={`detail-${ib.id}`}
+                      >
                         <span>{protoLabel(ib.protocol)}</span>
                         <span>{ib.security || "默认安全配置"}</span>
                         <span>{ib.sni || "无需域名"}</span>
@@ -1479,7 +1557,11 @@ export default function InboundPage() {
                     }
                   >
                     {expanded ? "收起详情" : "展开详情"}{" "}
-                    {expanded ? <ChevronUp size="S" /> : <ChevronDown size="S" />}
+                    {expanded ? (
+                      <ChevronUp size="S" />
+                    ) : (
+                      <ChevronDown size="S" />
+                    )}
                   </button>
                 </div>
               </div>

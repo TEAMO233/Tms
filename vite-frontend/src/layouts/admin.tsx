@@ -1,49 +1,103 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import type { NavigationItem } from "@/config/navigation";
+
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@heroui/button";
 import {
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
   DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
 } from "@heroui/dropdown";
+import { Input } from "@heroui/input";
 import {
   Modal,
-  ModalContent,
-  ModalHeader,
   ModalBody,
+  ModalContent,
   ModalFooter,
+  ModalHeader,
   useDisclosure,
 } from "@heroui/modal";
-import { Input } from "@heroui/input";
+import {
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  CheckCircleIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
+  ChevronDownIcon,
+  CommandLineIcon,
+  KeyIcon,
+  UserCircleIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { BoltIcon } from "@heroicons/react/24/solid";
 import { toast } from "react-hot-toast";
 
+import { getVersionInfo, updatePassword } from "@/api";
+import {
+  isProtocolDesignPreview,
+  withDesignPreview,
+} from "@/config/design-preview";
+import {
+  canShowNavigationItem,
+  navigationGroups,
+  secondaryNavigation,
+} from "@/config/navigation";
+import { SITE_CONFIG_UPDATED, siteConfig } from "@/config/site";
+import { isAdmin as getIsAdmin } from "@/utils/auth";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import { Logo, UserIcon } from "@/components/icons";
-import { updatePassword, getVersionInfo } from "@/api";
 import { safeLogout } from "@/utils/logout";
-import { siteConfig, SITE_CONFIG_UPDATED } from "@/config/site";
-import SkinPicker from "@/components/skin-picker";
 
-const isProtocolDesignPreview =
-  import.meta.env.DEV &&
-  new URLSearchParams(window.location.search).get("preview") ===
-    "protocol-board";
-
-interface MenuItem {
-  path: string;
-  label: string;
-  icon: React.ReactNode;
-  adminOnly?: boolean;
-  /** 只给子账号(车友)看:管理员不显示,避免和管理页重复 */
-  userOnly?: boolean;
-}
+const isDesignPreview = isProtocolDesignPreview();
 
 interface PasswordForm {
   newUsername: string;
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+interface VersionInfo {
+  panelVersion?: string;
+  commit?: string;
+  latest?: string;
+  updateAvailable?: boolean;
+}
+
+const SIDEBAR_STORAGE_KEY = "tms_sidebar_collapsed";
+
+function NavigationLink({
+  item,
+  active,
+  collapsed,
+  onNavigate,
+}: {
+  item: NavigationItem;
+  active: boolean;
+  collapsed: boolean;
+  onNavigate: (path: string) => void;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <button
+      aria-current={active ? "page" : undefined}
+      className={`group flex min-h-10 w-full items-center rounded-lg px-3 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+        active
+          ? "bg-blue-50 text-blue-600"
+          : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+      } ${collapsed ? "justify-center" : "gap-3"}`}
+      title={collapsed ? item.label : undefined}
+      type="button"
+      onClick={() => onNavigate(item.path)}
+    >
+      <Icon
+        aria-hidden
+        className="h-5 w-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+      />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </button>
+  );
 }
 
 export default function AdminLayout({
@@ -53,40 +107,18 @@ export default function AdminLayout({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isDashboard = location.pathname === "/dashboard";
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  // 更新弹窗单独一个开关,别和改密码那个共用
+  const passwordModal = useDisclosure();
   const updateModal = useDisclosure();
 
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
-  const [desktopMenuCollapsed, setDesktopMenuCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true",
+  );
   const [username, setUsername] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  // 面板名:先用本地值渲染,后台校验到新名字时(SITE_CONFIG_UPDATED)实时刷新,
-  // 免得管理员改了名字、车友那边一直显示旧名
+  const [admin, setAdmin] = useState(false);
   const [appName, setAppName] = useState(siteConfig.name);
-
-  useEffect(() => {
-    const onUpdated = () => setAppName(siteConfig.name);
-
-    window.addEventListener(SITE_CONFIG_UPDATED, onUpdated);
-
-    return () => window.removeEventListener(SITE_CONFIG_UPDATED, onUpdated);
-  }, []);
-  // 版本 / 更新提示。只给管理员看 —— 车友看到"有新版本"也没法更新,徒增困惑。
-  // 后端拿构建时注入的 commit 跟 GitHub main 比,连不上 GitHub 时不提示(国内机常见)。
-  const [versionInfo, setVersionInfo] = useState<any>(null);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    getVersionInfo()
-      .then((res) => {
-        if (res.code === 0) setVersionInfo(res.data);
-      })
-      .catch(() => {});
-  }, [isAdmin]);
-
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     newUsername: "",
@@ -95,317 +127,85 @@ export default function AdminLayout({
     confirmPassword: "",
   });
 
-  // 菜单项配置
-  const menuItems: MenuItem[] = [
-    {
-      path: "/dashboard",
-      label: "仪表板",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-        </svg>
-      ),
-      // 仪表板是账号级口径(总流量/已用流量),车友那边一切按线路算,看了只会困惑 → 仅管理员
-      adminOnly: true,
-    },
-    {
-      // 车友的主页面;管理员也留着——「我自己用」开的那条订阅在这里随时能找回来
-      path: "/my-sub",
-      label: "我的订阅",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-    },
-    {
-      path: "/forward",
-      label: "转发管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      // 转发是协议/中转的内部管道(每协议一条),车友不该看到、更不该删 → 仅管理员
-      adminOnly: true,
-    },
-    {
-      path: "/inbound",
-      label: "协议管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M10 1a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.616a1 1 0 01.894-1.79l1.599.8L9 3.323V2a1 1 0 011-1z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/relay",
-      label: "中转",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M8 4a1 1 0 00-1 1v1H4a1 1 0 000 2h9.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414l-3-3A1 1 0 0013 4.586V5a1 1 0 00-1-1H8zm4 12a1 1 0 001-1v-1h3a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3A1 1 0 007 15.414V15a1 1 0 001 1h4z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/transparent-relay",
-      label: "透明中转",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M4 3a1 1 0 011-1h4a1 1 0 010 2H6v3a1 1 0 11-2 0V3zm7 0a1 1 0 011-1h3a1 1 0 011 1v4a1 1 0 11-2 0V4h-2a1 1 0 01-1-1zM4 13a1 1 0 112 0v3h3a1 1 0 110 2H5a1 1 0 01-1-1v-4zm11-1a1 1 0 011 1v4a1 1 0 01-1 1h-3a1 1 0 110-2h2v-3a1 1 0 011-1zM8.293 8.293a1 1 0 011.414 0L11 9.586V7a1 1 0 112 0v5a1 1 0 01-1 1H7a1 1 0 110-2h2.586L8.293 9.707a1 1 0 010-1.414z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/tunnel",
-      label: "隧道管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/node",
-      label: "转发机",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/limit",
-      label: "限速管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/user",
-      label: "用户管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/config",
-      label: "网站配置",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-    {
-      path: "/guide",
-      label: "使用说明",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
-      adminOnly: true,
-    },
-  ];
-
-  // 侧栏显示顺序(改这一行就能调顺序,不用挪上面那些带图标的大块)
-  const MENU_ORDER = [
-    "/dashboard", // 0 仪表板
-    "/my-sub", // 车友专属,管理员看不到
-    "/node", // 1 转发机
-    "/inbound", // 2 协议管理
-    "/relay", // 3 中转
-    "/transparent-relay", // 4 透明中转/线路机
-    "/user", // 5 用户
-    "/limit", // 6 限速
-    "/tunnel", // 7 隧道
-    "/forward", // 8 转发
-    "/config",
-    "/guide",
-  ];
-
-  menuItems.sort((a, b) => {
-    const ia = MENU_ORDER.indexOf(a.path);
-    const ib = MENU_ORDER.indexOf(b.path);
-
-    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-  });
-
-  // 检查移动端
-  const checkMobile = () => {
-    setIsMobile(window.innerWidth <= 768);
-    if (window.innerWidth > 768) {
-      setMobileMenuVisible(false);
-    }
-  };
-
   useEffect(() => {
-    // 获取用户信息
-    const name = isProtocolDesignPreview
-      ? "teamo"
-      : localStorage.getItem("name") || "Admin";
-
-    // 兼容处理：如果没有admin字段，根据role_id判断（0为管理员）
-    let adminFlag =
-      isProtocolDesignPreview || localStorage.getItem("admin") === "true";
-
-    if (!isProtocolDesignPreview && localStorage.getItem("admin") === null) {
-      const roleId = parseInt(localStorage.getItem("role_id") || "1", 10);
-
-      adminFlag = roleId === 0;
-      // 补充设置admin字段，避免下次再次判断
-      localStorage.setItem("admin", adminFlag.toString());
-    }
-
-    setUsername(name);
-    setIsAdmin(adminFlag);
-
-    // 响应式检查
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => {
-      window.removeEventListener("resize", checkMobile);
+    const media = window.matchMedia("(max-width: 1023px)");
+    const syncViewport = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setMobileMenuOpen(false);
     };
+
+    syncViewport();
+    media.addEventListener("change", syncViewport);
+
+    return () => media.removeEventListener("change", syncViewport);
   }, []);
 
-  // 退出登录
+  useEffect(() => {
+    const currentAdmin = isDesignPreview || getIsAdmin();
+
+    setAdmin(currentAdmin);
+    setUsername(
+      isDesignPreview ? "teamo" : localStorage.getItem("name") || "Admin",
+    );
+  }, []);
+
+  useEffect(() => {
+    const updateName = () => setAppName(siteConfig.name);
+
+    window.addEventListener(SITE_CONFIG_UPDATED, updateName);
+
+    return () => window.removeEventListener(SITE_CONFIG_UPDATED, updateName);
+  }, []);
+
+  useEffect(() => {
+    if (!admin) return;
+
+    getVersionInfo()
+      .then((response) => {
+        if (response.code === 0) setVersionInfo(response.data as VersionInfo);
+      })
+      .catch(() => undefined);
+  }, [admin]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const visibleGroups = useMemo(
+    () =>
+      navigationGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) =>
+            canShowNavigationItem(item, admin),
+          ),
+        }))
+        .filter((group) => group.items.length > 0),
+    [admin],
+  );
+
+  const visibleSecondary = useMemo(
+    () =>
+      secondaryNavigation.filter((item) => canShowNavigationItem(item, admin)),
+    [admin],
+  );
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+
+    setCollapsed(next);
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+  };
+
   const handleLogout = () => {
     safeLogout();
     navigate("/");
   };
 
-  // 切换移动端菜单
-  const toggleMobileMenu = () => {
-    setMobileMenuVisible(!mobileMenuVisible);
+  const handleNavigate = (path: string) => {
+    navigate(withDesignPreview(path));
   };
 
-  // 隐藏移动端菜单
-  const hideMobileMenu = () => {
-    setMobileMenuVisible(false);
-  };
-
-  // 菜单点击处理
-  const handleMenuClick = (path: string) => {
-    navigate(path);
-    if (isMobile) {
-      hideMobileMenu();
-    }
-  };
-
-  // 密码表单验证
-  const validatePasswordForm = (): boolean => {
-    if (!passwordForm.newUsername.trim()) {
-      toast.error("请输入新用户名");
-
-      return false;
-    }
-    if (passwordForm.newUsername.length < 3) {
-      toast.error("用户名长度至少3位");
-
-      return false;
-    }
-    if (!passwordForm.currentPassword) {
-      toast.error("请输入当前密码");
-
-      return false;
-    }
-    if (!passwordForm.newPassword) {
-      toast.error("请输入新密码");
-
-      return false;
-    }
-    if (passwordForm.newPassword.length < 6) {
-      toast.error("新密码长度不能少于6位");
-
-      return false;
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error("两次输入密码不一致");
-
-      return false;
-    }
-
-    return true;
-  };
-
-  // 提交密码修改
-  const handlePasswordSubmit = async () => {
-    if (!validatePasswordForm()) return;
-
-    setPasswordLoading(true);
-    try {
-      const response = await updatePassword(passwordForm);
-
-      if (response.code === 0) {
-        toast.success("密码修改成功，请重新登录");
-        onOpenChange();
-        handleLogout();
-      } else {
-        toast.error(response.msg || "密码修改失败");
-      }
-    } catch (error) {
-      toast.error("修改密码时发生错误");
-      console.error("修改密码错误:", error);
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  // 重置密码表单
   const resetPasswordForm = () => {
     setPasswordForm({
       newUsername: "",
@@ -415,238 +215,240 @@ export default function AdminLayout({
     });
   };
 
-  // 过滤菜单项（根据权限）:adminOnly 只给管理员,userOnly 只给车友
-  const filteredMenuItems = menuItems.filter(
-    (item) => (!item.adminOnly || isAdmin) && (!item.userOnly || !isAdmin),
-  );
+  const validatePasswordForm = () => {
+    if (passwordForm.newUsername.trim().length < 3) {
+      toast.error("新用户名至少需要 3 位");
+      return false;
+    }
+    if (!passwordForm.currentPassword) {
+      toast.error("请输入当前密码");
+      return false;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast.error("新密码至少需要 6 位");
+      return false;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("两次输入的新密码不一致");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!validatePasswordForm()) return;
+
+    setPasswordLoading(true);
+    try {
+      const response = await updatePassword(passwordForm);
+
+      if (response.code === 0) {
+        toast.success("密码修改成功，请重新登录");
+        passwordModal.onClose();
+        handleLogout();
+      } else {
+        toast.error(response.msg || "密码修改失败");
+      }
+    } catch {
+      toast.error("修改密码时发生错误");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const sidebarWidth = collapsed && !isMobile ? "w-[72px]" : "w-56";
+  const contentOffset = collapsed ? "lg:pl-[72px]" : "lg:pl-56";
 
   return (
-    <div
-      className={`admin-shell relative flex ${isMobile ? "min-h-screen" : "h-screen overflow-hidden"} ${isDashboard ? "bg-[#0a101b] text-foreground" : "bg-default-50/70 text-foreground"}`}
-    >
-      {/* 移动端遮罩层 */}
-      {isMobile && mobileMenuVisible && (
-        <div
-          className="fixed inset-0 backdrop-blur-sm bg-white/50 dark:bg-black/30 z-40"
-          onClick={hideMobileMenu}
+    <div className="admin-shell min-h-screen bg-zinc-50 text-zinc-900">
+      {isMobile && mobileMenuOpen && (
+        <button
+          aria-label="关闭导航菜单"
+          className="fixed inset-0 z-40 cursor-default bg-zinc-950/30"
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
-      {/* 左侧菜单栏 */}
       <aside
-        className={`
-        ${isMobile ? "fixed" : "relative shrink-0"}
-        ${isMobile && !mobileMenuVisible ? "-translate-x-full" : "translate-x-0"}
-        ${isMobile ? "w-72 h-screen rounded-none border-r border-white/10 bg-[#091321]" : desktopMenuCollapsed ? "w-[72px] h-full" : "w-[clamp(206px,11.65vw,238px)] h-full"}
-        ${isMobile ? "" : isDashboard ? "border-r border-[#1e3048]/80 bg-[#091321]" : "border-r border-white/10 bg-[#111722]"}
-        backdrop-blur-xl
-        z-50
-        transition-[width,transform,background-color] duration-300 ease-in-out
-        flex flex-col
-        ${isMobile ? "top-0 left-0" : ""}
-      `}
+        aria-label="主导航"
+        className={`fixed inset-y-0 left-0 z-50 flex ${sidebarWidth} flex-col border-r border-zinc-200 bg-white transition-[width,transform] duration-150 ${
+          isMobile && !mobileMenuOpen ? "-translate-x-full" : "translate-x-0"
+        }`}
       >
-        {/* Logo 区域 */}
         <div
-          className={`flex h-[116px] items-center px-5 ${desktopMenuCollapsed && !isMobile ? "justify-center px-2" : ""}`}
+          className={`flex h-20 shrink-0 items-center border-b border-zinc-100 px-4 ${
+            collapsed && !isMobile ? "justify-center" : "gap-3"
+          }`}
         >
-          <div className="flex min-w-0 items-center gap-3.5">
-            <span
-              className="grid h-13 w-13 shrink-0 place-items-center text-primary drop-shadow-[0_0_18px_rgba(0,126,255,0.95)]"
+          <span className="grid h-9 w-9 shrink-0 place-items-center text-blue-600">
+            <BoltIcon aria-hidden className="h-8 w-8" />
+          </span>
+          {(!collapsed || isMobile) && (
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold tracking-tight text-zinc-900">
+                {isDesignPreview ? "TunnelBox" : appName}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                v{versionInfo?.panelVersion || siteConfig.version}
+                {versionInfo?.commit && versionInfo.commit !== "dev"
+                  ? `-${versionInfo.commit}`
+                  : ""}
+              </p>
+            </div>
+          )}
+          {isMobile && (
+            <button
+              aria-label="关闭导航菜单"
+              className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
             >
-              <Logo className="scale-[1.25]" size={52} />
-            </span>
-            {(!desktopMenuCollapsed || isMobile) && (
-              <div className="min-w-0">
-                <h1
-                  className="truncate text-[17px] font-semibold tracking-[-0.02em] text-foreground"
-                >
-                  {isProtocolDesignPreview ? "TunnelBox" : appName}
-                </h1>
-                <div className="flex items-center gap-1.5">
-                  <p
-                    className="text-[11px] text-default-500"
-                  >
-                    v{versionInfo?.panelVersion || siteConfig.version}
-                    {isProtocolDesignPreview && "-a678ae1"}
-                    {versionInfo?.commit && versionInfo.commit !== "dev" && (
-                      <span className="text-default-400">
-                        -{versionInfo.commit}
-                      </span>
-                    )}
-                  </p>
-                  {versionInfo?.updateAvailable && (
-                    <button
-                      className="flex items-center gap-1 text-[10px] text-warning hover:opacity-70 transition-opacity"
-                      title="点击查看怎么更新"
-                      type="button"
-                      onClick={updateModal.onOpen}
-                    >
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />
-                      有更新
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
-        {/* 菜单导航 */}
-        <nav
-          className={`flex-1 overflow-y-auto py-4 ${desktopMenuCollapsed && !isMobile ? "px-2" : "pl-2.5 pr-4"}`}
-        >
-          <ul className="space-y-1.5">
-            {filteredMenuItems.map((item) => {
-              const isActive = location.pathname === item.path;
-
-              return (
-                <li key={item.path}>
-                  <button
-                    className={`
-                       flex min-h-[50px] w-full items-center gap-5 rounded-[26px] px-5 py-2.5 text-left
-                       transition-[background-color,color,box-shadow] duration-200
-                       ${desktopMenuCollapsed && !isMobile ? "justify-center px-2" : ""}
-                       ${
-                         isActive
-                           ? "bg-primary text-primary-foreground shadow-[0_10px_28px_hsl(var(--heroui-primary)/0.3)]"
-                           : "text-[#b9c4d4] hover:bg-white/[0.06] hover:text-foreground"
-                       }
-                     `}
-                    title={desktopMenuCollapsed && !isMobile ? item.label : undefined}
-                    onClick={() => handleMenuClick(item.path)}
-                  >
-                    <div className="shrink-0">{item.icon}</div>
-                    {(!desktopMenuCollapsed || isMobile) && (
-                      <span className="text-sm font-medium">{item.label}</span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-5">
+            {visibleGroups.map((group) => (
+              <div key={group.label}>
+                {!collapsed || isMobile ? (
+                  <p className="mb-2 px-3 text-xs font-medium text-zinc-400">
+                    {group.label}
+                  </p>
+                ) : null}
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <NavigationLink
+                      key={item.path}
+                      active={location.pathname === item.path}
+                      collapsed={collapsed && !isMobile}
+                      item={item}
+                      onNavigate={handleNavigate}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </nav>
 
-        {/* 底部版权信息 */}
-        <div className="mt-auto shrink-0 px-2.5 pb-9 pt-3">
-          <button
-            aria-label={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
-            className={`mx-auto grid h-9 w-9 place-items-center rounded-full bg-white/[0.06] text-default-400 transition-colors hover:bg-white/[0.11] hover:text-foreground ${!isDashboard ? "border border-white/[0.06]" : ""}`}
-            title={desktopMenuCollapsed ? "展开菜单" : "收起菜单"}
-            type="button"
-            onClick={() => setDesktopMenuCollapsed((collapsed) => !collapsed)}
-          >
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d={desktopMenuCollapsed ? "M10 7l5 5-5 5M5 7l5 5-5 5" : "M14 7l-5 5 5 5M19 7l-5 5 5 5"}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
+        <div className="shrink-0 border-t border-zinc-100 p-3">
+          <div className="space-y-1">
+            {visibleSecondary.map((item) => (
+              <NavigationLink
+                key={item.path}
+                active={location.pathname === item.path}
+                collapsed={collapsed && !isMobile}
+                item={item}
+                onNavigate={handleNavigate}
               />
-            </svg>
-          </button>
+            ))}
+          </div>
+
+          <div
+            className={`mt-3 border-t border-zinc-100 pt-3 ${
+              collapsed && !isMobile ? "grid justify-items-center" : ""
+            }`}
+          >
+            <button
+              className={`flex w-full items-center rounded-lg p-2 text-left transition-colors duration-150 hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                collapsed && !isMobile ? "justify-center" : "gap-3"
+              }`}
+              title={collapsed && !isMobile ? username : undefined}
+              type="button"
+              onClick={() => handleNavigate("/profile")}
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-500 text-sm font-semibold text-white">
+                {username.slice(0, 1).toUpperCase()}
+              </span>
+              {(!collapsed || isMobile) && (
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-zinc-900">
+                    {username}
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
+                    <span className="status-dot bg-emerald-500" />
+                    {admin ? "管理员" : "用户"}
+                  </span>
+                </span>
+              )}
+            </button>
+
+            {!isMobile && (
+              <button
+                aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+                className={`mt-2 flex min-h-10 w-full items-center rounded-lg px-3 text-sm font-medium text-zinc-500 transition-colors duration-150 hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                  collapsed ? "justify-center" : "gap-3"
+                }`}
+                title={collapsed ? "展开侧边栏" : undefined}
+                type="button"
+                onClick={toggleCollapsed}
+              >
+                {collapsed ? (
+                  <ChevronDoubleRightIcon className="h-5 w-5" />
+                ) : (
+                  <>
+                    <ChevronDoubleLeftIcon className="h-5 w-5" />
+                    <span>收起菜单</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </aside>
 
-      {/* 主内容区域 */}
       <div
-        className={`relative flex min-w-0 flex-1 flex-col ${isMobile ? "min-h-0" : "h-full overflow-hidden"}`}
+        className={`min-h-screen transition-[padding] duration-150 ${contentOffset}`}
       >
-        {/* 顶部导航栏 */}
-        <header
-          className={`flex shrink-0 items-center justify-between px-3 sm:px-4 lg:pl-10 lg:pr-[52px] ${isMobile ? "relative h-14 border-b border-white/10 bg-[#0f141f]" : isDashboard ? "absolute inset-x-0 top-0 z-20 h-20 bg-transparent" : "relative z-20 h-16 border-b border-white/10 bg-[#0f141f]/85 backdrop-blur-xl"}`}
-        >
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-200 bg-white px-4 md:px-6 lg:static lg:h-20 lg:border-0 lg:bg-transparent lg:px-3">
           <div className="flex items-center gap-3">
-            {/* 移动端菜单按钮 */}
-            {isMobile && (
-              <Button
-                isIconOnly
-                aria-label="打开菜单"
-                className="lg:hidden"
-                variant="light"
-                onPress={toggleMobileMenu}
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M4 6h16M4 12h16M4 18h16"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
-              </Button>
-            )}
+            <button
+              aria-label="打开导航菜单"
+              className="grid h-10 w-10 place-items-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 lg:hidden"
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <Bars3Icon className="h-5 w-5" />
+            </button>
           </div>
 
-          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-4">
-            {isDashboard && (
-              <div className="hidden items-center gap-2 px-1 text-xs text-default-400 sm:flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.75)]" />
-                系统运行正常
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="mr-2 hidden items-center gap-2 text-xs text-zinc-500 sm:flex">
+              <span className="status-dot bg-emerald-500" />
+              系统运行正常
+            </div>
+            {admin && versionInfo?.updateAvailable && (
+              <Button
+                className="rounded-lg text-sm font-medium text-amber-700 transition-colors"
+                size="sm"
+                variant="light"
+                onPress={updateModal.onOpen}
+              >
+                有新版本
+              </Button>
             )}
-            {/* 主题选择 */}
-            {!isDashboard && (
-              <div className="shrink-0">
-                <SkinPicker />
-              </div>
-            )}
-            {/* 用户菜单 */}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
-                  className="min-w-[142px] max-w-[220px] justify-between overflow-hidden rounded-full border border-white/[0.07] bg-white/[0.04] pl-1.5 pr-2.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.08]"
-                  variant="light"
+                  className="min-w-0 rounded-lg border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                  variant="flat"
                 >
-                  {isDashboard && (
-                    <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
-                      <UserIcon size={16} />
-                    </span>
-                  )}
-                  <span className="hidden min-w-0 max-w-[9rem] truncate sm:inline">
+                  <UserCircleIcon className="h-5 w-5 text-blue-500" />
+                  <span className="hidden max-w-28 truncate sm:inline">
                     {username}
                   </span>
-                  <svg
-                    className="w-4 h-4 ml-1"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      clipRule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      fillRule="evenodd"
-                    />
-                  </svg>
+                  <ChevronDownIcon className="h-4 w-4" />
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label="用户菜单">
                 <DropdownItem
                   key="change-password"
-                  startContent={
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        clipRule="evenodd"
-                        d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z"
-                        fillRule="evenodd"
-                      />
-                    </svg>
-                  }
-                  onPress={onOpen}
+                  startContent={<KeyIcon className="h-4 w-4" />}
+                  onPress={passwordModal.onOpen}
                 >
                   修改密码
                 </DropdownItem>
@@ -655,17 +457,7 @@ export default function AdminLayout({
                   className="text-danger"
                   color="danger"
                   startContent={
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        clipRule="evenodd"
-                        d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
-                        fillRule="evenodd"
-                      />
-                    </svg>
+                    <ArrowRightOnRectangleIcon className="h-4 w-4" />
                   }
                   onPress={handleLogout}
                 >
@@ -676,97 +468,89 @@ export default function AdminLayout({
           </div>
         </header>
 
-        {/* 主内容 */}
-        <main
-          className={`min-h-0 flex-1 ${isMobile ? "" : "overflow-y-auto"}`}
-        >
+        <main className="app-main min-h-[calc(100vh-4rem)] bg-zinc-50 lg:min-h-[calc(100vh-5rem)]">
           {children}
         </main>
       </div>
 
-      {/* 修改密码弹窗 */}
       <Modal
-        backdrop="blur"
-        isOpen={isOpen}
+        isOpen={passwordModal.isOpen}
         placement="center"
-        scrollBehavior="outside"
-        size="2xl"
-        onOpenChange={() => {
-          onOpenChange();
-          resetPasswordForm();
+        size="lg"
+        onOpenChange={(open) => {
+          if (!open) resetPasswordForm();
+          passwordModal.onOpenChange();
         }}
       >
         <ModalContent>
-          {(onClose: () => void) => (
+          {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
-                修改密码
-              </ModalHeader>
+              <ModalHeader>修改密码</ModalHeader>
               <ModalBody>
                 <div className="space-y-4">
                   <Input
                     label="新用户名"
-                    placeholder="请输入新用户名（至少3位）"
+                    placeholder="至少 3 位"
                     value={passwordForm.newUsername}
-                    variant="bordered"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        newUsername: e.target.value,
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({
+                        ...current,
+                        newUsername: event.target.value,
                       }))
                     }
                   />
                   <Input
                     label="当前密码"
-                    placeholder="请输入当前密码"
+                    placeholder="输入当前密码"
                     type="password"
                     value={passwordForm.currentPassword}
-                    variant="bordered"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        currentPassword: e.target.value,
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({
+                        ...current,
+                        currentPassword: event.target.value,
                       }))
                     }
                   />
                   <Input
                     label="新密码"
-                    placeholder="请输入新密码（至少6位）"
+                    placeholder="至少 6 位"
                     type="password"
                     value={passwordForm.newPassword}
-                    variant="bordered"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        newPassword: e.target.value,
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({
+                        ...current,
+                        newPassword: event.target.value,
                       }))
                     }
                   />
                   <Input
-                    label="确认密码"
-                    placeholder="请再次输入新密码"
+                    label="确认新密码"
+                    placeholder="再次输入新密码"
                     type="password"
                     value={passwordForm.confirmPassword}
-                    variant="bordered"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        confirmPassword: e.target.value,
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({
+                        ...current,
+                        confirmPassword: event.target.value,
                       }))
                     }
                   />
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button color="default" variant="light" onPress={onClose}>
+                <Button
+                  className="rounded-lg text-sm font-medium transition-colors"
+                  variant="light"
+                  onPress={onClose}
+                >
                   取消
                 </Button>
                 <Button
-                  color="primary"
+                  className="rounded-lg bg-blue-500 text-sm font-medium text-white transition-colors"
                   isLoading={passwordLoading}
                   onPress={handlePasswordSubmit}
                 >
-                  确定
+                  确认修改
                 </Button>
               </ModalFooter>
             </>
@@ -774,73 +558,65 @@ export default function AdminLayout({
         </ModalContent>
       </Modal>
 
-      {/* 更新说明弹窗。
-          这里刻意不做「点一下自动更新」:面板跑在容器里,而 tms update 是宿主机
-          命令(docker compose pull + up),容器内执行不了。要能执行只能把
-          /var/run/docker.sock 挂进来 —— 那等于把宿主机 root 交给一个公网可访问
-          的 Web 应用,面板一旦有 RCE 整台机器就没了。何况更新会重启 backend
-          容器自己,执行更新的线程当场被杀,反而容易卡在半路。
-          所以这里只把命令递到手边:告诉他敲什么、敲完会发生什么。 */}
       <Modal
         isOpen={updateModal.isOpen}
         size="md"
         onOpenChange={updateModal.onOpenChange}
       >
         <ModalContent>
-          {(onClose: () => void) => (
+          {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
-                发现新版本
-              </ModalHeader>
+              <ModalHeader>发现新版本</ModalHeader>
               <ModalBody>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-default-500">当前版本</span>
-                    <span className="font-mono">
+                <div className="space-y-4 text-sm">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                    <span className="text-zinc-500">当前版本</span>
+                    <span className="font-mono text-zinc-900">
                       v{versionInfo?.panelVersion || siteConfig.version}
-                      {versionInfo?.commit &&
-                        versionInfo.commit !== "dev" &&
-                        `-${versionInfo.commit}`}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-default-500">最新版本</span>
-                    <span className="font-mono text-warning">
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-500">最新版本</span>
+                    <span className="font-mono text-blue-600">
                       {versionInfo?.latest || "-"}
                     </span>
                   </div>
-
-                  <div>
-                    <p className="text-sm text-default-500 mb-2">
-                      在面板服务器上执行:
+                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                    <p className="mb-2 text-xs text-zinc-500">
+                      在面板服务器执行
                     </p>
-                    <div className="flex items-center gap-2 bg-default-100 rounded-lg px-3 py-2">
-                      <code className="flex-1 font-mono text-sm select-all">
+                    <div className="flex items-center gap-2">
+                      <CommandLineIcon className="h-5 w-5 text-zinc-500" />
+                      <code className="min-w-0 flex-1 select-all font-mono text-zinc-900">
                         tms update
                       </code>
                       <Button
+                        className="rounded-lg text-sm font-medium transition-colors"
                         size="sm"
                         variant="flat"
                         onPress={async () => {
-                          (await copyTextToClipboard("tms update"))
+                          const copied =
+                            await copyTextToClipboard("tms update");
+                          copied
                             ? toast.success("已复制")
-                            : toast.error("复制失败,请手动选中命令");
+                            : toast.error("复制失败");
                         }}
                       >
                         复制
                       </Button>
                     </div>
                   </div>
-
-                  <div className="text-xs text-default-500 space-y-1">
-                    <p>· 更新过程面板会重启,大约 1-2 分钟</p>
-                    <p>· 节点和转发跑在各自的机器上,不受面板重启影响</p>
-                    <p>· 车友的订阅链接不变,不用重新分发</p>
-                  </div>
+                  <p className="flex items-start gap-2 text-xs leading-5 text-zinc-500">
+                    <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    更新会重启面板约 1–2 分钟，节点和既有订阅链接不受影响。
+                  </p>
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button color="primary" onPress={onClose}>
+                <Button
+                  className="rounded-lg bg-blue-500 text-sm font-medium text-white transition-colors"
+                  onPress={onClose}
+                >
                   知道了
                 </Button>
               </ModalFooter>

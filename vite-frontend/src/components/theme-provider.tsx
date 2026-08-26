@@ -1,16 +1,30 @@
-import React, { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
-import { applySkin, savedSkin } from "@/config/skins";
+const legacyThemeClasses = [
+  "aurora",
+  "mesh",
+  "deepsea",
+  "sunrise",
+  "cyber",
+  "mint",
+  "midnight",
+  "clean",
+  "forest",
+  "lava",
+  "sakura",
+  "grape",
+  "sand",
+  "steel",
+];
 
-interface ThemeProviderProps {
-  children: React.ReactNode;
-}
-
-// 应用已保存的皮肤(默认 aurora)。不再强制跟随系统深浅色——皮肤自带 light/dark 基座。
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    applySkin(savedSkin().id);
+    const root = document.documentElement;
+
+    root.classList.remove("dark", ...legacyThemeClasses);
+    root.style.colorScheme = "light";
+    localStorage.removeItem("skin");
   }, []);
 
   return <>{children}</>;
-};
+}

@@ -26,6 +26,7 @@ import { Spinner } from "@heroui/spinner";
 import { Progress } from "@heroui/progress";
 import toast from "react-hot-toast";
 import { parseDate } from "@internationalized/date";
+import { ArrowPathIcon, LinkIcon } from "@heroicons/react/24/outline";
 
 import {
   User,
@@ -61,7 +62,6 @@ import {
   UserIcon,
   SettingsIcon,
 } from "@/components/icons";
-
 
 // 工具函数
 const formatFlow = (value: number, unit: string = "bytes"): string => {
@@ -229,7 +229,6 @@ export default function UserPage() {
   const clashUrl = (token: string) =>
     `${window.location.origin}/api/v1/open_api/clash?token=${token}`;
 
-
   const handleShowSub = async (user: User) => {
     try {
       const res = await getUserLines(user.id);
@@ -255,7 +254,7 @@ export default function UserPage() {
   const reloadSubLines = async (userId: number) => {
     const res = await getUserLines(userId);
     const d: any = res.code === 0 ? res.data : null;
-    setSubLines(Array.isArray(d) ? d : (d?.lines || []));
+    setSubLines(Array.isArray(d) ? d : d?.lines || []);
   };
   const [subUserId, setSubUserId] = useState<number | null>(null);
 
@@ -637,7 +636,14 @@ export default function UserPage() {
     <div className="px-3 lg:px-6 py-8">
       {/* 页面头部 */}
       <div className="flex flex-col gap-4 mb-6">
-        <div className="flex items-center gap-3" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            用户管理
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            管理账号状态、套餐用量与线路权限
+          </p>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           <div className="flex items-center gap-3 flex-1 max-w-md">
@@ -829,19 +835,7 @@ export default function UserPage() {
                         className="flex-1 min-h-8"
                         color="warning"
                         size="sm"
-                        startContent={
-                          <svg
-                            className="w-3 h-3"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              clipRule="evenodd"
-                              d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                              fillRule="evenodd"
-                            />
-                          </svg>
-                        }
+                        startContent={<ArrowPathIcon className="w-3 h-3" />}
                         variant="flat"
                         onPress={() => handleResetFlow(user)}
                       >
@@ -879,10 +873,11 @@ export default function UserPage() {
                         className="flex-1 min-h-8"
                         color="secondary"
                         size="sm"
+                        startContent={<LinkIcon className="h-3.5 w-3.5" />}
                         variant="flat"
                         onPress={() => handleShowSub(user)}
                       >
-                        🔗 订阅链接
+                        订阅链接
                       </Button>
                     </div>
                   </div>
@@ -895,7 +890,7 @@ export default function UserPage() {
 
       {/* 用户表单模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isUserModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1056,7 +1051,7 @@ export default function UserPage() {
 
       {/* 隧道权限管理模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         classNames={{
           base: "max-w-[95vw] sm:max-w-4xl",
         }}
@@ -1334,17 +1329,7 @@ export default function UserPage() {
                               variant="flat"
                               onClick={() => handleResetTunnelFlow(userTunnel)}
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  clipRule="evenodd"
-                                  d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                                  fillRule="evenodd"
-                                />
-                              </svg>
+                              <ArrowPathIcon className="w-4 h-4" />
                             </Button>
                             <Button
                               isIconOnly
@@ -1372,7 +1357,7 @@ export default function UserPage() {
 
       {/* 编辑隧道权限模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isDismissable={false}
         isOpen={isEditTunnelModalOpen}
         placement="center"
@@ -1553,7 +1538,7 @@ export default function UserPage() {
 
       {/* 删除确认对话框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isDeleteModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1573,7 +1558,7 @@ export default function UserPage() {
                 <p className="text-foreground">
                   确定要删除用户{" "}
                   <span className="font-semibold text-danger">
-                    "{userToDelete?.user}"
+                    “{userToDelete?.user}”
                   </span>{" "}
                   吗？
                 </p>
@@ -1596,7 +1581,7 @@ export default function UserPage() {
 
       {/* 删除隧道权限确认对话框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isDeleteTunnelModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1618,7 +1603,7 @@ export default function UserPage() {
                   <span className="font-semibold">{currentUser?.user}</span>{" "}
                   对隧道{" "}
                   <span className="font-semibold text-danger">
-                    "{tunnelToDelete?.tunnelName}"
+                    “{tunnelToDelete?.tunnelName}”
                   </span>{" "}
                   的权限吗？
                 </p>
@@ -1641,7 +1626,7 @@ export default function UserPage() {
 
       {/* 重置流量确认对话框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isResetFlowModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1655,23 +1640,13 @@ export default function UserPage() {
           <ModalBody>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-warning-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-warning"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    clipRule="evenodd"
-                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                    fillRule="evenodd"
-                  />
-                </svg>
+                <ArrowPathIcon className="w-6 h-6 text-warning" />
               </div>
               <div className="flex-1">
                 <p className="text-foreground">
                   确定要重置用户{" "}
                   <span className="font-semibold text-warning">
-                    "{userToReset?.user}"
+                    “{userToReset?.user}”
                   </span>{" "}
                   的流量吗？
                 </p>
@@ -1729,7 +1704,7 @@ export default function UserPage() {
 
       {/* 重置隧道流量确认对话框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isResetTunnelFlowModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1743,17 +1718,7 @@ export default function UserPage() {
           <ModalBody>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-warning-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-warning"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    clipRule="evenodd"
-                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                    fillRule="evenodd"
-                  />
-                </svg>
+                <ArrowPathIcon className="w-6 h-6 text-warning" />
               </div>
               <div className="flex-1">
                 <p className="text-foreground">
@@ -1761,7 +1726,7 @@ export default function UserPage() {
                   <span className="font-semibold">{currentUser?.user}</span>{" "}
                   对隧道{" "}
                   <span className="font-semibold text-warning">
-                    "{tunnelToReset?.tunnelName}"
+                    “{tunnelToReset?.tunnelName}”
                   </span>{" "}
                   的流量吗？
                 </p>
@@ -1819,15 +1784,18 @@ export default function UserPage() {
 
       {/* 订阅线路(合体面板:车友的每台机器一条订阅,直连/中转各一条) */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isSubModalOpen}
         placement="center"
         size="2xl"
         onClose={onSubModalClose}
       >
         <ModalContent>
-          <ModalHeader>
-            🔗 {subUserName} 的订阅线路({subLines.length})
+          <ModalHeader className="flex items-center gap-2">
+            <LinkIcon className="h-5 w-5 text-blue-500" />
+            <span>
+              {subUserName} 的订阅线路({subLines.length})
+            </span>
           </ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-small text-default-500">
@@ -1839,7 +1807,7 @@ export default function UserPage() {
               <div className="border border-primary/40 bg-primary/5 rounded-lg p-3 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Chip color="primary" size="sm" variant="flat">
-                    ⭐ 全部线路
+                    全部线路
                   </Chip>
                   <span className="text-sm">
                     一条链接包含他所有线路,推荐发这条
@@ -1878,8 +1846,8 @@ export default function UserPage() {
                     variant="flat"
                     onPress={async () => {
                       (await copyTextToClipboard(clashUrl(subAllToken)))
-                        ? toast.success('已复制 Clash / Mihomo 订阅')
-                        : toast.error('复制失败');
+                        ? toast.success("已复制 Clash / Mihomo 订阅")
+                        : toast.error("复制失败");
                     }}
                   >
                     复制 Clash 版
@@ -1907,8 +1875,8 @@ export default function UserPage() {
                       variant="flat"
                     >
                       {isRelay
-                        ? `🔀 中转${ln.landingName ? "→" + ln.landingName : ""}`
-                        : "🖥️ 直连"}
+                        ? `中转${ln.landingName ? "→" + ln.landingName : ""}`
+                        : "直连"}
                     </Chip>
                     <span className="font-medium truncate">{ln.nodeName}</span>
                     <Chip size="sm" variant="flat">
@@ -1919,7 +1887,6 @@ export default function UserPage() {
                         已停用
                       </Chip>
                     )}
-
                   </div>
                   <Input
                     readOnly
@@ -1947,8 +1914,8 @@ export default function UserPage() {
                       variant="flat"
                       onPress={async () => {
                         (await copyTextToClipboard(clashUrl(ln.subToken)))
-                          ? toast.success('已复制 Clash / Mihomo 订阅')
-                          : toast.error('复制失败');
+                          ? toast.success("已复制 Clash / Mihomo 订阅")
+                          : toast.error("复制失败");
                       }}
                     >
                       Clash 版
@@ -1960,22 +1927,33 @@ export default function UserPage() {
                     <Button
                       size="sm"
                       variant="flat"
-                      color={ln.lineStatus === 0 ? 'success' : 'warning'}
+                      color={ln.lineStatus === 0 ? "success" : "warning"}
                       onPress={async () => {
                         if (subUserId == null) return;
                         const to = ln.lineStatus === 0 ? 1 : 0;
-                        if (to === 0 && !confirm(`停用「${ln.nodeName}」这条线路?
-对方立刻就连不上了,流量和到期都留着,随时可以恢复。`)) return;
-                        const res = await setLineStatus(subUserId, ln.nodeId, ln.landingId ?? null, to);
+                        if (
+                          to === 0 &&
+                          !confirm(`停用「${ln.nodeName}」这条线路?
+对方立刻就连不上了,流量和到期都留着,随时可以恢复。`)
+                        )
+                          return;
+                        const res = await setLineStatus(
+                          subUserId,
+                          ln.nodeId,
+                          ln.landingId ?? null,
+                          to,
+                        );
                         if (res.code === 0) {
-                          toast.success(to === 0 ? '已停用这条线路' : '已恢复这条线路');
+                          toast.success(
+                            to === 0 ? "已停用这条线路" : "已恢复这条线路",
+                          );
                           await reloadSubLines(subUserId);
                         } else {
-                          toast.error(res.msg || '操作失败');
+                          toast.error(res.msg || "操作失败");
                         }
                       }}
                     >
-                      {ln.lineStatus === 0 ? '恢复' : '停用'}
+                      {ln.lineStatus === 0 ? "恢复" : "停用"}
                     </Button>
                     <Button
                       size="sm"
@@ -1983,15 +1961,22 @@ export default function UserPage() {
                       color="danger"
                       onPress={async () => {
                         if (subUserId == null) return;
-                        if (!confirm(`彻底删除「${ln.nodeName}」这条线路?
+                        if (
+                          !confirm(`彻底删除「${ln.nodeName}」这条线路?
 该线路下 ${ln.protocolCount} 个协议的分配和转发会一并删掉,端口释放。
-这一步不可逆,以后要再给他用得重新分配。`)) return;
-                        const res = await deleteLine(subUserId, ln.nodeId, ln.landingId ?? null);
+这一步不可逆,以后要再给他用得重新分配。`)
+                        )
+                          return;
+                        const res = await deleteLine(
+                          subUserId,
+                          ln.nodeId,
+                          ln.landingId ?? null,
+                        );
                         if (res.code === 0) {
-                          toast.success('已收回这条线路');
+                          toast.success("已收回这条线路");
                           await reloadSubLines(subUserId);
                         } else {
-                          toast.error(res.msg || '删除失败');
+                          toast.error(res.msg || "删除失败");
                         }
                       }}
                     >

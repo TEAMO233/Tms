@@ -6,8 +6,16 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import toast from "react-hot-toast";
+import {
+  ArrowsPointingOutIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 
-import { createTransparentRelaySubscription, getMyLines, getUserPackageInfo } from "@/api";
+import {
+  createTransparentRelaySubscription,
+  getMyLines,
+  getUserPackageInfo,
+} from "@/api";
 import { SubQrToggle } from "@/components/sub-qr";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
@@ -98,7 +106,6 @@ export default function MySubPage() {
     }
   };
 
-
   const load = async () => {
     try {
       const [ln, pkg, transparentSub] = await Promise.all([
@@ -168,11 +175,20 @@ export default function MySubPage() {
     { key: "direct", label: "直连", count: directCount },
     { key: "relay", label: "中转", count: relayCount },
   ];
-  const transparentAvailableCount = toSafeCount(transparentSubscription?.availableCount);
-  const transparentSkippedCount = toSafeCount(transparentSubscription?.skippedCount);
-  const showTransparentSubscription = shouldShowTransparentRelaySubscription(transparentSubscription);
+  const transparentAvailableCount = toSafeCount(
+    transparentSubscription?.availableCount,
+  );
+  const transparentSkippedCount = toSafeCount(
+    transparentSubscription?.skippedCount,
+  );
+  const showTransparentSubscription = shouldShowTransparentRelaySubscription(
+    transparentSubscription,
+  );
   const transparentSubscriptionUrl = showTransparentSubscription
-    ? buildTransparentRelaySubUrl(window.location.origin, transparentSubscription!.subToken!)
+    ? buildTransparentRelaySubUrl(
+        window.location.origin,
+        transparentSubscription!.subToken!,
+      )
     : "";
   const hasAnySubscription = lines.length > 0 || showTransparentSubscription;
   const hasAggregateSubscription =
@@ -200,8 +216,12 @@ export default function MySubPage() {
         {!loading && hasAnySubscription && (
           <div className="rounded-full border border-default-200/70 bg-default-50/40 px-3 py-1.5 text-xs text-default-500 dark:bg-white/5">
             {protocolTotal > 0 && <span>共 {protocolTotal} 个协议可用</span>}
-            {protocolTotal > 0 && showTransparentSubscription && <span> · </span>}
-            {showTransparentSubscription && <span>{transparentAvailableCount} 个透明中转节点</span>}
+            {protocolTotal > 0 && showTransparentSubscription && (
+              <span> · </span>
+            )}
+            {showTransparentSubscription && (
+              <span>{transparentAvailableCount} 个透明中转节点</span>
+            )}
           </div>
         )}
       </div>
@@ -209,7 +229,7 @@ export default function MySubPage() {
       {(accountDisabled || accountExpired) && (
         <Card className="border border-danger/40 bg-danger/5">
           <CardBody className="flex-row items-center gap-2 p-3 text-sm text-danger sm:p-4">
-            <span aria-hidden="true">⚠️</span>
+            <ExclamationTriangleIcon aria-hidden className="h-5 w-5 shrink-0" />
             <span>
               你的账号{accountExpired ? "已到期" : "已被停用"}
               ,所有线路暂时不可用,请联系管理员。
@@ -219,13 +239,13 @@ export default function MySubPage() {
       )}
 
       {hasAggregateSubscription && (
-        <Card className="overflow-hidden border border-primary/40 bg-gradient-to-br from-primary/15 via-primary/5 to-secondary/10 shadow-lg shadow-primary/5">
+        <Card className="overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm">
           <CardBody className="gap-4 p-4 sm:p-5 lg:p-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip color="primary" size="sm" variant="solid">
-                    ⭐ 推荐
+                    推荐
                   </Chip>
                   <h2 className="text-lg font-semibold sm:text-xl">全部线路</h2>
                   <span className="text-sm text-default-500">
@@ -236,7 +256,7 @@ export default function MySubPage() {
                   更新一次订阅即可同步新增协议线路,不需要重新索要链接。
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-3 rounded-xl border border-primary/20 bg-black/10 px-4 py-2.5 dark:bg-white/5">
+              <div className="flex shrink-0 items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
                 <div className="text-right">
                   <div className="text-xs text-default-500">协议数量</div>
                   <div className="text-xl font-bold leading-tight text-primary-600 dark:text-primary-300">
@@ -272,7 +292,10 @@ export default function MySubPage() {
                   size="sm"
                   variant="flat"
                   onPress={() =>
-                    copySubscription(clashUrl(allSubToken), "已复制 Clash / Mihomo 版")
+                    copySubscription(
+                      clashUrl(allSubToken),
+                      "已复制 Clash / Mihomo 版",
+                    )
                   }
                 >
                   Clash / Mihomo 版
@@ -285,14 +308,27 @@ export default function MySubPage() {
               <span>线路到期或用尽配额后会从聚合订阅中自动消失。</span>
             </div>
             <div className="text-xs text-default-400">
-              用 <span className="text-default-500">v2rayN / 小火箭 / v2rayNG</span> 复制上面那条;
-              用 <span className="text-default-500">Clash Verge / ClashMeta / Mihomo</span> 复制「Clash / Mihomo 版」——
+              用{" "}
+              <span className="text-default-500">
+                v2rayN / 小火箭 / v2rayNG
+              </span>{" "}
+              复制上面那条; 用{" "}
+              <span className="text-default-500">
+                Clash Verge / ClashMeta / Mihomo
+              </span>{" "}
+              复制「Clash / Mihomo 版」——
               两种格式不通用,贴错了客户端里会是空的。
-
             </div>
             <div className="text-xs text-default-400">
-              用 <span className="text-default-500">v2rayN / 小火箭 / v2rayNG</span> 复制上面那条;
-              用 <span className="text-default-500">Clash Verge / ClashMeta / Mihomo</span> 复制「Clash / Mihomo 版」——
+              用{" "}
+              <span className="text-default-500">
+                v2rayN / 小火箭 / v2rayNG
+              </span>{" "}
+              复制上面那条; 用{" "}
+              <span className="text-default-500">
+                Clash Verge / ClashMeta / Mihomo
+              </span>{" "}
+              复制「Clash / Mihomo 版」——
               两种格式不通用,贴错了客户端里会是空的。
             </div>
           </CardBody>
@@ -311,7 +347,7 @@ export default function MySubPage() {
             <div className="text-base text-default-600">还没有线路</div>
             <div className="mx-auto max-w-xl text-sm">
               管理员在「协议管理」或「中转」的机器卡上点「分配用户」给你开通;
-              如果你就是管理员、想自己用,点那张卡上的「🔑 我自己用」即可。
+              如果你就是管理员、想自己用,点那张卡上的「我自己用」即可。
             </div>
           </CardBody>
         </Card>
@@ -346,7 +382,7 @@ export default function MySubPage() {
                 </span>
               </div>
 
-              <Card className="overflow-hidden border border-default-200/70 bg-black/10 dark:bg-white/[0.03]">
+              <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
                 <CardBody className="p-0">
                   <div
                     className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500 dark:bg-white/[0.03] xl:grid ${LINE_GRID_CLASS}`}
@@ -421,8 +457,12 @@ export default function MySubPage() {
                             <span className="text-xs text-default-500 xl:hidden">
                               协议数量
                             </span>
-                            <span className="font-semibold">{protocolCount}</span>
-                            <span className="text-default-400 xl:hidden">个</span>
+                            <span className="font-semibold">
+                              {protocolCount}
+                            </span>
+                            <span className="text-default-400 xl:hidden">
+                              个
+                            </span>
                           </div>
 
                           <div className="min-w-0 text-sm">
@@ -430,7 +470,9 @@ export default function MySubPage() {
                               <span className="text-xs text-default-500 xl:hidden">
                                 流量使用
                               </span>
-                              <span className="font-semibold">{fmtGB(used)}</span>
+                              <span className="font-semibold">
+                                {fmtGB(used)}
+                              </span>
                               <span className="text-default-400">
                                 {quotaGb > 0 ? ` / ${quotaGb} GB` : " / 不限"}
                               </span>
@@ -466,7 +508,9 @@ export default function MySubPage() {
                                 className={`h-2 w-2 rounded-full ${stopped ? "bg-danger" : "bg-success"}`}
                               />
                               <span
-                                className={stopped ? "text-danger" : "text-success"}
+                                className={
+                                  stopped ? "text-danger" : "text-success"
+                                }
                               >
                                 {stopped ? "已停用" : "运行中"}
                               </span>
@@ -482,7 +526,9 @@ export default function MySubPage() {
                               size="sm"
                               variant="light"
                               onPress={() =>
-                                setExpandedLineKey(isLinkExpanded ? null : lineKey)
+                                setExpandedLineKey(
+                                  isLinkExpanded ? null : lineKey,
+                                )
                               }
                             >
                               {isLinkExpanded ? "收起" : "链接"}
@@ -510,7 +556,9 @@ export default function MySubPage() {
                                 placeholder="暂无订阅地址"
                                 size="sm"
                                 value={url}
-                                onClick={(event) => event.currentTarget.select()}
+                                onClick={(event) =>
+                                  event.currentTarget.select()
+                                }
                               />
                             </div>
                           )}
@@ -524,13 +572,20 @@ export default function MySubPage() {
           )}
 
           {showTransparentSubscription && (
-            <Card className="overflow-hidden border border-secondary/30 bg-gradient-to-br from-secondary/10 via-secondary/5 to-default/10 shadow-lg shadow-secondary/5">
+            <Card className="overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm">
               <CardBody className="gap-4 p-4 sm:p-5 lg:p-6">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Chip color="secondary" size="sm" variant="flat">
-                        🔌 透明中转
+                      <Chip
+                        color="secondary"
+                        size="sm"
+                        startContent={
+                          <ArrowsPointingOutIcon className="h-3.5 w-3.5" />
+                        }
+                        variant="flat"
+                      >
+                        透明中转
                       </Chip>
                       <h2 className="text-lg font-semibold sm:text-xl">
                         透明中转复合订阅
@@ -543,7 +598,7 @@ export default function MySubPage() {
                       这是一条独立订阅链接,不会混进普通“全部线路”。透明中转新增或停用后,客户端更新这条订阅即可同步。
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3 rounded-xl border border-secondary/20 bg-black/10 px-4 py-2.5 dark:bg-white/5">
+                  <div className="flex shrink-0 items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
                     <div className="text-right">
                       <div className="text-xs text-default-500">可用节点</div>
                       <div className="text-xl font-bold leading-tight text-secondary-600 dark:text-secondary-300">
@@ -589,7 +644,7 @@ export default function MySubPage() {
         </>
       )}
 
-      <Card className="border border-default-200/70 bg-black/10 dark:bg-white/[0.03]">
+      <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
         <CardBody className="gap-4 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <span>如何使用订阅链接</span>

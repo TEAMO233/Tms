@@ -15,6 +15,15 @@ import { Spinner } from "@heroui/spinner";
 import { Divider } from "@heroui/divider";
 import { Alert } from "@heroui/alert";
 import toast from "react-hot-toast";
+import {
+  ArrowDownIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  WifiIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 
 import {
   createTunnel,
@@ -424,25 +433,33 @@ export default function TunnelPage() {
     if (averageTime === undefined || packetLoss === undefined) return null;
 
     if (averageTime < 30 && packetLoss === 0)
-      return { text: "🚀 优秀", color: "success" };
+      return { text: "优秀", color: "success" };
     if (averageTime < 50 && packetLoss === 0)
-      return { text: "✨ 很好", color: "success" };
+      return { text: "很好", color: "success" };
     if (averageTime < 100 && packetLoss < 1)
-      return { text: "👍 良好", color: "primary" };
+      return { text: "良好", color: "primary" };
     if (averageTime < 150 && packetLoss < 2)
-      return { text: "😐 一般", color: "warning" };
+      return { text: "一般", color: "warning" };
     if (averageTime < 200 && packetLoss < 5)
-      return { text: "😟 较差", color: "warning" };
+      return { text: "较差", color: "warning" };
 
-    return { text: "😵 很差", color: "danger" };
+    return { text: "很差", color: "danger" };
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-3">
-          <Spinner size="sm" />
-          <span className="text-default-600">正在加载...</span>
+      <div className="px-3 py-8 lg:px-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            隧道管理
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">编排入口、出口与链路协议</p>
+        </div>
+        <div className="flex h-64 items-center justify-center">
+          <div className="flex items-center gap-3">
+            <Spinner size="sm" />
+            <span className="text-default-600">正在加载...</span>
+          </div>
         </div>
       </div>
     );
@@ -458,8 +475,12 @@ export default function TunnelPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            隧道管理
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">编排入口、出口与链路协议</p>
           {protocolTunnelCount > 0 && (
-            <div className="text-xs text-default-500 flex items-center gap-2 flex-wrap">
+            <div className="mt-2 text-xs text-default-500 flex items-center gap-2 flex-wrap">
               <span>
                 {showProtocolTunnels
                   ? `正在显示 ${protocolTunnelCount} 条协议自动生成的隧道`
@@ -542,19 +563,7 @@ export default function TunnelPage() {
                       </div>
 
                       <div className="text-center py-0.5">
-                        <svg
-                          className="w-3 h-3 text-default-400 mx-auto"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                          />
-                        </svg>
+                        <ArrowDownIcon className="w-3 h-3 text-default-400 mx-auto" />
                       </div>
 
                       <div className="p-2 bg-default-50 dark:bg-default-100/50 rounded border border-default-200 dark:border-default-300">
@@ -598,15 +607,7 @@ export default function TunnelPage() {
                       className="flex-1 min-h-8"
                       color="primary"
                       size="sm"
-                      startContent={
-                        <svg
-                          className="w-3 h-3"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                        </svg>
-                      }
+                      startContent={<PencilSquareIcon className="w-3 h-3" />}
                       variant="flat"
                       onPress={() => handleEdit(tunnel)}
                     >
@@ -617,17 +618,7 @@ export default function TunnelPage() {
                       color="warning"
                       size="sm"
                       startContent={
-                        <svg
-                          className="w-3 h-3"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            clipRule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            fillRule="evenodd"
-                          />
-                        </svg>
+                        <ExclamationTriangleIcon className="w-3 h-3" />
                       }
                       variant="flat"
                       onPress={() => handleDiagnose(tunnel)}
@@ -638,24 +629,7 @@ export default function TunnelPage() {
                       className="flex-1 min-h-8"
                       color="danger"
                       size="sm"
-                      startContent={
-                        <svg
-                          className="w-3 h-3"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            clipRule="evenodd"
-                            d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
-                            fillRule="evenodd"
-                          />
-                          <path
-                            clipRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v4a1 1 0 11-2 0V7zM12 7a1 1 0 012 0v4a1 1 0 11-2 0V7z"
-                            fillRule="evenodd"
-                          />
-                        </svg>
-                      }
+                      startContent={<TrashIcon className="w-3 h-3" />}
                       variant="flat"
                       onPress={() => handleDelete(tunnel)}
                     >
@@ -673,19 +647,7 @@ export default function TunnelPage() {
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-default-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                  />
-                </svg>
+                <WifiIcon className="w-8 h-8 text-default-400" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-foreground">
@@ -702,7 +664,7 @@ export default function TunnelPage() {
 
       {/* 新增/编辑模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={modalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1041,7 +1003,7 @@ export default function TunnelPage() {
 
       {/* 删除确认模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={deleteModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1056,7 +1018,7 @@ export default function TunnelPage() {
               </ModalHeader>
               <ModalBody>
                 <p>
-                  确定要删除隧道 <strong>"{tunnelToDelete?.name}"</strong> 吗？
+                  确定要删除隧道 <strong>“{tunnelToDelete?.name}”</strong> 吗？
                 </p>
                 <p className="text-small text-default-500">
                   此操作不可恢复，请谨慎操作。
@@ -1081,7 +1043,7 @@ export default function TunnelPage() {
 
       {/* 诊断结果模态框 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={diagnosisModalOpen}
         placement="center"
         scrollBehavior="outside"
@@ -1145,7 +1107,11 @@ export default function TunnelPage() {
                                       : "bg-danger text-white"
                                   }`}
                                 >
-                                  {result.success ? "✓" : "✗"}
+                                  {result.success ? (
+                                    <CheckCircleIcon className="h-5 w-5" />
+                                  ) : (
+                                    <XCircleIcon className="h-5 w-5" />
+                                  )}
                                 </div>
                                 <div>
                                   <h4 className="font-semibold">
@@ -1238,19 +1204,7 @@ export default function TunnelPage() {
                 ) : (
                   <div className="text-center py-16">
                     <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg
-                        className="w-8 h-8 text-default-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                        />
-                      </svg>
+                      <XCircleIcon className="w-8 h-8 text-default-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">
                       暂无诊断数据

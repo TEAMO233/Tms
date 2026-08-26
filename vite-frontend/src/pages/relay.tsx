@@ -15,6 +15,16 @@ import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
 import toast from "react-hot-toast";
+import {
+  BoltIcon,
+  CheckCircleIcon,
+  ComputerDesktopIcon,
+  KeyIcon,
+  LightBulbIcon,
+  SignalIcon,
+  UserPlusIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 
 import {
   getInboundList,
@@ -312,6 +322,7 @@ export default function RelayPage() {
         <h1 className="text-xl font-bold">中转</h1>
         <Button
           color="secondary"
+          startContent={<BoltIcon className="h-4 w-4" />}
           onPress={() => {
             setBuildForm({
               nodeId: null,
@@ -323,7 +334,7 @@ export default function RelayPage() {
             setBuildOpen(true);
           }}
         >
-          ⚡ 搭中转
+          搭中转
         </Button>
       </div>
 
@@ -350,8 +361,9 @@ export default function RelayPage() {
             <Card key={`${n.id}-${ln.landingId}`}>
               <CardBody className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold truncate">
-                    🖥️ {n.name}
+                  <ComputerDesktopIcon className="h-5 w-5 shrink-0 text-blue-500" />
+                  <span className="truncate text-lg font-semibold">
+                    {n.name}
                   </span>
                   <Chip
                     color={online ? "success" : "default"}
@@ -397,6 +409,7 @@ export default function RelayPage() {
                     className="flex-1"
                     color="primary"
                     size="sm"
+                    startContent={<UserPlusIcon className="h-4 w-4" />}
                     onPress={() =>
                       openNodeAssign(
                         n,
@@ -406,13 +419,14 @@ export default function RelayPage() {
                       )
                     }
                   >
-                    👤 分配用户
+                    分配用户
                   </Button>
                   {/* 自己用不必先建车友:一键开给当前管理员,不限速不限量不到期 */}
                   <Button
                     color="success"
                     isLoading={selfLoading === `${n.id}-${ln.landingId}`}
                     size="sm"
+                    startContent={<KeyIcon className="h-4 w-4" />}
                     variant="flat"
                     onPress={() =>
                       handleAssignSelf(
@@ -422,7 +436,7 @@ export default function RelayPage() {
                       )
                     }
                   >
-                    🔑 我自己用
+                    我自己用
                   </Button>
                   <Button
                     color="danger"
@@ -444,7 +458,7 @@ export default function RelayPage() {
       </div>
       {relayLines.length === 0 && (
         <div className="text-center text-default-400 py-8">
-          还没有中转。点右上角「⚡ 搭中转」→ 选前置机 + 粘贴落地(住宅 socks
+          还没有中转。点右上角「搭中转」→ 选前置机 + 粘贴落地(住宅 socks
           或协议链接)→ 测试通 → 搭建。
         </div>
       )}
@@ -453,7 +467,10 @@ export default function RelayPage() {
       <Modal isOpen={selfOpen} size="2xl" onClose={() => setSelfOpen(false)}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <span>🔑 已开给你自己(不限速 · 不限流量 · 不限到期)</span>
+            <span className="flex items-center gap-2">
+              <KeyIcon className="h-5 w-5 text-blue-500" />
+              已开给你自己(不限速 · 不限流量 · 不限到期)
+            </span>
             {selfLineName && (
               <span className="text-sm font-normal text-default-500">
                 线路:<b className="text-foreground">{selfLineName}</b>
@@ -464,10 +481,13 @@ export default function RelayPage() {
             <div className="text-sm text-default-500">
               这条中转订阅是给你自己用的,复制到客户端就能用,出口走落地。以后在「我的订阅」页也能找到。
             </div>
-            <div className="text-xs text-default-400 bg-default-100 rounded-lg px-3 py-2">
-              💡 链接前半段是<b>面板地址</b>,所以每条线路点出来都一样 ——
-              真正区分线路的是末尾的
-              <b> token</b>。拉下来的节点才是这条线路的。
+            <div className="flex items-start gap-2 rounded-lg bg-default-100 px-3 py-2 text-xs text-default-400">
+              <LightBulbIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                链接前半段是<b>面板地址</b>,所以每条线路点出来都一样 ——
+                真正区分线路的是末尾的
+                <b> token</b>。拉下来的节点才是这条线路的。
+              </span>
             </div>
             <Input
               readOnly
@@ -499,8 +519,9 @@ export default function RelayPage() {
       {/* 分配用户(复用协议管理的整机分配) */}
       <Modal isOpen={assignOpen} onClose={() => setAssignOpen(false)}>
         <ModalContent>
-          <ModalHeader>
-            👤 中转分配「{assignForm.nodeName} → {assignForm.landingName}」
+          <ModalHeader className="flex items-center gap-2">
+            <UserPlusIcon className="h-5 w-5 text-blue-500" />
+            中转分配「{assignForm.nodeName} → {assignForm.landingName}」
           </ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
@@ -592,7 +613,10 @@ export default function RelayPage() {
       {/* 搭中转:选前置机 + 内联填落地 + 测试 + 搭建 */}
       <Modal isOpen={buildOpen} size="2xl" onClose={() => setBuildOpen(false)}>
         <ModalContent>
-          <ModalHeader>⚡ 搭中转</ModalHeader>
+          <ModalHeader className="flex items-center gap-2">
+            <BoltIcon className="h-5 w-5 text-blue-500" />
+            搭中转
+          </ModalHeader>
           <ModalBody className="space-y-3">
             <div className="text-sm text-default-500">
               选前置机 + 填落地出口 → 测试通了 →
@@ -638,10 +662,11 @@ export default function RelayPage() {
                 color="secondary"
                 isLoading={testLoading}
                 size="sm"
+                startContent={<SignalIcon className="h-4 w-4" />}
                 variant="flat"
                 onPress={handleTest}
               >
-                🔌 测试落地
+                测试落地
               </Button>
               {testResult &&
                 (testResult.skipped ? (
@@ -649,14 +674,16 @@ export default function RelayPage() {
                     {testResult.msg}
                   </span>
                 ) : testResult.ok ? (
-                  <span className="text-xs text-success">
-                    ✅ 通了 · 出口 IP{" "}
+                  <span className="flex items-center gap-1 text-xs text-success">
+                    <CheckCircleIcon className="h-4 w-4 shrink-0" />
+                    通了 · 出口 IP{" "}
                     <b className="font-mono">{testResult.exitIp}</b> ·{" "}
                     {testResult.latencyMs}ms
                   </span>
                 ) : (
-                  <span className="text-xs text-danger">
-                    ❌ {testResult.msg || "不通"}
+                  <span className="flex items-center gap-1 text-xs text-danger">
+                    <XCircleIcon className="h-4 w-4 shrink-0" />
+                    {testResult.msg || "不通"}
                   </span>
                 ))}
             </div>

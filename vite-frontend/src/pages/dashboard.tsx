@@ -13,14 +13,17 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import {
+  ArrowTrendingUpIcon,
+  ArrowsRightLeftIcon,
+  ChartBarIcon,
+  ExclamationTriangleIcon,
+  QueueListIcon,
+} from "@heroicons/react/24/outline";
 import { getFlowStatisticsRange, getUserPackageInfo } from "@/api";
 import type { FlowStatisticsResponse } from "@/types";
-import {
-  PlusIcon,
-  SearchIcon,
-  SettingsIcon,
-  UserIcon,
-} from "@/components/icons";
+import { PlusIcon, SearchIcon } from "@/components/icons";
+import { isProtocolDesignPreview as getIsProtocolDesignPreview } from "@/config/design-preview";
 import {
   buildFlowStatisticsRange,
   createLastDaysRange,
@@ -71,10 +74,11 @@ interface AddressItem {
   copying: boolean;
 }
 
-const isProtocolDesignPreview =
-  import.meta.env.DEV &&
-  new URLSearchParams(window.location.search).get("preview") ===
-    "protocol-board";
+const isProtocolDesignPreview = getIsProtocolDesignPreview();
+
+const warningToastIcon = (
+  <ExclamationTriangleIcon className="h-5 w-5 text-white" />
+);
 
 const PREVIEW_USER_INFO: UserInfo = {
   flow: 99999,
@@ -149,29 +153,35 @@ export default function DashboardPage() {
   const [forwardList, setForwardList] = useState<Forward[]>(
     isProtocolDesignPreview ? PREVIEW_FORWARDS : [],
   );
-  const [statisticsRange, setStatisticsRange] = useState<FlowStatisticsDateRange>(() => createTodayRange());
-  const [appliedStatisticsRange, setAppliedStatisticsRange] = useState<FlowStatisticsDateRange>(() => createTodayRange());
-  const [flowStatistics, setFlowStatistics] = useState<FlowStatisticsResponse | null>(
-    isProtocolDesignPreview ? PREVIEW_FLOW_STATISTICS : null,
-  );
+  const [statisticsRange, setStatisticsRange] =
+    useState<FlowStatisticsDateRange>(() => createTodayRange());
+  const [appliedStatisticsRange, setAppliedStatisticsRange] =
+    useState<FlowStatisticsDateRange>(() => createTodayRange());
+  const [flowStatistics, setFlowStatistics] =
+    useState<FlowStatisticsResponse | null>(
+      isProtocolDesignPreview ? PREVIEW_FLOW_STATISTICS : null,
+    );
   const [flowStatisticsLoading, setFlowStatisticsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeShortcut, setActiveShortcut] = useState<"today" | "7d" | "30d" | "custom">(
-    "today",
-  );
+  const [activeShortcut, setActiveShortcut] = useState<
+    "today" | "7d" | "30d" | "custom"
+  >("today");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
 
   const [addressModalOpen, setAddressModalOpen] = useState(false);
-  const [addressModalTitle, setAddressModalTitle] = useState('');
+  const [addressModalTitle, setAddressModalTitle] = useState("");
   const [addressList, setAddressList] = useState<AddressItem[]>([]);
 
   // 检查有效期通知
-  const checkExpirationNotifications = (userInfo: UserInfo, tunnels: UserTunnel[]) => {
+  const checkExpirationNotifications = (
+    userInfo: UserInfo,
+    tunnels: UserTunnel[],
+  ) => {
     // 避免重复通知，检查是否已经显示过
-    const notificationKey = `expiration-${userInfo.expTime}-${tunnels.map(t => t.expTime).join(',')}`;
-    const lastNotified = localStorage.getItem('lastNotified');
+    const notificationKey = `expiration-${userInfo.expTime}-${tunnels.map((t) => t.expTime).join(",")}`;
+    const lastNotified = localStorage.getItem("lastNotified");
 
     if (lastNotified === notificationKey) {
       return; // 已经通知过，不重复显示
@@ -191,31 +201,31 @@ export default function DashboardPage() {
         if (diffDays <= 7 && diffDays > 0) {
           hasNotification = true;
           if (diffDays === 1) {
-            toast('账户将于明天过期，请及时续费', {
-              icon: '⚠️',
+            toast("账户将于明天过期，请及时续费", {
+              icon: warningToastIcon,
               duration: 6000,
-              style: { background: '#f59e0b', color: '#fff' }
+              style: { background: "#f59e0b", color: "#fff" },
             });
           } else {
             toast(`账户将于${diffDays}天后过期，请及时续费`, {
-              icon: '⚠️',
+              icon: warningToastIcon,
               duration: 6000,
-              style: { background: '#f59e0b', color: '#fff' }
+              style: { background: "#f59e0b", color: "#fff" },
             });
           }
         } else if (diffDays <= 0) {
           hasNotification = true;
-          toast('账户已过期，请立即续费', {
-            icon: '⚠️',
+          toast("账户已过期，请立即续费", {
+            icon: warningToastIcon,
             duration: 8000,
-            style: { background: '#ef4444', color: '#fff' }
+            style: { background: "#ef4444", color: "#fff" },
           });
         }
       }
     }
 
     // 检查隧道有效期
-    tunnels.forEach(tunnel => {
+    tunnels.forEach((tunnel) => {
       if (tunnel.expTime) {
         const expDate = new Date(tunnel.expTime);
         const now = new Date();
@@ -228,23 +238,23 @@ export default function DashboardPage() {
             hasNotification = true;
             if (diffDays === 1) {
               toast(`隧道"${tunnel.tunnelName}"将于明天过期`, {
-                icon: '⚠️',
+                icon: warningToastIcon,
                 duration: 5000,
-                style: { background: '#f59e0b', color: '#fff' }
+                style: { background: "#f59e0b", color: "#fff" },
               });
             } else {
               toast(`隧道"${tunnel.tunnelName}"将于${diffDays}天后过期`, {
-                icon: '⚠️',
+                icon: warningToastIcon,
                 duration: 5000,
-                style: { background: '#f59e0b', color: '#fff' }
+                style: { background: "#f59e0b", color: "#fff" },
               });
             }
           } else if (diffDays <= 0) {
             hasNotification = true;
             toast(`隧道"${tunnel.tunnelName}"已过期`, {
-              icon: '⚠️',
+              icon: warningToastIcon,
               duration: 6000,
-              style: { background: '#ef4444', color: '#fff' }
+              style: { background: "#ef4444", color: "#fff" },
             });
           }
         }
@@ -253,7 +263,7 @@ export default function DashboardPage() {
 
     // 如果显示了通知，记录防止重复
     if (hasNotification) {
-      localStorage.setItem('lastNotified', notificationKey);
+      localStorage.setItem("lastNotified", notificationKey);
     }
   };
 
@@ -265,8 +275,8 @@ export default function DashboardPage() {
     setFlowStatistics(isProtocolDesignPreview ? PREVIEW_FLOW_STATISTICS : null);
 
     // 检查用户是否是管理员
-    const adminStatus = localStorage.getItem('admin');
-    setIsAdmin(isProtocolDesignPreview || adminStatus === 'true');
+    const adminStatus = localStorage.getItem("admin");
+    setIsAdmin(isProtocolDesignPreview || adminStatus === "true");
 
     const today = createTodayRange();
     setStatisticsRange(today);
@@ -274,7 +284,7 @@ export default function DashboardPage() {
     setActiveShortcut("today");
     loadPackageData();
     loadFlowStatistics(today);
-    localStorage.setItem('e', '/dashboard');
+    localStorage.setItem("e", "/dashboard");
   }, []);
 
   const loadPackageData = async () => {
@@ -294,19 +304,24 @@ export default function DashboardPage() {
         setForwardList(data.forwards || []);
 
         // 检查有效期并显示通知
-        checkExpirationNotifications(data.userInfo, data.tunnelPermissions || []);
+        checkExpirationNotifications(
+          data.userInfo,
+          data.tunnelPermissions || [],
+        );
       } else {
-        toast.error(res.msg || '获取套餐信息失败');
+        toast.error(res.msg || "获取套餐信息失败");
       }
     } catch (error) {
-      console.error('获取套餐信息失败:', error);
-      toast.error('获取套餐信息失败');
+      console.error("获取套餐信息失败:", error);
+      toast.error("获取套餐信息失败");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadFlowStatistics = async (range: FlowStatisticsDateRange = statisticsRange) => {
+  const loadFlowStatistics = async (
+    range: FlowStatisticsDateRange = statisticsRange,
+  ) => {
     setFlowStatisticsLoading(true);
     if (isProtocolDesignPreview) {
       setFlowStatistics(PREVIEW_FLOW_STATISTICS);
@@ -322,10 +337,10 @@ export default function DashboardPage() {
         setFlowStatistics(res.data || null);
         setAppliedStatisticsRange(range);
       } else {
-        toast.error(res.msg || '获取流量统计失败');
+        toast.error(res.msg || "获取流量统计失败");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '获取流量统计失败');
+      toast.error(error instanceof Error ? error.message : "获取流量统计失败");
     } finally {
       setFlowStatisticsLoading(false);
     }
@@ -345,33 +360,35 @@ export default function DashboardPage() {
     loadFlowStatistics(statisticsRange);
   };
 
-  const formatFlow = (value: number, unit: string = 'bytes'): string => {
+  const formatFlow = (value: number, unit: string = "bytes"): string => {
     // 99999 表示无限制
     if (value === 99999) {
-      return '无限制';
+      return "无限制";
     }
 
-    if (unit === 'gb') {
-      return value + ' GB';
+    if (unit === "gb") {
+      return value + " GB";
     } else {
-      if (value === 0) return '0 B';
-      if (value < 1024) return value + ' B';
-      if (value < 1024 * 1024) return (value / 1024).toFixed(2) + ' KB';
-      if (value < 1024 * 1024 * 1024) return (value / (1024 * 1024)).toFixed(2) + ' MB';
-      return (value / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+      if (value === 0) return "0 B";
+      if (value < 1024) return value + " B";
+      if (value < 1024 * 1024) return (value / 1024).toFixed(2) + " KB";
+      if (value < 1024 * 1024 * 1024)
+        return (value / (1024 * 1024)).toFixed(2) + " MB";
+      return (value / (1024 * 1024 * 1024)).toFixed(2) + " GB";
     }
   };
 
   const formatNumber = (value: number): string => {
     // 99999 表示无限制
     if (value === 99999) {
-      return '无限制';
+      return "无限制";
     }
     return value.toString();
   };
 
   // 处理流量统计数据：当天按小时,跨天按自然日,并拆分上传/下载
-  const processFlowChartData = () => toFlowChartData(flowStatistics?.points || []);
+  const processFlowChartData = () =>
+    toFlowChartData(flowStatistics?.points || []);
 
   const statisticsRangeText = `${appliedStatisticsRange.startDate} 至 ${appliedStatisticsRange.endDate}`;
 
@@ -380,14 +397,14 @@ export default function DashboardPage() {
     return (userInfo.inFlow || 0) + (userInfo.outFlow || 0);
   };
 
-  const calculateUsagePercentage = (type: 'flow' | 'forwards'): number => {
-    if (type === 'flow') {
+  const calculateUsagePercentage = (type: "flow" | "forwards"): number => {
+    if (type === "flow") {
       const totalUsed = calculateUserTotalUsedFlow();
       const totalLimit = (userInfo.flow || 0) * 1024 * 1024 * 1024;
       // 无限制时返回0%
       if (userInfo.flow === 99999) return 0;
       return totalLimit > 0 ? Math.min((totalUsed / totalLimit) * 100, 100) : 0;
-    } else if (type === 'forwards') {
+    } else if (type === "forwards") {
       const totalUsed = forwardList.length;
       const totalLimit = userInfo.num || 0;
       // 无限制时返回0%
@@ -398,8 +415,8 @@ export default function DashboardPage() {
   };
 
   const formatResetTime = (resetDay?: number): string => {
-    if (resetDay === undefined || resetDay === null) return '';
-    if (resetDay === 0) return '不重置';
+    if (resetDay === undefined || resetDay === null) return "";
+    if (resetDay === 0) return "不重置";
 
     const now = new Date();
     const currentDay = now.getDate();
@@ -408,7 +425,11 @@ export default function DashboardPage() {
     if (resetDay > currentDay) {
       daysUntilReset = resetDay - currentDay;
     } else if (resetDay < currentDay) {
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, resetDay);
+      const nextMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        resetDay,
+      );
       const diffTime = nextMonth.getTime() - now.getTime();
       daysUntilReset = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     } else {
@@ -416,22 +437,24 @@ export default function DashboardPage() {
     }
 
     if (daysUntilReset === 0) {
-      return '今日重置';
+      return "今日重置";
     } else if (daysUntilReset === 1) {
-      return '明日重置';
+      return "明日重置";
     } else {
       return `${daysUntilReset}天后重置`;
     }
   };
 
   const groupedForwards = () => {
-    const groups: { [key: string]: { tunnelName: string; forwards: Forward[] } } = {};
-    forwardList.forEach(forward => {
-      const tunnelName = forward.tunnelName || '未知隧道';
+    const groups: {
+      [key: string]: { tunnelName: string; forwards: Forward[] };
+    } = {};
+    forwardList.forEach((forward) => {
+      const tunnelName = forward.tunnelName || "未知隧道";
       if (!groups[tunnelName]) {
         groups[tunnelName] = {
           tunnelName,
-          forwards: []
+          forwards: [],
         };
       }
       groups[tunnelName].forwards.push(forward);
@@ -440,15 +463,18 @@ export default function DashboardPage() {
   };
 
   const formatInAddress = (ipString: string, port: number): string => {
-    if (!ipString || !port) return '';
+    if (!ipString || !port) return "";
 
-    const ips = ipString.split(',').map(ip => ip.trim()).filter(ip => ip);
+    const ips = ipString
+      .split(",")
+      .map((ip) => ip.trim())
+      .filter((ip) => ip);
 
-    if (ips.length === 0) return '';
+    if (ips.length === 0) return "";
 
     if (ips.length === 1) {
       const ip = ips[0];
-      if (ip.includes(':') && !ip.startsWith('[')) {
+      if (ip.includes(":") && !ip.startsWith("[")) {
         return `[${ip}]:${port}`;
       } else {
         return `${ip}:${port}`;
@@ -458,7 +484,7 @@ export default function DashboardPage() {
     const firstIp = ips[0];
     let formattedFirstIp;
 
-    if (firstIp.includes(':') && !firstIp.startsWith('[')) {
+    if (firstIp.includes(":") && !firstIp.startsWith("[")) {
       formattedFirstIp = `[${firstIp}]`;
     } else {
       formattedFirstIp = firstIp;
@@ -468,11 +494,14 @@ export default function DashboardPage() {
   };
 
   const formatRemoteAddress = (remoteAddr: string): string => {
-    if (!remoteAddr) return '';
+    if (!remoteAddr) return "";
 
-    const addresses = remoteAddr.split(',').map(addr => addr.trim()).filter(addr => addr);
+    const addresses = remoteAddr
+      .split(",")
+      .map((addr) => addr.trim())
+      .filter((addr) => addr);
 
-    if (addresses.length === 0) return '';
+    if (addresses.length === 0) return "";
 
     if (addresses.length === 1) {
       return addresses[0];
@@ -484,16 +513,19 @@ export default function DashboardPage() {
   const showAddressModal = (ipString: string, port: number, title: string) => {
     if (!ipString || !port) return;
 
-    const ips = ipString.split(',').map(ip => ip.trim()).filter(ip => ip);
+    const ips = ipString
+      .split(",")
+      .map((ip) => ip.trim())
+      .filter((ip) => ip);
 
     if (ips.length <= 1) {
-              copyToClipboard(formatInAddress(ipString, port));
+      copyToClipboard(formatInAddress(ipString, port));
       return;
     }
 
     const formattedList = ips.map((ip, index) => {
       let formattedAddress;
-      if (ip.includes(':') && !ip.startsWith('[')) {
+      if (ip.includes(":") && !ip.startsWith("[")) {
         formattedAddress = `[${ip}]:${port}`;
       } else {
         formattedAddress = `${ip}:${port}`;
@@ -502,7 +534,7 @@ export default function DashboardPage() {
         id: index,
         ip: ip,
         address: formattedAddress,
-        copying: false
+        copying: false,
       };
     });
 
@@ -514,10 +546,13 @@ export default function DashboardPage() {
   const showRemoteAddressModal = (remoteAddr: string, title: string) => {
     if (!remoteAddr) return;
 
-    const addresses = remoteAddr.split(',').map(addr => addr.trim()).filter(addr => addr);
+    const addresses = remoteAddr
+      .split(",")
+      .map((addr) => addr.trim())
+      .filter((addr) => addr);
 
     if (addresses.length <= 1) {
-              copyToClipboard(remoteAddr);
+      copyToClipboard(remoteAddr);
       return;
     }
 
@@ -526,7 +561,7 @@ export default function DashboardPage() {
         id: index,
         ip: address,
         address: address,
-        copying: false
+        copying: false,
       };
     });
 
@@ -539,28 +574,32 @@ export default function DashboardPage() {
     if (await copyTextToClipboard(text)) {
       toast.success(`已复制`);
     } else {
-      toast.error('复制失败,请手动选择文本复制');
+      toast.error("复制失败,请手动选择文本复制");
     }
   };
 
   const copyAddress = async (addressItem: AddressItem) => {
     try {
-      setAddressList(prev => prev.map(item =>
-        item.id === addressItem.id ? { ...item, copying: true } : item
-      ));
+      setAddressList((prev) =>
+        prev.map((item) =>
+          item.id === addressItem.id ? { ...item, copying: true } : item,
+        ),
+      );
       await copyToClipboard(addressItem.address);
     } catch (error) {
-      toast.error('复制失败');
+      toast.error("复制失败");
     } finally {
-      setAddressList(prev => prev.map(item =>
-        item.id === addressItem.id ? { ...item, copying: false } : item
-      ));
+      setAddressList((prev) =>
+        prev.map((item) =>
+          item.id === addressItem.id ? { ...item, copying: false } : item,
+        ),
+      );
     }
   };
 
   const copyAllAddresses = async () => {
     if (addressList.length === 0) return;
-    const allAddresses = addressList.map(item => item.address).join('\n');
+    const allAddresses = addressList.map((item) => item.address).join("\n");
     await copyToClipboard(allAddresses);
   };
 
@@ -593,8 +632,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto flex min-h-[420px] items-center justify-center">
-          <div className="flex items-center gap-3 text-sm text-default-500">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-default-200 border-t-primary" />
+          <div className="flex items-center gap-3 text-sm text-zinc-500">
+            <span aria-hidden="true" className="loading-spinner" />
             正在加载数据...
           </div>
         </div>
@@ -603,14 +642,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="dashboard-page min-h-full px-6 pb-8 pt-8 text-foreground sm:px-8 lg:pl-[66px] lg:pr-[88px]">
-        <div className="mx-auto max-w-none">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="dashboard-page min-h-full px-4 pb-8 pt-7 text-foreground sm:px-6 lg:pl-6 lg:pr-[26px]">
+      <div className="mx-auto max-w-none">
+        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-              TRAFFIC CONTROL
-            </p>
-            <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-foreground">
+            <h1 className="text-[26px] font-semibold tracking-[-0.025em] text-foreground">
               仪表板
             </h1>
             <p className="mt-1 text-sm text-default-500">
@@ -623,8 +659,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="dashboard-surface h-[136px] p-4 sm:p-5">
+        <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="dashboard-surface h-[148px] p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-default-500">总流量</p>
@@ -634,12 +670,12 @@ export default function DashboardPage() {
                 <p className="mt-1 text-xs text-default-400">套餐上限</p>
               </div>
               <span className="dashboard-metric-icon bg-primary-50 text-primary">
-                <SettingsIcon size={17} />
+                <ArrowsRightLeftIcon className="h-[18px] w-[18px]" />
               </span>
             </div>
           </article>
 
-          <article className="dashboard-surface h-[136px] p-4 sm:p-5">
+          <article className="dashboard-surface h-[148px] p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-default-500">已用流量</p>
@@ -672,33 +708,39 @@ export default function DashboardPage() {
                 </div>
               </div>
               <span className="dashboard-metric-icon bg-success-50 text-success">
-                <SearchIcon size={17} />
+                <ChartBarIcon className="h-[18px] w-[18px]" />
               </span>
             </div>
           </article>
 
           {isAdmin && (
-            <article className="dashboard-surface h-[136px] p-4 sm:p-5">
+            <article className="dashboard-surface h-[148px] p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-default-500">转发配额</p>
+                  <p className="text-sm font-medium text-default-500">
+                    转发配额
+                  </p>
                   <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                     {formatNumber(userInfo.num || 0)}
                   </p>
-                  <p className="mt-1 text-xs text-default-400">账户级线路数量</p>
+                  <p className="mt-1 text-xs text-default-400">
+                    账户级线路数量
+                  </p>
                 </div>
-                <span className="dashboard-metric-icon bg-secondary-50 text-secondary">
-                  <PlusIcon size={17} />
+                <span className="dashboard-metric-icon bg-primary-50 text-primary">
+                  <QueueListIcon className="h-[18px] w-[18px]" />
                 </span>
               </div>
             </article>
           )}
 
           {isAdmin && (
-            <article className="dashboard-surface h-[136px] p-4 sm:p-5">
+            <article className="dashboard-surface h-[148px] p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-default-500">已用转发</p>
+                  <p className="text-sm font-medium text-default-500">
+                    已用转发
+                  </p>
                   <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
                     {forwardList.length}
                   </p>
@@ -719,15 +761,15 @@ export default function DashboardPage() {
                       : String(forwardUsage.toFixed(1)) + "%"}
                   </p>
                 </div>
-                <span className="dashboard-metric-icon bg-primary-50 text-primary">
-                  <UserIcon size={17} />
+                <span className="dashboard-metric-icon bg-success-50 text-success">
+                  <ArrowTrendingUpIcon className="h-[18px] w-[18px]" />
                 </span>
               </div>
             </article>
           )}
         </section>
 
-        <section className="dashboard-surface mt-3 overflow-hidden">
+        <section className="dashboard-surface mt-5 overflow-hidden">
           <div className="flex flex-col gap-5 border-b border-divider p-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -848,11 +890,11 @@ export default function DashboardPage() {
 
           <div className="px-4 pb-5 pt-4 sm:px-5">
             {flowStatisticsLoading && !flowStatistics ? (
-              <div className="flex h-[250px] items-center justify-center text-sm text-default-400">
+              <div className="flex h-[223px] items-center justify-center text-sm text-default-400">
                 正在加载流量统计...
               </div>
             ) : (flowStatistics?.points?.length || 0) === 0 ? (
-              <div className="flex h-[250px] flex-col items-center justify-center text-center">
+              <div className="flex h-[223px] flex-col items-center justify-center text-center">
                 <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-default-100 text-default-400">
                   <SearchIcon size={18} />
                 </span>
@@ -867,8 +909,8 @@ export default function DashboardPage() {
               <div
                 className={
                   flowStatisticsLoading
-                    ? "h-[250px] w-full opacity-60"
-                    : "h-[250px] w-full"
+                    ? "h-[223px] w-full opacity-60"
+                    : "h-[223px] w-full"
                 }
               >
                 <ResponsiveContainer width="100%" height="100%">
@@ -884,12 +926,18 @@ export default function DashboardPage() {
                     <XAxis
                       axisLine={{ stroke: "hsl(var(--heroui-default-300))" }}
                       dataKey="time"
-                      tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
+                      tick={{
+                        fill: "hsl(var(--heroui-default-500))",
+                        fontSize: 11,
+                      }}
                       tickLine={false}
                     />
                     <YAxis
                       axisLine={false}
-                      tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
+                      tick={{
+                        fill: "hsl(var(--heroui-default-500))",
+                        fontSize: 11,
+                      }}
                       tickFormatter={(value) => {
                         if (value === 0) return "0";
                         if (value < 1024) return String(value) + "B";
@@ -901,9 +949,8 @@ export default function DashboardPage() {
                           );
 
                         return (
-                          String(
-                            (value / (1024 * 1024 * 1024)).toFixed(1),
-                          ) + "G"
+                          String((value / (1024 * 1024 * 1024)).toFixed(1)) +
+                          "G"
                         );
                       }}
                       tickLine={false}
@@ -955,7 +1002,7 @@ export default function DashboardPage() {
                       }}
                       dataKey="uploadFlow"
                       name="上传"
-                      dot={false}
+                      dot={{ r: 1.5, strokeWidth: 0 }}
                       stroke="hsl(var(--heroui-success))"
                       strokeWidth={2.5}
                       type="monotone"
@@ -969,7 +1016,7 @@ export default function DashboardPage() {
                       }}
                       dataKey="downloadFlow"
                       name="下载"
-                      dot={false}
+                      dot={{ r: 1.5, strokeWidth: 0 }}
                       stroke="hsl(var(--heroui-warning))"
                       strokeWidth={2.5}
                       type="monotone"
@@ -978,14 +1025,13 @@ export default function DashboardPage() {
                       activeDot={{
                         fill: "hsl(var(--heroui-content1))",
                         r: 4,
-                        stroke: "hsl(var(--heroui-secondary))",
+                        stroke: "hsl(var(--heroui-primary))",
                         strokeWidth: 2,
                       }}
                       dataKey="flow"
                       name="总量"
-                      dot={false}
-                      stroke="hsl(var(--heroui-secondary))"
-                      strokeDasharray="5 5"
+                      dot={{ r: 1.5, strokeWidth: 0 }}
+                      stroke="hsl(var(--heroui-primary))"
                       strokeWidth={2.5}
                       type="monotone"
                     />
@@ -1030,7 +1076,7 @@ export default function DashboardPage() {
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-[980px]">
-                  <div className="grid grid-cols-[minmax(180px,1.15fr)_minmax(190px,1fr)_minmax(190px,1fr)_minmax(100px,.65fr)_minmax(100px,.65fr)_minmax(100px,.65fr)] gap-4 border-b border-divider bg-default-50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-default-500">
+                  <div className="grid grid-cols-[minmax(180px,1.15fr)_minmax(190px,1fr)_minmax(190px,1fr)_minmax(100px,.65fr)_minmax(100px,.65fr)_minmax(100px,.65fr)] gap-4 border-b border-divider bg-default-50 px-5 py-3 text-[11px] font-semibold text-default-500">
                     <span>转发名称</span>
                     <span>入口地址（监听）</span>
                     <span>目标地址（转发至）</span>
@@ -1081,7 +1127,10 @@ export default function DashboardPage() {
                             </span>
                           </span>
                           <span className="rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground">
-                            {isProtocolDesignPreview ? 8 : group.forwards.length}个转发
+                            {isProtocolDesignPreview
+                              ? 8
+                              : group.forwards.length}
+                            个转发
                           </span>
                         </button>
 
@@ -1134,7 +1183,9 @@ export default function DashboardPage() {
                                 {formatFlow(forward.outFlow || 0)}
                               </span>
                               <span className="font-mono text-xs font-medium text-primary">
-                                {formatFlow(calculateForwardBillingFlow(forward))}
+                                {formatFlow(
+                                  calculateForwardBillingFlow(forward),
+                                )}
                               </span>
                             </div>
                           ))}
@@ -1148,7 +1199,7 @@ export default function DashboardPage() {
         )}
 
         <Modal
-          backdrop="blur"
+          backdrop="opaque"
           isOpen={addressModalOpen}
           placement="center"
           scrollBehavior="outside"

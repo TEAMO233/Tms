@@ -1,54 +1,57 @@
-# Design QA — TunnelBox dashboard
+# Design QA — TunnelBox 清晰运营台
 
-## Comparison target
+## Visual source and implementation
 
-- Source visual truth: `/var/folders/42/qjjlsl6156b_0744mv5sxbcm0000gn/T/codex-clipboard-71c22c0b-f201-4576-9d30-8d289d60013b.png`
-- Implementation screenshot: `/Users/teamo/Desktop/Tms/design-qa-dashboard.png`
-- Implementation URL: `http://127.0.0.1:3000/dashboard?preview=protocol-board`
-- Viewport: `2048 × 984`
-- State: desktop, dark theme, dashboard preview fixture, expanded sidebar, loaded chart/table data, no focused control
+- Selected direction: 1 / 清晰运营台
+- Source visual truth: `/Users/teamo/.codex/generated_images/01a03b56-d67e-7e63-957d-05a68878f3b2/exec-8910a634-4e6a-4f77-8009-d346ade56f18.png`
+- Preview URL: `http://127.0.0.1:3001/dashboard?preview=protocol-board`
+- Dashboard screenshot: `/Users/teamo/Desktop/Tms/design-qa-dashboard-light.png`
+- Protocol desktop screenshot: `/Users/teamo/Desktop/Tms/design-qa-protocol-light-desktop.png`
+- Dashboard mobile screenshot: `/Users/teamo/Desktop/Tms/design-qa-dashboard-light-mobile.png`
+- Mobile drawer screenshot: `/Users/teamo/Desktop/Tms/design-qa-mobile-drawer.png`
+- Protocol mobile screenshots: `/Users/teamo/Desktop/Tms/design-qa-protocol-light-mobile-top.png` and `/Users/teamo/Desktop/Tms/design-qa-protocol-light-mobile-rows.png`
+- Same-input comparison: `/Users/teamo/Desktop/Tms/design-qa-dashboard-comparison.png`
 
-## Evidence
+## Compared states
 
-### Full-view comparison
+- Desktop reference and implementation were compared together at the same captured size, `1487 × 1058`; the browser CSS viewport was `1502 × 1069`.
+- Mobile was verified at a `390 × 844` CSS viewport with the navigation drawer closed and open.
+- The dashboard fixture was loaded with four metrics, hourly traffic data, forwarding groups, an expanded sidebar, and no focused control.
+- Protocol management was checked at desktop and mobile widths with six machine rows, wrapped protocol chips, status variants, assigned-user actions, filters, column settings, and the create modal.
 
-The source and implementation were opened together in the same comparison pass. The main composition is aligned: flush full-height navy sidebar, glowing TunnelBox mark, rounded active navigation item, transparent top region with system status and user pill, four metric cards, compact chart panel, and operations table.
+## Fidelity review
 
-### Focused regions
+- Layout: fixed `224px` sidebar, `72px` collapsed rail, content gutters, top account controls, four-card metric row, compact chart, and forwarding table follow the selected source composition.
+- Typography: compact system sans-serif hierarchy, restrained `24–28px` page headings, muted metadata, and monospace operational values are consistent across routes.
+- Surfaces: Zinc background, white bordered cards, subtle shadows, blue active states, semantic green/amber/red statuses, and modest radii are consistent across the app.
+- Assets: all visible UI icons use maintained icon libraries; no inline or handcrafted SVG, emoji placeholder, gradient, skin picker, or glass-style modal backdrop remains.
+- Responsive behavior: desktop sidebar collapse and mobile off-canvas drawer work without content overlap; protocol rows become readable cards and no audited route produces body-level horizontal overflow.
 
-- Sidebar: brand block, active pill, icon/text rhythm, and bottom circular collapse control were compared at the same viewport.
-- Dashboard body: card grid width, chart/table section rhythm, dark-blue surface tokens, date controls, and line-chart shape were compared at the same viewport.
-- Interaction state: collapse/expand was exercised; measured sidebar widths were 238px expanded, 72px collapsed, and 238px after restore.
+## Interaction checks
 
-## Required fidelity surfaces
+- Sidebar: expanded `224px`, collapsed `72px`, restored `224px`.
+- Mobile drawer: closed left position `-224px`, open left position `0px`; overlay and close affordance present.
+- Dashboard: date shortcut and account menu were exercised.
+- Protocol management: search filtering reduced the fixture from six rows to one and clearing restored six; create and column-settings dialogs opened and closed correctly.
+- Preview navigation preserves `?preview=protocol-board` so all protected redesign routes remain reviewable without a backend session.
 
-- Fonts and typography: existing system/UI fallback stack is retained; hierarchy, compact uppercase eyebrow, Chinese headings, labels, and table metadata are consistent with the source.
-- Spacing and layout: desktop gutters, four-column card grid, reduced card/chart heights, table start position, sidebar rhythm, and top-right alignment were adjusted to the source composition.
-- Colors and visual tokens: dashboard surfaces now use layered deep navy gradients with blue-gray borders, while primary blue, green status, orange download, and purple total-flow accents remain semantic.
-- Image quality and asset fidelity: the existing product `Logo` component is used and scaled with a blue glow; no source imagery or decorative raster asset was replaced with a placeholder.
-- Copy and content: dashboard labels, system status, TunnelBox/version treatment, user name, chart legend, and representative forwarding rows follow the reference state. Preview-only fixture data is isolated behind the development query flag.
-- Icons and states: existing icon components/inline navigation icons are retained; active navigation, user menu, chart controls, and sidebar collapse affordance are functional.
-- Accessibility/responsiveness: buttons retain accessible labels/titles; collapse state is keyboard-addressable through a semantic button; mobile routing remains on the existing H5 layout and the desktop sidebar transitions between expanded/collapsed states without overlap.
+## Route audit
 
-## Findings
+All 16 routes were loaded at `1280 × 800`. Every route used `rgb(250, 250, 250)` as the page background, had no active dark class, exposed a semantic page heading, and had `0px` body-level horizontal overflow:
 
-- No actionable P0/P1/P2 findings remain for the requested desktop dashboard redesign.
-- P3 follow-up: the reference uses a more bespoke glowing brand mark than the current reusable `Logo` path; the current treatment is intentionally retained to avoid replacing a product asset without a source asset file.
+`/`, `/dashboard`, `/forward`, `/inbound`, `/relay`, `/transparent-relay`, `/guide`, `/my-sub`, `/tunnel`, `/node`, `/user`, `/profile`, `/limit`, `/config`, `/settings`, `/change-password`.
 
-## Patches made since the previous QA pass
+## Findings and fixes
 
-- Replaced the floating desktop sidebar with a flush, full-height navy navigation rail.
-- Removed the floating desktop top-bar card and integrated status/user controls into the main surface.
-- Added a pill-shaped active nav state, circular sidebar collapse affordance, wider dashboard canvas, and source-matched spacing.
-- Tuned metric/chart/table heights, dark-blue surface tokens, chart fixture shape, date-control widths, and preview copy.
-- Added development-only dashboard fixture data and route access so the visual state can be reviewed without backend API calls.
+- P0/P1/P2: none remaining.
+- Fixed during QA: stale dark/skin infrastructure, mobile navigation query loss, missing semantic headings, protocol table action clipping, mobile card overflow, blur modal backdrops, handcrafted SVG icons, and unescaped confirmation-copy quotes.
+- P3 accepted difference: the selected source is conceptual, so the implementation keeps the product's real route set and business grouping. The source logo motif is represented by the closest maintained Heroicon because no matching source asset file exists.
 
-## Implementation checklist
+## Verification
 
-- [x] Full-view composition compared against the supplied reference.
-- [x] Focused sidebar and dashboard regions compared.
-- [x] Expanded/collapsed sidebar interaction verified.
-- [x] Production build verified with `npm run build`.
-- [x] Final preview screenshot saved.
+- `npm run build` — passed.
+- `node --test src/utils/*.test.mjs scripts/test-*.mjs` — 5/5 passed.
+- ESLint across changed TypeScript/TSX files — 0 errors; legacy style warnings remain.
+- Browser route and responsive audit — passed.
 
-final result: passed
+Final result: passed

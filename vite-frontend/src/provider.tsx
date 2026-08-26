@@ -29,25 +29,23 @@ export function Provider({ children }: ProvidersProps) {
           <Toaster
             position="top-center"
             toastOptions={{
-              duration: 2000,
-              className: "dark:bg-gray-800 dark:text-white",
+              duration: 2400,
               style: {
-                background: "var(--toaster-bg, #ffffff)",
-                color: "var(--toaster-color, #000000)",
-                border: "1px solid var(--toaster-border, #e5e7eb)",
+                background: "#ffffff",
+                color: "#27272a",
+                border: "1px solid #e4e4e7",
+                borderRadius: "10px",
+                boxShadow: "0 8px 24px rgba(24, 24, 27, 0.08)",
+                fontSize: "14px",
               },
               success: {
-                duration: 2000,
                 style: {
-                  background: "#10b981",
-                  color: "#ffffff",
+                  borderColor: "#a7f3d0",
                 },
               },
               error: {
-                duration: 2000,
                 style: {
-                  background: "#ef4444",
-                  color: "#ffffff",
+                  borderColor: "#fecaca",
                 },
               },
             }}

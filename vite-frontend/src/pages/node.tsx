@@ -16,10 +16,15 @@ import { Spinner } from "@heroui/spinner";
 import { Alert } from "@heroui/alert";
 import { Progress } from "@heroui/progress";
 import toast from "react-hot-toast";
+import {
+  ArrowDownTrayIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  ServerStackIcon,
+} from "@heroicons/react/24/outline";
 
-import axios from 'axios';
+import axios from "axios";
 import { copyTextToClipboard } from "@/utils/clipboard";
-
 
 import {
   createNode,
@@ -82,23 +87,12 @@ interface NodeForm {
   socks: number; // 0 关 1 开
 }
 
-// 国家码由后端保存,旗帜只在展示层按 regional indicator 算法即时推导。
-const flagOf = (country?: string): string => {
+const countryLabel = (country?: string): string => {
   const normalized = country?.trim().toUpperCase();
 
   if (!normalized || !/^[A-Z]{2}$/.test(normalized)) return "";
 
-  return String.fromCodePoint(
-    0x1f1e6 + normalized.charCodeAt(0) - 65,
-    0x1f1e6 + normalized.charCodeAt(1) - 65,
-  );
-};
-
-const countryLabel = (country?: string): string => {
-  const normalized = country?.trim().toUpperCase();
-  const flag = flagOf(normalized);
-
-  return flag && normalized ? `${flag} ${normalized}` : "";
+  return normalized;
 };
 
 export default function NodePage() {
@@ -726,7 +720,14 @@ export default function NodePage() {
     <div className="px-3 lg:px-6 py-8">
       {/* 页面头部 */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex-1" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            转发机
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            管理接入面板的转发节点、地址与端口范围
+          </p>
+        </div>
 
         <Button size="sm" variant="flat" color="primary" onPress={handleAdd}>
           新增
@@ -746,19 +747,7 @@ export default function NodePage() {
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-default-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M5 12h14M5 12l4-4m-4 4l4 4"
-                  />
-                </svg>
+                <ServerStackIcon className="w-8 h-8 text-default-400" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-foreground">
@@ -814,45 +803,52 @@ export default function NodePage() {
                 {/* 「在线」只代表 gost 活着。sing-box 是另一个服务,它挂了这里照样绿,
                       但那台机上的协议全都用不了 —— 必须单独标出来 */}
                 {node.connectionStatus === "online" &&
-                  node.singboxRunning === false && (
-                    node.singboxInstalling ? (
-                      <div className="mb-3 rounded-lg border border-default-300 bg-default-100 px-2.5 py-2">
-                        <div className="text-xs font-medium text-default-600">
-                          ⏳ sing-box 安装中
-                        </div>
-                        <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
-                          首次建协议时会现下约 57MB,一般 1-2 分钟,装好自动恢复。
-                        </div>
+                  node.singboxRunning === false &&
+                  (node.singboxInstalling ? (
+                    <div className="mb-3 rounded-lg border border-default-300 bg-default-100 px-2.5 py-2">
+                      <div className="text-xs font-medium text-default-600">
+                        sing-box 安装中
                       </div>
-                    ) : (
-                      <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-2">
-                        <div className="text-xs font-semibold text-danger">
-                          ⚠️ sing-box {node.singboxInstallErr ? "安装失败" : "未运行"}
-                        </div>
-                        <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
-                          {node.singboxInstallErr ? (
-                            <>
-                              这台机上的协议全部不可用。节点报的原因:
-                              <code className="font-mono break-all">{node.singboxInstallErr}</code>
-                              。多半是下载 GitHub 失败,国内机改用镜像版命令重跑节点安装脚本。
-                            </>
-                          ) : node.singboxInstalled === false ? (
-                            <>
-                              这台机上的协议全部不可用。
-                              <span className="text-danger">sing-box 没装上</span>
-                              (装节点时下载 GitHub 失败,国内机常见)—— 在这台机器上重跑一次节点安装脚本即可。
-                            </>
-                          ) : (
-                            <>
-                              这台机上的协议全部不可用。执行{" "}
-                              <code className="font-mono">systemctl enable --now sing-box</code>{" "}
-                              恢复;若提示 unit 不存在,说明没装上,重跑节点安装脚本。
-                            </>
-                          )}
-                        </div>
+                      <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
+                        首次建协议时会现下约 57MB,一般 1-2 分钟,装好自动恢复。
                       </div>
-                    )
-                  )}
+                    </div>
+                  ) : (
+                    <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-2">
+                      <div className="text-xs font-semibold text-danger">
+                        sing-box{" "}
+                        {node.singboxInstallErr ? "安装失败" : "未运行"}
+                      </div>
+                      <div className="text-[11px] text-default-500 mt-0.5 leading-relaxed">
+                        {node.singboxInstallErr ? (
+                          <>
+                            这台机上的协议全部不可用。节点报的原因:
+                            <code className="font-mono break-all">
+                              {node.singboxInstallErr}
+                            </code>
+                            。多半是下载 GitHub
+                            失败,国内机改用镜像版命令重跑节点安装脚本。
+                          </>
+                        ) : node.singboxInstalled === false ? (
+                          <>
+                            这台机上的协议全部不可用。
+                            <span className="text-danger">sing-box 没装上</span>
+                            (装节点时下载 GitHub 失败,国内机常见)——
+                            在这台机器上重跑一次节点安装脚本即可。
+                          </>
+                        ) : (
+                          <>
+                            这台机上的协议全部不可用。执行{" "}
+                            <code className="font-mono">
+                              systemctl enable --now sing-box
+                            </code>{" "}
+                            恢复;若提示 unit
+                            不存在,说明没装上,重跑节点安装脚本。
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 {/* 基础信息 */}
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between items-center text-sm min-w-0">
@@ -1034,11 +1030,11 @@ export default function NodePage() {
                   <div className="flex gap-1.5">
                     <Button
                       className="flex-1 min-h-8"
-                        color="success"
-                        isLoading={node.copyLoading}
-                        size="sm"
-                        variant="flat"
-                        onPress={() => handleCopyInstallCommand(node)}
+                      color="success"
+                      isLoading={node.copyLoading}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => handleCopyInstallCommand(node)}
                     >
                       安装命令
                     </Button>
@@ -1074,7 +1070,7 @@ export default function NodePage() {
         onClose={() => setDialogVisible(false)}
         size="2xl"
         scrollBehavior="outside"
-        backdrop="blur"
+        backdrop="opaque"
         placement="center"
       >
         <ModalContent>
@@ -1083,38 +1079,47 @@ export default function NodePage() {
             <div className="space-y-4">
               <Input
                 errorMessage={errors.name}
-                  isInvalid={!!errors.name}
-                  label="转发机名称"
-                  placeholder="请输入转发机名称"
-                  value={form.name}
-                  variant="bordered"
-                  onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                isInvalid={!!errors.name}
+                label="转发机名称"
+                placeholder="请输入转发机名称"
+                value={form.name}
+                variant="bordered"
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, name: e.target.value }))
+                }
               />
 
               <Input
                 errorMessage={errors.serverIp}
-                  isInvalid={!!errors.serverIp}
-                  label="服务器IP"
-                  placeholder="请输入服务器IP地址，如: 192.168.1.100 或 example.com"
-                  value={form.serverIp}
-                  variant="bordered"
-                  onChange={(e) => setForm(prev => ({
+                isInvalid={!!errors.serverIp}
+                label="服务器IP"
+                placeholder="请输入服务器IP地址，如: 192.168.1.100 或 example.com"
+                value={form.serverIp}
+                variant="bordered"
+                onChange={(e) =>
+                  setForm((prev) => ({
                     ...prev,
                     serverIp: e.target.value,
                     // 入口IP 默认自动跟随服务器IP;用户手动改过入口IP后就不再覆盖
-                    ipString: (!prev.ipString || prev.ipString === prev.serverIp) ? e.target.value : prev.ipString,
-                  }))}
+                    ipString:
+                      !prev.ipString || prev.ipString === prev.serverIp
+                        ? e.target.value
+                        : prev.ipString,
+                  }))
+                }
               />
 
               <Input
                 description="填了之后,车友订阅里的节点地址显示成这个域名,看不到你的服务器 IP。需要先把域名解析(A 记录)到上面那个 IP。注意:域名只是不直接显示 IP,对方 ping 一下还是查得到"
-                  errorMessage={errors.domain}
-                  isInvalid={!!errors.domain}
-                  label="连接域名(可选)"
-                  placeholder="如 hk.example.com,留空则给车友显示上面的 IP"
-                  value={form.domain}
-                  variant="bordered"
-                  onChange={(e) => setForm(prev => ({ ...prev, domain: e.target.value }))}
+                errorMessage={errors.domain}
+                isInvalid={!!errors.domain}
+                label="连接域名(可选)"
+                placeholder="如 hk.example.com,留空则给车友显示上面的 IP"
+                value={form.domain}
+                variant="bordered"
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, domain: e.target.value }))
+                }
               />
 
               {isEdit && (
@@ -1168,15 +1173,20 @@ export default function NodePage() {
 
                 <Input
                   errorMessage={errors.portEnd}
-                    isInvalid={!!errors.portEnd}
-                    label="结束端口"
-                    max={65535}
-                    min={1}
-                    placeholder="65535"
-                    type="number"
-                    value={form.portEnd.toString()}
-                    variant="bordered"
-                    onChange={(e) => setForm(prev => ({ ...prev, portEnd: parseInt(e.target.value) || 65535 }))}
+                  isInvalid={!!errors.portEnd}
+                  label="结束端口"
+                  max={65535}
+                  min={1}
+                  placeholder="65535"
+                  type="number"
+                  value={form.portEnd.toString()}
+                  variant="bordered"
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      portEnd: parseInt(e.target.value) || 65535,
+                    }))
+                  }
                 />
               </div>
 
@@ -1191,9 +1201,11 @@ export default function NodePage() {
                 {protocolDisabled && (
                   <Alert
                     className="mb-2"
-                      color="warning"
-                      description={protocolDisabledReason || '等待转发机上线后再设置'}
-                      variant="flat"
+                    color="warning"
+                    description={
+                      protocolDisabledReason || "等待转发机上线后再设置"
+                    }
+                    variant="flat"
                   />
                 )}
                 <div
@@ -1202,18 +1214,7 @@ export default function NodePage() {
                   {/* HTTP tile */}
                   <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
-                      <svg
-                        className="w-4 h-4 text-default-500"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="2" y="4" width="20" height="16" rx="2" />
-                        <path d="M2 10h20" />
-                      </svg>
+                      <GlobeAltIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
                         HTTP
                       </div>
@@ -1224,7 +1225,9 @@ export default function NodePage() {
                         isDisabled={protocolDisabled}
                         isSelected={form.http === 1}
                         size="sm"
-                        onValueChange={(v) => setForm(prev => ({ ...prev, http: v ? 1 : 0 }))}
+                        onValueChange={(v) =>
+                          setForm((prev) => ({ ...prev, http: v ? 1 : 0 }))
+                        }
                       />
                     </div>
                     <div className="mt-1 text-xs text-default-400">
@@ -1235,18 +1238,7 @@ export default function NodePage() {
                   {/* TLS tile */}
                   <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
-                      <svg
-                        className="w-4 h-4 text-default-500"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M6 10V7a6 6 0 1 1 12 0v3" />
-                        <rect x="4" y="10" width="16" height="10" rx="2" />
-                      </svg>
+                      <LockClosedIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
                         TLS
                       </div>
@@ -1257,7 +1249,9 @@ export default function NodePage() {
                         isDisabled={protocolDisabled}
                         isSelected={form.tls === 1}
                         size="sm"
-                        onValueChange={(v) => setForm(prev => ({ ...prev, tls: v ? 1 : 0 }))}
+                        onValueChange={(v) =>
+                          setForm((prev) => ({ ...prev, tls: v ? 1 : 0 }))
+                        }
                       />
                     </div>
                     <div className="mt-1 text-xs text-default-400">
@@ -1268,19 +1262,7 @@ export default function NodePage() {
                   {/* SOCKS tile */}
                   <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
-                      <svg
-                        className="w-4 h-4 text-default-500"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
+                      <ArrowDownTrayIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
                         SOCKS
                       </div>
@@ -1305,9 +1287,9 @@ export default function NodePage() {
 
               <Alert
                 className="mt-3"
-                        color="danger"
-                        description="请不要在出口转发机执行屏蔽协议，否则可能影响转发；屏蔽协议仅需在入口转发机执行。"
-                        variant="flat"
+                color="danger"
+                description="请不要在出口转发机执行屏蔽协议，否则可能影响转发；屏蔽协议仅需在入口转发机执行。"
+                variant="flat"
               />
 
               <Alert
@@ -1324,8 +1306,8 @@ export default function NodePage() {
             </Button>
             <Button
               color="primary"
-                isLoading={submitLoading}
-                onPress={handleSubmit}
+              isLoading={submitLoading}
+              onPress={handleSubmit}
             >
               {submitLoading ? "提交中..." : "确定"}
             </Button>
@@ -1339,7 +1321,7 @@ export default function NodePage() {
         onOpenChange={setDeleteModalOpen}
         size="2xl"
         scrollBehavior="outside"
-        backdrop="blur"
+        backdrop="opaque"
         placement="center"
       >
         <ModalContent>
@@ -1350,7 +1332,7 @@ export default function NodePage() {
               </ModalHeader>
               <ModalBody>
                 <p>
-                  确定要删除转发机 <strong>"{nodeToDelete?.name}"</strong> 吗？
+                  确定要删除转发机 <strong>“{nodeToDelete?.name}”</strong> 吗？
                 </p>
                 <p className="text-small text-default-500">
                   此操作不可恢复，请谨慎操作。
@@ -1379,7 +1361,7 @@ export default function NodePage() {
         onClose={() => setInstallCommandModal(false)}
         size="2xl"
         scrollBehavior="outside"
-        backdrop="blur"
+        backdrop="opaque"
         placement="center"
       >
         <ModalContent>
@@ -1392,14 +1374,14 @@ export default function NodePage() {
               <div className="relative">
                 <Textarea
                   readOnly
-                    className="font-mono text-sm"
-                    classNames={{
-                      input: "font-mono text-sm"
-                    }}
-                    maxRows={10}
-                    minRows={6}
-                    value={installCommand}
-                    variant="bordered"
+                  className="font-mono text-sm"
+                  classNames={{
+                    input: "font-mono text-sm",
+                  }}
+                  maxRows={10}
+                  minRows={6}
+                  value={installCommand}
+                  variant="bordered"
                 />
                 <Button
                   size="sm"
@@ -1412,7 +1394,7 @@ export default function NodePage() {
                 </Button>
               </div>
               <div className="text-xs text-default-500">
-                💡 提示：如果复制按钮失效，请手动选择上方文本进行复制
+                提示：如果复制按钮失效，请手动选择上方文本进行复制
               </div>
             </div>
           </ModalBody>

@@ -1,14 +1,12 @@
+import type { ReactNode } from "react";
+
 import { Navbar } from "@/components/navbar";
 
-export default function DefaultLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DefaultLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex flex-col min-h-screen bg-white dark:bg-black">
+    <div className="flex min-h-screen flex-col bg-zinc-50 text-zinc-900">
       <Navbar />
-      <main className="container mx-auto max-w-7xl px-4 sm:px-6 flex-grow pt-4 sm:pt-16">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
         {children}
       </main>
     </div>

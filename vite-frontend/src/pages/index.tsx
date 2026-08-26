@@ -5,6 +5,12 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
+import {
+  ArrowTopRightOnSquareIcon,
+  GlobeAltIcon,
+  PlayCircleIcon,
+  ServerStackIcon,
+} from "@heroicons/react/24/outline";
 
 import { isWebViewFunc } from "@/utils/panel";
 import { siteConfig } from "@/config/site";
@@ -138,20 +144,11 @@ export default function IndexPage() {
         },
       };
 
-      // 检测暗黑模式
-      const isDarkMode =
-        document.documentElement.classList.contains("dark") ||
-        document.documentElement.getAttribute("data-theme") === "dark" ||
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-      // 根据主题调整颜色
-      const trackColor = isDarkMode ? "#4a5568" : "#7db0be"; // 暗黑模式使用更深的灰蓝色
-
       const style: CaptchaStyle = {
         bgUrl: bgImage,
         logoUrl: null,
-        moveTrackMaskBgColor: trackColor,
-        moveTrackMaskBorderColor: trackColor,
+        moveTrackMaskBgColor: "#3b82f6",
+        moveTrackMaskBorderColor: "#3b82f6",
       };
 
       tacInstanceRef.current = new window.TAC(config, style);
@@ -253,14 +250,12 @@ export default function IndexPage() {
 
   return (
     <DefaultLayout>
-      <section className="flex flex-col items-center justify-center gap-4 py-4 sm:py-8 md:py-10 pb-20 min-h-[calc(100dvh-120px)] sm:min-h-[calc(100dvh-200px)]">
+      <section className="flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-4 py-8 pb-24">
         <div className="w-full max-w-md px-4 sm:px-0">
-          <Card className="w-full">
-            <CardHeader className="pb-0 pt-6 px-6 flex-col items-center">
-              <h1 className={title({ size: "sm" })}>登陆</h1>
-              <p className="text-small text-default-500 mt-2">
-                请输入您的账号信息
-              </p>
+          <Card className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <CardHeader className="flex-col items-center px-6 pb-0 pt-7">
+              <h1 className={title({ size: "sm" })}>登录</h1>
+              <p className="mt-2 text-sm text-zinc-500">请输入您的账号信息</p>
             </CardHeader>
             <CardBody className="px-6 py-6">
               <div className="flex flex-col gap-4">
@@ -293,7 +288,7 @@ export default function IndexPage() {
                 />
 
                 <Button
-                  className="mt-2"
+                  className="mt-2 rounded-lg bg-blue-500 font-medium text-white shadow-none"
                   color="primary"
                   disabled={loading}
                   isLoading={loading}
@@ -308,42 +303,47 @@ export default function IndexPage() {
 
           {/* 站长入口。放登录页是因为这是所有人(车主和车友)都必然看到的一页,
               而面板内部的页面车友多半只开「我的订阅」那一个。 */}
-          <div className="mt-4 text-center space-y-1.5">
+          <div className="mt-5 grid gap-2 text-center">
             <a
-              className="block text-xs text-gray-400 dark:text-gray-500 hover:text-primary transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-blue-600"
               href="https://3yuedaohang.com"
               rel="noopener noreferrer"
               target="_blank"
             >
-              🌐 站长博客 · 3yuedaohang.com
+              <GlobeAltIcon className="h-3.5 w-3.5" />
+              站长博客 · 3yuedaohang.com
+              <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
             <a
-              className="block text-xs text-gray-400 dark:text-gray-500 hover:text-primary transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-blue-600"
               href="https://www.youtube.com/@zhanzhang3yue"
               rel="noopener noreferrer"
               target="_blank"
             >
-              📺 YouTube · @zhanzhang3yue
+              <PlayCircleIcon className="h-3.5 w-3.5" />
+              YouTube · @zhanzhang3yue
+              <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
             <a
-              className="block text-xs text-gray-400 dark:text-gray-500 hover:text-primary transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-blue-600"
               href="https://3yuedaohang.com/cn2/banwagong"
               rel="noopener noreferrer"
               target="_blank"
             >
-              🖥️ 机器推荐 · CN2 / 搬瓦工
+              <ServerStackIcon className="h-3.5 w-3.5" />
+              机器推荐 · CN2 / 搬瓦工
+              <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
           </div>
         </div>
 
         {/* 版权信息 - 固定在底部，不占据布局空间 */}
 
-        <div className="fixed inset-x-0 bottom-4 text-center py-4">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Powered by{" "}
-            <span className="text-gray-500 dark:text-gray-400">TMS</span>
+        <div className="fixed inset-x-0 bottom-4 py-4 text-center">
+          <p className="text-xs text-zinc-400">
+            Powered by <span className="text-zinc-500">TMS</span>
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p className="mt-1 text-xs text-zinc-400">
             v{isWebView ? siteConfig.app_version : siteConfig.version}
           </p>
         </div>
@@ -351,23 +351,13 @@ export default function IndexPage() {
         {/* 验证码弹层 */}
         {showCaptcha && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* 背景遮罩层 - 模糊效果，暗黑模式下更深 */}
-            <div className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm captcha-backdrop-enter" />
+            <div className="captcha-backdrop-enter absolute inset-0 bg-zinc-950/55" />
             {/* 验证码容器 */}
             <div className="mb-4">
               <div
                 ref={captchaContainerRef}
                 className="w-full flex justify-center"
                 id="captcha-container"
-                style={{
-                  filter:
-                    document.documentElement.classList.contains("dark") ||
-                    document.documentElement.getAttribute("data-theme") ===
-                      "dark" ||
-                    window.matchMedia("(prefers-color-scheme: dark)").matches
-                      ? "brightness(0.8) contrast(0.9)"
-                      : "none",
-                }}
               />
             </div>
           </div>

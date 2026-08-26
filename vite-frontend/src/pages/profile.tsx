@@ -12,9 +12,18 @@ import {
 import { Input } from "@heroui/input";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import {
+  ArrowRightStartOnRectangleIcon,
+  ClockIcon,
+  Cog6ToothIcon,
+  KeyIcon,
+  UserIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
 
 import { isWebViewFunc } from "@/utils/panel";
 import { siteConfig } from "@/config/site";
+import { withDesignPreview } from "@/config/design-preview";
 import { updatePassword } from "@/api";
 import { safeLogout } from "@/utils/logout";
 interface PasswordForm {
@@ -69,15 +78,7 @@ export default function ProfilePage() {
     {
       path: "/limit",
       label: "限速管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
+      icon: <ClockIcon className="w-5 h-5" />,
       color:
         "bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400",
       description: "管理用户限速策略",
@@ -85,26 +86,14 @@ export default function ProfilePage() {
     {
       path: "/user",
       label: "用户管理",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-        </svg>
-      ),
+      icon: <UsersIcon className="w-5 h-5" />,
       color: "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400",
       description: "管理系统用户",
     },
     {
       path: "/config",
       label: "网站配置",
-      icon: (
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            clipRule="evenodd"
-            d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-            fillRule="evenodd"
-          />
-        </svg>
-      ),
+      icon: <Cog6ToothIcon className="w-5 h-5" />,
       color:
         "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400",
       description: "配置网站设置",
@@ -189,22 +178,20 @@ export default function ProfilePage() {
   return (
     <div className="px-3 lg:px-6 py-8 flex flex-col h-full">
       <div className="space-y-6 flex-1">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            个人中心
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            查看当前账号并访问常用管理入口
+          </p>
+        </div>
         {/* 用户信息卡片 */}
-        <Card className="border border-gray-200 dark:border-default-200 shadow-md hover:shadow-lg transition-shadow">
+        <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
           <CardBody className="p-4">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    clipRule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    fillRule="evenodd"
-                  />
-                </svg>
+                <UserIcon className="w-6 h-6 text-primary" />
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-medium text-foreground">
@@ -230,7 +217,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* 功能网格 */}
-        <Card className="border border-gray-200 dark:border-default-200 shadow-md hover:shadow-lg transition-shadow">
+        <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
           <CardBody className="p-4">
             <div className="grid grid-cols-3 gap-3">
               {/* 管理员功能 */}
@@ -238,8 +225,8 @@ export default function ProfilePage() {
                 adminMenuItems.map((item) => (
                   <button
                     key={item.path}
-                    className="flex flex-col items-center p-3 rounded-2xl bg-gray-50 dark:bg-default-100 hover:bg-gray-100 dark:hover:bg-default-200 transition-colors duration-200"
-                    onClick={() => navigate(item.path)}
+                    className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
+                    onClick={() => navigate(withDesignPreview(item.path))}
                   >
                     <div
                       className={`w-10 h-10 ${item.color} rounded-full flex items-center justify-center mb-2`}
@@ -254,21 +241,11 @@ export default function ProfilePage() {
 
               {/* 修改密码 */}
               <button
-                className="flex flex-col items-center p-3 rounded-2xl bg-gray-50 dark:bg-default-100 hover:bg-gray-100 dark:hover:bg-default-200 transition-colors duration-200"
+                className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
                 onClick={onOpen}
               >
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-2">
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      clipRule="evenodd"
-                      d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z"
-                      fillRule="evenodd"
-                    />
-                  </svg>
+                  <KeyIcon className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-foreground text-center">
                   修改密码
@@ -277,21 +254,11 @@ export default function ProfilePage() {
 
               {/* 退出登录 */}
               <button
-                className="flex flex-col items-center p-3 rounded-2xl bg-gray-50 dark:bg-default-100 hover:bg-gray-100 dark:hover:bg-default-200 transition-colors duration-200"
+                className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
                 onClick={handleLogout}
               >
                 <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mb-2">
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      clipRule="evenodd"
-                      d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
-                      fillRule="evenodd"
-                    />
-                  </svg>
+                  <ArrowRightStartOnRectangleIcon className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-foreground text-center">
                   退出登录
@@ -314,7 +281,7 @@ export default function ProfilePage() {
 
       {/* 修改密码弹窗 */}
       <Modal
-        backdrop="blur"
+        backdrop="opaque"
         isOpen={isOpen}
         placement="center"
         scrollBehavior="outside"

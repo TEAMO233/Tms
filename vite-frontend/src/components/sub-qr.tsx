@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@heroui/button";
 import { QRCodeSVG } from "qrcode.react";
+import { QrCodeIcon } from "@heroicons/react/24/outline";
 
 /**
  * 订阅链接二维码。
@@ -33,7 +34,7 @@ export function SubQr({ url, size = 200 }: { url: string; size?: number }) {
 }
 
 /**
- * 「📱 扫码」按钮 + 就地展开的二维码。
+ * 扫码按钮 + 就地展开的二维码。
  * 用在一屏里有多条线路的地方(我的订阅 / 用户管理的订阅线路),
  * 不用弹窗——那两处本身就在弹窗里,嵌套弹窗容易出焦点问题。
  */
@@ -50,8 +51,13 @@ export function SubQrToggle({
 
   return (
     <div className="flex flex-col gap-2 items-start">
-      <Button size="sm" variant="flat" onPress={() => setOpen(!open)}>
-        {open ? "收起二维码" : "📱 扫码"}
+      <Button
+        size="sm"
+        startContent={<QrCodeIcon className="h-4 w-4" />}
+        variant="flat"
+        onPress={() => setOpen(!open)}
+      >
+        {open ? "收起二维码" : "扫码"}
       </Button>
       {open && <SubQr size={size} url={url} />}
     </div>

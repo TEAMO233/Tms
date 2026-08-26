@@ -8,32 +8,17 @@ import { Divider } from "@heroui/divider";
 import { Switch } from "@heroui/switch";
 import { Select, SelectItem } from "@heroui/select";
 import toast from "react-hot-toast";
+import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 
 import { updateConfigs } from "@/api";
 import { SettingsIcon } from "@/components/icons";
+import { isProtocolDesignPreview } from "@/config/design-preview";
 import { isAdmin } from "@/utils/auth";
 import {
   getCachedConfigs,
   clearConfigCache,
   updateSiteConfig,
 } from "@/config/site";
-
-// 简单的保存图标组件
-const SaveIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-    <polyline points="17,21 17,13 7,13 7,21" />
-    <polyline points="7,3 7,8 15,8" />
-  </svg>
-);
 
 interface ConfigItem {
   key: string;
@@ -128,6 +113,7 @@ const getInitialConfigs = (): Record<string, string> => {
 
 export default function ConfigPage() {
   const navigate = useNavigate();
+  const isDesignPreview = isProtocolDesignPreview();
   const initialConfigs = getInitialConfigs();
   const [configs, setConfigs] =
     useState<Record<string, string>>(initialConfigs);
@@ -141,13 +127,13 @@ export default function ConfigPage() {
 
   // 权限检查
   useEffect(() => {
-    if (!isAdmin()) {
+    if (!isAdmin() && !isDesignPreview) {
       toast.error("权限不足，只有管理员可以访问此页面");
       navigate("/dashboard", { replace: true });
 
       return;
     }
-  }, [navigate]);
+  }, [isDesignPreview, navigate]);
 
   // 加载配置数据（优先从缓存）
   const loadConfigs = async (currentConfigs?: Record<string, string>) => {
@@ -362,7 +348,7 @@ export default function ConfigPage() {
         </div>
       </div>
 
-      <Card className="shadow-md">
+      <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center w-full">
             <div>
@@ -376,7 +362,7 @@ export default function ConfigPage() {
                 color="primary"
                 disabled={!hasChanges}
                 isLoading={saving}
-                startContent={<SaveIcon className="w-4 h-4" />}
+                startContent={<ArrowDownTrayIcon className="w-4 h-4" />}
                 onClick={handleSave}
               >
                 {saving ? "保存中..." : "保存配置"}

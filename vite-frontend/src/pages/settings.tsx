@@ -4,6 +4,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 import { reinitializeBaseURL } from "@/api/network";
 import {
@@ -91,19 +92,7 @@ export const SettingsPage = () => {
               variant="light"
               onClick={() => navigate(-1)}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M15 19l-7-7 7-7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                />
-              </svg>
+              <ArrowLeftIcon className="w-5 h-5" />
             </Button>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
               面板设置
