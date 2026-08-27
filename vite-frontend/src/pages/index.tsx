@@ -307,7 +307,7 @@ export default function IndexPage() {
               而面板内部的页面车友多半只开「我的订阅」那一个。 */}
           <div className="mt-6 flex flex-col items-center gap-1.5 text-center">
             <a
-              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200"
               href="https://3yuedaohang.com"
               rel="noopener noreferrer"
               target="_blank"
@@ -317,7 +317,7 @@ export default function IndexPage() {
               <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
             <a
-              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200"
               href="https://www.youtube.com/@zhanzhang3yue"
               rel="noopener noreferrer"
               target="_blank"
@@ -327,7 +327,7 @@ export default function IndexPage() {
               <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
             <a
-              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200"
               href="https://3yuedaohang.com/cn2/banwagong"
               rel="noopener noreferrer"
               target="_blank"
@@ -340,10 +340,10 @@ export default function IndexPage() {
         </div>
 
         <div className="fixed inset-x-0 bottom-4 py-4 text-center">
-          <p className="text-[11px] text-zinc-400">
-            Powered by <span className="text-zinc-500">TMS</span>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            Powered by <span className="text-zinc-500 dark:text-zinc-400">TMS</span>
           </p>
-          <p className="mt-1 text-[11px] text-zinc-400">
+          <p className="mt-1 text-[11px] text-zinc-400 dark:text-zinc-500">
             v{isWebView ? siteConfig.app_version : siteConfig.version}
           </p>
         </div>

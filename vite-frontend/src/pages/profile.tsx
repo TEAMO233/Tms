@@ -185,7 +185,7 @@ export default function ProfilePage() {
           </p>
         </div>
         {/* 用户信息卡片 */}
-        <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardBody className="p-4">
             <div className="flex items-center space-x-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50">
@@ -200,7 +200,7 @@ export default function ProfilePage() {
                     className={`px-2 py-1 rounded-md text-xs font-medium ${
                       isAdmin
                         ? "bg-blue-50 text-blue-700"
-                        : "bg-zinc-100 text-zinc-700"
+                        : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                     }`}
                   >
                     {isAdmin ? "管理员" : "普通用户"}
@@ -215,7 +215,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* 功能网格 */}
-        <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardBody className="p-4">
             <div className="grid grid-cols-3 gap-3">
               {/* 管理员功能 */}
@@ -223,7 +223,7 @@ export default function ProfilePage() {
                 adminMenuItems.map((item) => (
                   <button
                     key={item.path}
-                    className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
+                    className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800"
                     onClick={() => navigate(withDesignPreview(item.path))}
                   >
                     <div
@@ -239,7 +239,7 @@ export default function ProfilePage() {
 
               {/* 修改密码 */}
               <button
-                className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
+                className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800"
                 onClick={onOpen}
               >
                 <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -252,7 +252,7 @@ export default function ProfilePage() {
 
               {/* 退出登录 */}
               <button
-                className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
+                className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800"
                 onClick={handleLogout}
               >
                 <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-600">
@@ -267,11 +267,11 @@ export default function ProfilePage() {
         </Card>
 
         <div className="fixed inset-x-0 bottom-20 text-center py-4">
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
             Powered by{" "}
             <span className="text-gray-500">TMS</span>
           </p>
-          <p className="mt-1 text-[11px] text-zinc-400">
+          <p className="mt-1 text-[11px] text-zinc-400 dark:text-zinc-500">
             v{isWebViewFunc() ? siteConfig.app_version : siteConfig.version}
           </p>
         </div>

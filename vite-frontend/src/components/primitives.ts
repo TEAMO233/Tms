@@ -1,7 +1,7 @@
 import { tv } from "tailwind-variants";
 
 export const title = tv({
-  base: "inline font-semibold tracking-tight text-zinc-900",
+  base: "inline font-semibold tracking-tight text-zinc-900 dark:text-zinc-100",
   variants: {
     color: {
       violet: "text-blue-600",
@@ -10,7 +10,7 @@ export const title = tv({
       cyan: "text-cyan-600",
       green: "text-emerald-600",
       pink: "text-rose-600",
-      foreground: "text-zinc-900",
+      foreground: "text-zinc-900 dark:text-zinc-100",
     },
     size: {
       sm: "text-2xl",

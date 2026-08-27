@@ -768,8 +768,8 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="overflow-hidden border-t border-zinc-200">
-          <div className="flex flex-col gap-4 border-b border-zinc-200 p-4 xl:flex-row xl:items-end xl:justify-between">
+        <section className="overflow-hidden border-t border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-col gap-4 border-b border-zinc-200 p-4 dark:border-zinc-800 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold tracking-[-0.02em] text-foreground">
@@ -1219,7 +1219,7 @@ export default function DashboardPage() {
                 {addressList.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 p-3"
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
                   >
                     <code className="mr-3 flex-1 text-sm text-foreground">
                       {item.address}

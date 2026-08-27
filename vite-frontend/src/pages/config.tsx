@@ -287,7 +287,7 @@ export default function ConfigPage() {
               handleConfigChange(item.key, checked ? "true" : "false")
             }
           >
-            <span className="text-sm text-zinc-700">
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">
               {configs[item.key] === "true" ? "已启用" : "已禁用"}
             </span>
           </Switch>
@@ -349,7 +349,7 @@ export default function ConfigPage() {
         </div>
       </div>
 
-      <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center w-full">
             <div>
@@ -394,7 +394,7 @@ export default function ConfigPage() {
                     {item.label}
                   </label>
                   {item.description && (
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
                       {item.description}
                     </p>
                   )}

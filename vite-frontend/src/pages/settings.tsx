@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 import { reinitializeBaseURL } from "@/api/network";
 import {
   getPanelAddresses,
@@ -81,12 +83,12 @@ export const SettingsPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-zinc-900">
+    <div className="min-h-screen bg-[var(--tms-bg)] text-[var(--tms-text)]">
       <div className="admin-topbar sticky top-0 z-30">
         <div className="mx-auto flex h-14 max-w-3xl items-center gap-2 px-4">
             <Button
               isIconOnly
-              className="text-zinc-600"
+              className="text-zinc-600 dark:text-zinc-400"
               variant="light"
               onClick={() => navigate(-1)}
             >
@@ -95,6 +97,9 @@ export const SettingsPage = () => {
             <h1 className="page-title text-[18px]">
               面板设置
             </h1>
+            <div className="ml-auto">
+              <ThemeToggle />
+            </div>
         </div>
       </div>
 
@@ -102,7 +107,7 @@ export const SettingsPage = () => {
         <div className="space-y-4">
           <Card className="page-surface shadow-none">
             <CardBody className="p-5">
-              <h2 className="mb-4 text-base font-semibold tracking-tight text-zinc-900">
+              <h2 className="mb-4 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 添加新面板地址
               </h2>
               <div className="space-y-4">
@@ -130,11 +135,11 @@ export const SettingsPage = () => {
           {/* 地址列表 */}
           <Card className="page-surface shadow-none">
             <CardBody className="p-5">
-              <h2 className="mb-4 text-base font-semibold tracking-tight text-zinc-900">
+              <h2 className="mb-4 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 已保存的面板地址
               </h2>
               {panelAddresses.length === 0 ? (
-                <p className="py-8 text-center text-sm text-zinc-500">
+                <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                   暂无保存的面板地址
                 </p>
               ) : (
@@ -142,12 +147,12 @@ export const SettingsPage = () => {
                   {panelAddresses.map((panel, index) => (
                     <div
                       key={index}
-                      className="rounded-lg border border-zinc-200 p-4"
+                      className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-zinc-900">
+                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
                               {panel.name}
                             </span>
                             {panel.inx && (
@@ -156,7 +161,7 @@ export const SettingsPage = () => {
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 font-mono text-sm text-zinc-500">
+                          <p className="mt-1 font-mono text-sm text-zinc-500 dark:text-zinc-400">
                             {panel.address}
                           </p>
                         </div>

@@ -91,7 +91,7 @@ function Branch({
   return (
     <div className={`rounded-xl border ${ring} p-4 space-y-2 h-full`}>
       <div className="flex items-center gap-2">
-        <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-default-600 shadow-sm">
+        <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-default-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
           {tag}
         </span>
         <span className="font-semibold text-sm">{title}</span>

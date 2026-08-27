@@ -31,7 +31,7 @@ const isDesignPreview = isProtocolDesignPreview();
 
 function PageFallback() {
   return (
-    <div className="page-loading min-h-[360px] bg-[#fafafa]">
+    <div className="page-loading min-h-[360px] bg-[var(--tms-bg)]">
         <span aria-hidden="true" className="loading-spinner" />
         正在加载页面…
     </div>

@@ -652,7 +652,7 @@ export default function UserPage() {
                 base: "bg-default-100",
                 input: "bg-transparent",
                 inputWrapper:
-                  "h-9 bg-white border border-zinc-200 hover:border-zinc-300 focus-within:border-primary data-[hover=true]:border-zinc-300",
+                  "h-9 bg-white border border-zinc-200 hover:border-zinc-300 focus-within:border-primary data-[hover=true]:border-zinc-300 dark:bg-zinc-900 dark:border-zinc-700 dark:hover:border-zinc-600",
               }}
               placeholder="搜索用户名"
               startContent={<SearchIcon className="w-4 h-4 text-default-400" />}
@@ -1238,7 +1238,7 @@ export default function UserPage() {
                   aria-label="用户隧道权限列表"
                   classNames={{
                     wrapper: "shadow-none",
-                    th: "bg-zinc-50 text-zinc-600 font-medium",
+                    th: "bg-zinc-50 text-zinc-600 font-medium dark:bg-zinc-900 dark:text-zinc-400",
                   }}
                 >
                   <TableHeader>

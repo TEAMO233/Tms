@@ -740,7 +740,7 @@ export default function InboundPage() {
                 }}
               />
             </label>
-            <span className="hidden text-[11px] text-zinc-400 lg:inline">
+            <span className="hidden text-[11px] text-zinc-400 dark:text-zinc-500 lg:inline">
               {formatLastLoaded()}
             </span>
             <select

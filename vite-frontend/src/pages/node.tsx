@@ -1208,7 +1208,7 @@ export default function NodePage() {
                   className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-default-50  p-3 rounded-md border border-default-200  ${protocolDisabled ? "opacity-70" : ""}`}
                 >
                   {/* HTTP tile */}
-                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors">
+                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors dark:bg-zinc-900 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-2">
                       <GlobeAltIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
@@ -1232,7 +1232,7 @@ export default function NodePage() {
                   </div>
 
                   {/* TLS tile */}
-                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors">
+                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors dark:bg-zinc-900 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-2">
                       <LockClosedIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
@@ -1256,7 +1256,7 @@ export default function NodePage() {
                   </div>
 
                   {/* SOCKS tile */}
-                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors">
+                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors dark:bg-zinc-900 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-2">
                       <ArrowDownTrayIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
