@@ -91,7 +91,7 @@ function Branch({
   return (
     <div className={`rounded-xl border ${ring} p-4 space-y-2 h-full`}>
       <div className="flex items-center gap-2">
-        <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-default-600 shadow-sm">
+        <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-default-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
           {tag}
         </span>
         <span className="font-semibold text-sm">{title}</span>
@@ -121,11 +121,11 @@ function Verdict({
 
 export default function GuidePage() {
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-[1400px]">
+    <div className="page-shell space-y-6">
       {/* 页头 */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold">使用说明</h1>
-        <p className="text-sm text-default-500">
+        <h1 className="page-title">使用说明</h1>
+        <p className="page-subtitle">
           四个功能什么区别、什么时候用哪个 ——
           拿不准就看下面那个决策树,问两句就定了。
         </p>

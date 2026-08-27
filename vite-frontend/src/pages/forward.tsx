@@ -1605,9 +1605,9 @@ export default function ForwardPage() {
             {/* 地址信息 */}
             <div className="space-y-1">
               <div
-                className={`cursor-pointer px-2 py-1 bg-default-50 dark:bg-default-100/50 rounded border border-default-200 dark:border-default-300 transition-colors duration-200 ${
+                className={`cursor-pointer px-2 py-1 bg-default-50  rounded border border-default-200  transition-colors duration-200 ${
                   hasMultipleAddresses(forward.inIp)
-                    ? "hover:bg-default-100 dark:hover:bg-default-200/50"
+                    ? "hover:bg-default-100 "
                     : ""
                 }`}
                 role="button"
@@ -1639,9 +1639,9 @@ export default function ForwardPage() {
               </div>
 
               <div
-                className={`cursor-pointer px-2 py-1 bg-default-50 dark:bg-default-100/50 rounded border border-default-200 dark:border-default-300 transition-colors duration-200 ${
+                className={`cursor-pointer px-2 py-1 bg-default-50  rounded border border-default-200  transition-colors duration-200 ${
                   hasMultipleAddresses(forward.remoteAddr)
-                    ? "hover:bg-default-100 dark:hover:bg-default-200/50"
+                    ? "hover:bg-default-100 "
                     : ""
                 }`}
                 role="button"
@@ -1754,20 +1754,18 @@ export default function ForwardPage() {
 
   if (loading) {
     return (
-      <div className="px-3 py-8 lg:px-6">
+      <div className="page-shell">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="page-title">
             转发管理
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="page-subtitle">
             创建、分组并诊断端口转发配置
           </p>
         </div>
-        <div className="flex h-64 items-center justify-center">
-          <div className="flex items-center gap-3">
+        <div className="page-loading">
             <Spinner size="sm" />
-            <span className="text-default-600">正在加载...</span>
-          </div>
+            <span>正在加载…</span>
         </div>
       </div>
     );
@@ -1781,14 +1779,14 @@ export default function ForwardPage() {
   const protocolForwardCount = protocolManagedForwards.length;
 
   return (
-    <div className="px-3 lg:px-6 py-8">
+    <div className="page-shell">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="page-title">
             转发管理
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="page-subtitle">
             创建、分组并诊断端口转发配置
           </p>
           {protocolForwardCount > 0 && (
@@ -1880,7 +1878,7 @@ export default function ForwardPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between w-full min-w-0">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <UserIcon className="w-5 h-5 text-primary" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1918,7 +1916,7 @@ export default function ForwardPage() {
                         title={
                           <div className="flex items-center justify-between w-full min-w-0 pr-4">
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-8 h-8 bg-success-100 dark:bg-success-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <div className="w-8 h-8 bg-success-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                 <BoltIcon className="w-4 h-4 text-success" />
                               </div>
                               <div className="min-w-0 flex-1">
@@ -1958,7 +1956,7 @@ export default function ForwardPage() {
           </div>
         ) : (
           /* 空状态 */
-          <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+          <Card className="page-surface">
             <CardBody className="text-center py-16">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
@@ -2001,7 +1999,7 @@ export default function ForwardPage() {
         </DndContext>
       ) : (
         /* 空状态 */
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="page-surface">
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
@@ -2021,7 +2019,7 @@ export default function ForwardPage() {
       )}
 
       {protocolForwardCount > 0 && (
-        <Card className="mt-6 shadow-sm border border-secondary-200/60 dark:border-secondary-900/50 bg-secondary-50/30 dark:bg-secondary-950/10">
+        <Card className="mt-6 shadow-sm border border-secondary-200/60 bg-secondary-50/30">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between w-full gap-3 flex-wrap">
               <div className="min-w-0">
@@ -2631,7 +2629,7 @@ export default function ForwardPage() {
               {addressList.map((item) => (
                 <div
                   key={item.id}
-                  className="flex justify-between items-center p-3 border border-default-200 dark:border-default-100 rounded-lg"
+                  className="flex justify-between items-center p-3 border border-default-200 rounded-lg"
                 >
                   <code className="text-sm flex-1 mr-3 text-foreground">
                     {item.address}
@@ -2863,8 +2861,8 @@ export default function ForwardPage() {
                         key={index}
                         className={`p-2 rounded border ${
                           result.success
-                            ? "bg-success-50 dark:bg-success-100/10 border-success-200 dark:border-success-300/20"
-                            : "bg-danger-50 dark:bg-danger-100/10 border-danger-200 dark:border-danger-300/20"
+                            ? "bg-success-50  border-success-200 "
+                            : "bg-danger-50  border-danger-200 "
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -2878,8 +2876,8 @@ export default function ForwardPage() {
                               <span
                                 className={`text-xs font-medium ${
                                   result.success
-                                    ? "text-success-700 dark:text-success-300"
-                                    : "text-danger-700 dark:text-danger-300"
+                                    ? "text-success-700 "
+                                    : "text-danger-700 "
                                 }`}
                               >
                                 {result.success ? "成功" : "失败"}
@@ -2894,8 +2892,8 @@ export default function ForwardPage() {
                             <div
                               className={`text-xs ${
                                 result.success
-                                  ? "text-success-600 dark:text-success-400"
-                                  : "text-danger-600 dark:text-danger-400"
+                                  ? "text-success-600 "
+                                  : "text-danger-600 "
                               }`}
                             >
                               {result.message}

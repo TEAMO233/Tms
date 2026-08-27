@@ -12,8 +12,13 @@
     <link href="/favicon.ico" rel="icon" />
     <title>TMS</title>
     <script>
-      document.documentElement.classList.remove("dark");
-      document.documentElement.style.colorScheme = "light";
+      (function () {
+        try {
+          var dark = localStorage.getItem("tms_theme") === "dark";
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
     </script>
     <style>
       *,
@@ -29,9 +34,23 @@
         margin: 0;
       }
 
-      body {
+      html {
         background: #fafafa;
+        color-scheme: light;
+      }
+
+      html.dark {
+        background: #09090b;
+        color-scheme: dark;
+      }
+
+      body {
+        background: inherit;
         color: #18181b;
+      }
+
+      html.dark body {
+        color: #fafafa;
       }
     </style>
   </head>

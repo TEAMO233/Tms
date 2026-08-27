@@ -448,18 +448,16 @@ export default function TunnelPage() {
 
   if (loading) {
     return (
-      <div className="px-3 py-8 lg:px-6">
+      <div className="page-shell">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="page-title">
             隧道管理
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">编排入口、出口与链路协议</p>
+          <p className="page-subtitle">编排入口、出口与链路协议</p>
         </div>
-        <div className="flex h-64 items-center justify-center">
-          <div className="flex items-center gap-3">
+        <div className="page-loading">
             <Spinner size="sm" />
-            <span className="text-default-600">正在加载...</span>
-          </div>
+            <span>正在加载…</span>
         </div>
       </div>
     );
@@ -471,14 +469,14 @@ export default function TunnelPage() {
     : tunnels.filter((t) => !t.protocolManaged);
 
   return (
-    <div className="px-3 lg:px-6 py-8">
+    <div className="page-shell">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="page-title">
             隧道管理
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">编排入口、出口与链路协议</p>
+          <p className="page-subtitle">编排入口、出口与链路协议</p>
           {protocolTunnelCount > 0 && (
             <div className="mt-2 text-xs text-default-500 flex items-center gap-2 flex-wrap">
               <span>
@@ -548,7 +546,7 @@ export default function TunnelPage() {
                   <div className="space-y-2">
                     {/* 流程展示 */}
                     <div className="space-y-1.5">
-                      <div className="p-2 bg-default-50 dark:bg-default-100/50 rounded border border-default-200 dark:border-default-300">
+                      <div className="p-2 bg-default-50 rounded border border-default-200">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-default-600">
                             入口转发机
@@ -566,7 +564,7 @@ export default function TunnelPage() {
                         <ArrowDownIcon className="w-3 h-3 text-default-400 mx-auto" />
                       </div>
 
-                      <div className="p-2 bg-default-50 dark:bg-default-100/50 rounded border border-default-200 dark:border-default-300">
+                      <div className="p-2 bg-default-50 rounded border border-default-200">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-default-600">
                             {tunnel.type === 1
@@ -643,7 +641,7 @@ export default function TunnelPage() {
         </div>
       ) : (
         /* 空状态 */
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="page-surface">
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">

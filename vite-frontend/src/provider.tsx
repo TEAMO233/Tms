@@ -31,11 +31,11 @@ export function Provider({ children }: ProvidersProps) {
             toastOptions={{
               duration: 2400,
               style: {
-                background: "#ffffff",
-                color: "#27272a",
-                border: "1px solid #e4e4e7",
+                background: "var(--tms-surface)",
+                color: "var(--tms-text)",
+                border: "1px solid var(--tms-border)",
                 borderRadius: "10px",
-                boxShadow: "0 8px 24px rgba(24, 24, 27, 0.08)",
+                boxShadow: "var(--tms-shadow-md)",
                 fontSize: "14px",
               },
               success: {

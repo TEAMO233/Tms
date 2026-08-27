@@ -1,55 +1,32 @@
-import React, { useState, useEffect } from "react";
-
-import AdminLayout from "@/layouts/admin";
+import type { ReactNode } from "react";
 
 interface PageWrapperProps {
-  children: React.ReactNode;
+  children: ReactNode;
   title: string;
   description?: string;
   className?: string;
+  actions?: ReactNode;
+  narrow?: boolean;
 }
 
 export default function PageWrapper({
   children,
   title,
   description,
-  className = "container mx-auto max-w-7xl px-3 lg:px-6 py-8",
+  className = "",
+  actions,
+  narrow = false,
 }: PageWrapperProps) {
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    // 使用短暂的延迟确保组件完全加载，避免闪烁
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!isReady) {
-    return (
-      <AdminLayout>
-        <div className="container mx-auto max-w-7xl px-3 lg:px-6 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin h-5 w-5 border-2 border-gray-200 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full" />
-              <span className="text-default-600" />
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   return (
-    <AdminLayout>
-      <div className={className}>
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2 text-foreground">{title}</h1>
-          {description && <p className="text-default-600">{description}</p>}
+    <div className={`page-shell ${narrow ? "page-shell--narrow" : ""} ${className}`.trim()}>
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title">{title}</h1>
+          {description ? <p className="page-subtitle">{description}</p> : null}
         </div>
-        {children}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-    </AdminLayout>
+      {children}
+    </div>
   );
 }

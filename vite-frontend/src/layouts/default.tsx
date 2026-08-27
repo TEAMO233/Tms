@@ -4,7 +4,7 @@ import { Navbar } from "@/components/navbar";
 
 export default function DefaultLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 text-zinc-900">
+    <div className="flex min-h-screen flex-col bg-[var(--tms-bg)] text-[var(--tms-text)]">
       <Navbar />
       <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
         {children}

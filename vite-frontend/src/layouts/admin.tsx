@@ -46,6 +46,7 @@ import {
 import { SITE_CONFIG_UPDATED, siteConfig } from "@/config/site";
 import { isAdmin as getIsAdmin } from "@/utils/auth";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { safeLogout } from "@/utils/logout";
 
 const isDesignPreview = isProtocolDesignPreview();
@@ -82,18 +83,18 @@ function NavigationLink({
   return (
     <button
       aria-current={active ? "page" : undefined}
-      className={`group flex min-h-10 w-full items-center rounded-lg px-3 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+      className={`admin-nav-item group flex w-full items-center px-2.5 font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${
         active
-          ? "bg-blue-50 text-blue-600"
-          : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-      } ${collapsed ? "justify-center" : "gap-3"}`}
+          ? "bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300"
+          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+      } ${collapsed ? "admin-nav-item--collapsed justify-center" : "gap-2.5"}`}
       title={collapsed ? item.label : undefined}
       type="button"
       onClick={() => onNavigate(item.path)}
     >
       <Icon
         aria-hidden
-        className="h-5 w-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+        className={`h-[18px] w-[18px] shrink-0 ${active ? "text-blue-600 dark:text-blue-400" : "text-zinc-500 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-300"}`}
       />
       {!collapsed && <span className="truncate">{item.label}</span>}
     </button>
@@ -261,7 +262,7 @@ export default function AdminLayout({
   const contentOffset = collapsed ? "lg:pl-[72px]" : "lg:pl-56";
 
   return (
-    <div className="admin-shell min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="admin-shell min-h-screen bg-[var(--tms-bg)] text-[var(--tms-text)]">
       {isMobile && mobileMenuOpen && (
         <button
           aria-label="关闭导航菜单"
@@ -273,24 +274,24 @@ export default function AdminLayout({
 
       <aside
         aria-label="主导航"
-        className={`fixed inset-y-0 left-0 z-50 flex ${sidebarWidth} flex-col border-r border-zinc-200 bg-white transition-[width,transform] duration-150 ${
+        className={`fixed inset-y-0 left-0 z-50 flex ${sidebarWidth} flex-col border-r border-zinc-200 bg-white transition-[width,transform] duration-150 dark:border-zinc-800 dark:bg-zinc-900 ${
           isMobile && !mobileMenuOpen ? "-translate-x-full" : "translate-x-0"
         }`}
       >
         <div
-          className={`flex h-20 shrink-0 items-center border-b border-zinc-100 px-4 ${
-            collapsed && !isMobile ? "justify-center" : "gap-3"
+          className={`flex h-14 shrink-0 items-center border-b border-zinc-100 px-3 dark:border-zinc-800 ${
+            collapsed && !isMobile ? "justify-center" : "gap-2.5"
           }`}
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center text-blue-600">
-            <BoltIcon aria-hidden className="h-8 w-8" />
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600">
+            <BoltIcon aria-hidden className="h-5 w-5" />
           </span>
           {(!collapsed || isMobile) && (
             <div className="min-w-0">
-              <p className="truncate text-base font-semibold tracking-tight text-zinc-900">
+              <p className="truncate text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 {isDesignPreview ? "TunnelBox" : appName}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">
+              <p className="mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">
                 v{versionInfo?.panelVersion || siteConfig.version}
                 {versionInfo?.commit && versionInfo.commit !== "dev"
                   ? `-${versionInfo.commit}`
@@ -301,7 +302,7 @@ export default function AdminLayout({
           {isMobile && (
             <button
               aria-label="关闭导航菜单"
-              className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
               type="button"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -310,16 +311,16 @@ export default function AdminLayout({
           )}
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-5">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3">
+          <div className="space-y-4">
             {visibleGroups.map((group) => (
               <div key={group.label}>
                 {!collapsed || isMobile ? (
-                  <p className="mb-2 px-3 text-xs font-medium text-zinc-400">
+                  <p className="mb-1.5 px-2.5 text-[11px] font-medium tracking-wide text-zinc-400 dark:text-zinc-500">
                     {group.label}
                   </p>
                 ) : null}
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {group.items.map((item) => (
                     <NavigationLink
                       key={item.path}
@@ -335,7 +336,7 @@ export default function AdminLayout({
           </div>
         </nav>
 
-        <div className="shrink-0 border-t border-zinc-100 p-3">
+        <div className="shrink-0 border-t border-zinc-100 p-2.5 dark:border-zinc-800">
           <div className="space-y-1">
             {visibleSecondary.map((item) => (
               <NavigationLink
@@ -349,27 +350,27 @@ export default function AdminLayout({
           </div>
 
           <div
-            className={`mt-3 border-t border-zinc-100 pt-3 ${
+            className={`mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800 ${
               collapsed && !isMobile ? "grid justify-items-center" : ""
             }`}
           >
             <button
-              className={`flex w-full items-center rounded-lg p-2 text-left transition-colors duration-150 hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+              className={`flex w-full items-center rounded-lg p-2 text-left transition-colors duration-150 hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:hover:bg-zinc-800 ${
                 collapsed && !isMobile ? "justify-center" : "gap-3"
               }`}
               title={collapsed && !isMobile ? username : undefined}
               type="button"
               onClick={() => handleNavigate("/profile")}
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-500 text-sm font-semibold text-white">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-500 text-xs font-semibold text-white">
                 {username.slice(0, 1).toUpperCase()}
               </span>
               {(!collapsed || isMobile) && (
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-zinc-900">
+                  <span className="block truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {username}
                   </span>
-                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <span className="status-dot bg-emerald-500" />
                     {admin ? "管理员" : "用户"}
                   </span>
@@ -380,8 +381,8 @@ export default function AdminLayout({
             {!isMobile && (
               <button
                 aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-                className={`mt-2 flex min-h-10 w-full items-center rounded-lg px-3 text-sm font-medium text-zinc-500 transition-colors duration-150 hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
-                  collapsed ? "justify-center" : "gap-3"
+                className={`mt-1.5 flex min-h-9 w-full items-center rounded-lg px-2.5 text-[13px] font-medium text-zinc-500 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
+                  collapsed ? "justify-center" : "gap-2.5"
                 }`}
                 title={collapsed ? "展开侧边栏" : undefined}
                 type="button"
@@ -402,13 +403,13 @@ export default function AdminLayout({
       </aside>
 
       <div
-        className={`min-h-screen transition-[padding] duration-150 ${contentOffset}`}
+        className={`min-h-screen min-w-0 transition-[padding] duration-150 ${contentOffset}`}
       >
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-200 bg-white px-4 md:px-6 lg:static lg:h-20 lg:border-0 lg:bg-transparent lg:px-3">
+        <header className="admin-topbar sticky top-0 z-30 flex items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
             <button
               aria-label="打开导航菜单"
-              className="grid h-10 w-10 place-items-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 lg:hidden"
+              className="grid h-9 w-9 place-items-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 lg:hidden"
               type="button"
               onClick={() => setMobileMenuOpen(true)}
             >
@@ -417,10 +418,11 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="mr-2 hidden items-center gap-2 text-xs text-zinc-500 sm:flex">
+            <div className="mr-2 hidden items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 sm:flex">
               <span className="status-dot bg-emerald-500" />
               系统运行正常
             </div>
+            <ThemeToggle />
             {admin && versionInfo?.updateAvailable && (
               <Button
                 className="rounded-lg text-sm font-medium text-amber-700 transition-colors"
@@ -434,7 +436,7 @@ export default function AdminLayout({
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
-                  className="min-w-0 rounded-lg border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                  className="h-9 min-w-0 rounded-lg border border-zinc-200 bg-white px-2 text-[13px] font-medium text-zinc-700 shadow-none transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                   variant="flat"
                 >
                   <UserCircleIcon className="h-5 w-5 text-blue-500" />
@@ -468,7 +470,7 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="app-main min-h-[calc(100vh-4rem)] bg-zinc-50 lg:min-h-[calc(100vh-5rem)]">
+        <main className="app-main min-h-[calc(100vh-var(--tms-topbar))] min-w-0 bg-[var(--tms-bg)]">
           {children}
         </main>
       </div>
@@ -569,25 +571,25 @@ export default function AdminLayout({
               <ModalHeader>发现新版本</ModalHeader>
               <ModalBody>
                 <div className="space-y-4 text-sm">
-                  <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-                    <span className="text-zinc-500">当前版本</span>
-                    <span className="font-mono text-zinc-900">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+                    <span className="text-zinc-500 dark:text-zinc-400">当前版本</span>
+                    <span className="font-mono text-zinc-900 dark:text-zinc-100">
                       v{versionInfo?.panelVersion || siteConfig.version}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">最新版本</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">最新版本</span>
                     <span className="font-mono text-blue-600">
                       {versionInfo?.latest || "-"}
                     </span>
                   </div>
-                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                    <p className="mb-2 text-xs text-zinc-500">
+                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/60">
+                    <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
                       在面板服务器执行
                     </p>
                     <div className="flex items-center gap-2">
-                      <CommandLineIcon className="h-5 w-5 text-zinc-500" />
-                      <code className="min-w-0 flex-1 select-all font-mono text-zinc-900">
+                      <CommandLineIcon className="h-5 w-5 text-zinc-500 dark:text-zinc-400" />
+                      <code className="min-w-0 flex-1 select-all font-mono text-zinc-900 dark:text-zinc-100">
                         tms update
                       </code>
                       <Button
@@ -606,7 +608,7 @@ export default function AdminLayout({
                       </Button>
                     </div>
                   </div>
-                  <p className="flex items-start gap-2 text-xs leading-5 text-zinc-500">
+                  <p className="flex items-start gap-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                     <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                     更新会重启面板约 1–2 分钟，节点和既有订阅链接不受影响。
                   </p>

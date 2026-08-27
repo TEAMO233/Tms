@@ -748,23 +748,26 @@ export default function TransparentRelayPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Spinner size="lg" />
+      <div className="page-shell">
+        <div className="page-loading">
+          <Spinner size="sm" />
+          <span>正在加载…</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-w-0 space-y-4 p-4 md:p-6">
+    <div className="page-shell space-y-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">透明中转</h1>
+            <h1 className="page-title">透明中转</h1>
             <Chip color="primary" size="sm" variant="flat">
               运维信号板
             </Chip>
           </div>
-          <p className="mt-1 max-w-3xl text-sm text-default-500">
+          <p className="page-subtitle max-w-3xl">
             线路机模式:客户端连入口节点,入口机用 nftables DNAT+SNAT
             转到主服务器端口,真实出口仍是主服务器。
           </p>
@@ -809,7 +812,7 @@ export default function TransparentRelayPage() {
         协议中转；顶部“复制聚合订阅”会生成本页所有可用线路的一条独立订阅链接，和「我的订阅」互不影响。
       </Alert>
 
-      <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <CardBody className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-4 sm:p-3">
           <div className="min-w-0 border-l-2 border-primary px-3 py-2">
             <div className="text-xs text-default-500">透明中转总数</div>
@@ -842,7 +845,7 @@ export default function TransparentRelayPage() {
 
       {relays.length > 0 && (
         <>
-          <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+          <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <CardHeader className="flex-col items-start gap-1 border-b border-default-200/70 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -863,7 +866,7 @@ export default function TransparentRelayPage() {
               {l4Relays.length > 0 ? (
                 <>
                   <div
-                    className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500 dark:bg-white/[0.03] xl:grid ${RELAY_GRID_CLASS}`}
+                    className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500  xl:grid ${RELAY_GRID_CLASS}`}
                   >
                     <div>名称</div>
                     <div>来源节点（入口）</div>
@@ -994,7 +997,7 @@ export default function TransparentRelayPage() {
             </CardBody>
           </Card>
 
-          <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+          <Card className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <CardHeader className="flex-col items-start gap-1 border-b border-default-200/70 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1015,7 +1018,7 @@ export default function TransparentRelayPage() {
               {udpQuicRelays.length > 0 ? (
                 <>
                   <div
-                    className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500 dark:bg-white/[0.03] xl:grid ${RELAY_GRID_CLASS}`}
+                    className={`hidden gap-4 border-b border-default-200/70 bg-default-50/50 px-4 py-3 text-xs font-medium text-default-500  xl:grid ${RELAY_GRID_CLASS}`}
                   >
                     <div>名称</div>
                     <div>来源节点（入口）</div>

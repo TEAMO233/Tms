@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 import { reinitializeBaseURL } from "@/api/network";
 import {
   getPanelAddresses,
@@ -81,33 +83,31 @@ export const SettingsPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black">
-      {/* 顶部导航 */}
-      <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-[var(--tms-bg)] text-[var(--tms-text)]">
+      <div className="admin-topbar sticky top-0 z-30">
+        <div className="mx-auto flex h-14 max-w-3xl items-center gap-2 px-4">
             <Button
               isIconOnly
-              className="text-gray-600 dark:text-gray-300"
+              className="text-zinc-600 dark:text-zinc-400"
               variant="light"
               onClick={() => navigate(-1)}
             >
               <ArrowLeftIcon className="w-5 h-5" />
             </Button>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="page-title text-[18px]">
               面板设置
             </h1>
-          </div>
+            <div className="ml-auto">
+              <ThemeToggle />
+            </div>
         </div>
       </div>
 
-      {/* 内容区域 */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="space-y-6">
-          {/* 添加新地址 */}
-          <Card className="border border-gray-200 dark:border-gray-700">
-            <CardBody className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+      <div className="page-shell page-shell--narrow">
+        <div className="space-y-4">
+          <Card className="page-surface shadow-none">
+            <CardBody className="p-5">
+              <h2 className="mb-4 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 添加新面板地址
               </h2>
               <div className="space-y-4">
@@ -133,13 +133,13 @@ export const SettingsPage = () => {
           </Card>
 
           {/* 地址列表 */}
-          <Card className="border border-gray-200 dark:border-gray-700">
-            <CardBody className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <Card className="page-surface shadow-none">
+            <CardBody className="p-5">
+              <h2 className="mb-4 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 已保存的面板地址
               </h2>
               {panelAddresses.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                   暂无保存的面板地址
                 </p>
               ) : (
@@ -147,21 +147,21 @@ export const SettingsPage = () => {
                   {panelAddresses.map((panel, index) => (
                     <div
                       key={index}
-                      className="border border-gray-200 dark:border-gray-600 rounded-lg p-4"
+                      className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
                               {panel.name}
                             </span>
                             {panel.inx && (
-                              <span className="px-2 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 text-xs rounded">
+                              <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
                                 当前
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="mt-1 font-mono text-sm text-zinc-500 dark:text-zinc-400">
                             {panel.address}
                           </p>
                         </div>

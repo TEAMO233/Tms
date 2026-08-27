@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
-import { title } from "@/components/primitives";
 import { updatePassword } from "@/api";
 import DefaultLayout from "@/layouts/default";
 import { safeLogout } from "@/utils/logout";
@@ -111,21 +110,20 @@ export default function ChangePasswordPage() {
 
   return (
     <DefaultLayout>
-      <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10 min-h-[calc(100dvh-200px)]">
-        <div className="w-full max-w-lg">
-          <Card className="w-full">
-            <CardHeader className="pb-0 pt-6 px-6 flex-col items-center">
-              <div className="w-12 h-12 bg-warning-100 rounded-full flex items-center justify-center mb-3">
-                <ExclamationTriangleIcon className="h-6 w-6 text-warning-600" />
+      <section className="login-shell">
+        <div className="w-full max-w-[420px]">
+          <Card className="login-card shadow-none">
+            <CardHeader className="flex-col items-start gap-3 px-6 pb-0 pt-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <ExclamationTriangleIcon className="h-5 w-5" />
               </div>
-
-              <h1 className={title({ size: "sm" })}>安全提醒</h1>
-              <p className="text-small text-default-500 mt-2 text-center">
+              <h1 className="page-title">安全提醒</h1>
+              <p className="page-subtitle">
                 检测到您使用的是默认账号密码，为了您的账户安全，请立即修改
               </p>
             </CardHeader>
 
-            <CardBody className="px-6 py-6">
+            <CardBody className="px-6 pb-6 pt-5">
               <div className="flex flex-col gap-4">
                 <Input
                   errorMessage={errors.newUsername}
@@ -187,7 +185,7 @@ export default function ChangePasswordPage() {
                 />
 
                 <Button
-                  className="mt-2"
+                  className="mt-1 h-10 rounded-lg text-sm font-medium shadow-none"
                   color="warning"
                   disabled={loading}
                   isLoading={loading}
