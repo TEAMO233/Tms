@@ -36,19 +36,19 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md">
+      <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           aria-label={`${appName} 首页`}
-          className="flex min-w-0 items-center gap-3 text-zinc-900"
+          className="flex min-w-0 items-center gap-2.5 text-zinc-900"
           to="/"
         >
           <img
             alt=""
-            className="h-9 w-9 rounded-lg object-contain"
+            className="h-8 w-8 rounded-lg object-contain"
             src="/favicon.ico"
           />
-          <span className="truncate text-base font-semibold tracking-tight">
+          <span className="truncate text-sm font-semibold tracking-tight">
             {appName}
           </span>
         </Link>

@@ -317,9 +317,9 @@ export default function RelayPage() {
   });
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="page-shell space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold">中转</h1>
+        <h1 className="page-title">中转</h1>
         <Button
           color="secondary"
           startContent={<BoltIcon className="h-4 w-4" />}
@@ -338,7 +338,7 @@ export default function RelayPage() {
         </Button>
       </div>
 
-      <div className="text-xs text-default-500">
+      <div className="page-subtitle">
         中转 =
         前置机搭协议(抗封锁),流量经「落地」出网。车友连的还是前置机的订阅,只是出口
         IP 换成落地那台的。分配/限速/订阅与协议管理完全一致。

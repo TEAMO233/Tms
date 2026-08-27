@@ -80,14 +80,14 @@ export default function ProfilePage() {
       label: "限速管理",
       icon: <ClockIcon className="w-5 h-5" />,
       color:
-        "bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400",
+        "bg-amber-50 text-amber-700",
       description: "管理用户限速策略",
     },
     {
       path: "/user",
       label: "用户管理",
       icon: <UsersIcon className="w-5 h-5" />,
-      color: "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400",
+      color: "bg-blue-50 text-blue-600",
       description: "管理系统用户",
     },
     {
@@ -95,7 +95,7 @@ export default function ProfilePage() {
       label: "网站配置",
       icon: <Cog6ToothIcon className="w-5 h-5" />,
       color:
-        "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400",
+        "bg-violet-50 text-violet-600",
       description: "配置网站设置",
     },
   ];
@@ -176,13 +176,11 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="px-3 lg:px-6 py-8 flex flex-col h-full">
+    <div className="page-shell flex flex-col">
       <div className="space-y-6 flex-1">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            个人中心
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="page-title">个人中心</h1>
+          <p className="page-subtitle">
             查看当前账号并访问常用管理入口
           </p>
         </div>
@@ -190,7 +188,7 @@ export default function ProfilePage() {
         <Card className="rounded-xl border border-zinc-200 bg-white shadow-sm">
           <CardBody className="p-4">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50">
                 <UserIcon className="w-6 h-6 text-primary" />
               </div>
               <div className="flex-1">
@@ -201,8 +199,8 @@ export default function ProfilePage() {
                   <span
                     className={`px-2 py-1 rounded-md text-xs font-medium ${
                       isAdmin
-                        ? "bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300"
-                        : "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-zinc-100 text-zinc-700"
                     }`}
                   >
                     {isAdmin ? "管理员" : "普通用户"}
@@ -244,7 +242,7 @@ export default function ProfilePage() {
                 className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
                 onClick={onOpen}
               >
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-2">
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                   <KeyIcon className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-foreground text-center">
@@ -257,7 +255,7 @@ export default function ProfilePage() {
                 className="flex flex-col items-center rounded-xl bg-zinc-50 p-3 transition-colors duration-150 hover:bg-zinc-100"
                 onClick={handleLogout}
               >
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mb-2">
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-600">
                   <ArrowRightStartOnRectangleIcon className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-foreground text-center">
@@ -269,11 +267,11 @@ export default function ProfilePage() {
         </Card>
 
         <div className="fixed inset-x-0 bottom-20 text-center py-4">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-[11px] text-zinc-400">
             Powered by{" "}
-            <span className="text-gray-500 dark:text-gray-400">TMS</span>
+            <span className="text-gray-500">TMS</span>
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p className="mt-1 text-[11px] text-zinc-400">
             v{isWebViewFunc() ? siteConfig.app_version : siteConfig.version}
           </p>
         </div>

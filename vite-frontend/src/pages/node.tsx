@@ -717,14 +717,12 @@ export default function NodePage() {
   };
 
   return (
-    <div className="px-3 lg:px-6 py-8">
+    <div className="page-shell">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            转发机
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="page-title">转发机</h1>
+          <p className="page-subtitle">
             管理接入面板的转发节点、地址与端口范围
           </p>
         </div>
@@ -736,14 +734,12 @@ export default function NodePage() {
 
       {/* 转发机列表 */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="flex items-center gap-3">
+        <div className="page-loading">
             <Spinner size="sm" />
-            <span className="text-default-600">正在加载...</span>
-          </div>
+            <span>正在加载…</span>
         </div>
       ) : nodeList.length === 0 ? (
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="page-surface">
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
@@ -982,7 +978,7 @@ export default function NodePage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="text-center p-2 bg-default-50 dark:bg-default-100 rounded">
+                    <div className="text-center p-2 bg-default-50 rounded">
                       <div className="text-default-600 mb-0.5">上传</div>
                       <div className="font-mono">
                         {node.connectionStatus === "online" && node.systemInfo
@@ -990,7 +986,7 @@ export default function NodePage() {
                           : "-"}
                       </div>
                     </div>
-                    <div className="text-center p-2 bg-default-50 dark:bg-default-100 rounded">
+                    <div className="text-center p-2 bg-default-50 rounded">
                       <div className="text-default-600 mb-0.5">下载</div>
                       <div className="font-mono">
                         {node.connectionStatus === "online" && node.systemInfo
@@ -1002,21 +998,21 @@ export default function NodePage() {
 
                   {/* 流量统计 */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="text-center p-2 bg-primary-50 dark:bg-primary-100/20 rounded border border-primary-200 dark:border-primary-300/20">
-                      <div className="text-primary-600 dark:text-primary-400 mb-0.5">
+                    <div className="text-center p-2 bg-primary-50 rounded border border-primary-200">
+                      <div className="text-primary-600 mb-0.5">
                         ↑ 上行流量
                       </div>
-                      <div className="font-mono text-primary-700 dark:text-primary-300">
+                      <div className="font-mono text-primary-700">
                         {node.connectionStatus === "online" && node.systemInfo
                           ? formatTraffic(node.systemInfo.uploadTraffic)
                           : "-"}
                       </div>
                     </div>
-                    <div className="text-center p-2 bg-success-50 dark:bg-success-100/20 rounded border border-success-200 dark:border-success-300/20">
-                      <div className="text-success-600 dark:text-success-400 mb-0.5">
+                    <div className="text-center p-2 bg-success-50 rounded border border-success-200">
+                      <div className="text-success-600 mb-0.5">
                         ↓ 下行流量
                       </div>
-                      <div className="font-mono text-success-700 dark:text-success-300">
+                      <div className="font-mono text-success-700">
                         {node.connectionStatus === "online" && node.systemInfo
                           ? formatTraffic(node.systemInfo.downloadTraffic)
                           : "-"}
@@ -1209,10 +1205,10 @@ export default function NodePage() {
                   />
                 )}
                 <div
-                  className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-default-50 dark:bg-default-100 p-3 rounded-md border border-default-200 dark:border-default-100/30 ${protocolDisabled ? "opacity-70" : ""}`}
+                  className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-default-50  p-3 rounded-md border border-default-200  ${protocolDisabled ? "opacity-70" : ""}`}
                 >
                   {/* HTTP tile */}
-                  <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
+                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
                       <GlobeAltIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
@@ -1236,7 +1232,7 @@ export default function NodePage() {
                   </div>
 
                   {/* TLS tile */}
-                  <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
+                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
                       <LockClosedIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">
@@ -1260,7 +1256,7 @@ export default function NodePage() {
                   </div>
 
                   {/* SOCKS tile */}
-                  <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
+                  <div className="px-3 py-3 rounded-lg bg-white border border-default-200 hover:border-primary-200 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
                       <ArrowDownTrayIcon className="w-4 h-4 text-default-500" />
                       <div className="text-sm font-medium text-default-700">

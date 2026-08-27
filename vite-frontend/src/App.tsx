@@ -31,11 +31,9 @@ const isDesignPreview = isProtocolDesignPreview();
 
 function PageFallback() {
   return (
-    <div className="flex min-h-[360px] items-center justify-center bg-zinc-50">
-      <div className="flex items-center gap-3 text-sm text-zinc-500">
+    <div className="page-loading min-h-[360px] bg-[#fafafa]">
         <span aria-hidden="true" className="loading-spinner" />
         正在加载页面…
-      </div>
     </div>
   );
 }

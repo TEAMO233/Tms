@@ -14,7 +14,6 @@ import {
 
 import { isWebViewFunc } from "@/utils/panel";
 import { siteConfig } from "@/config/site";
-import { title } from "@/components/primitives";
 import DefaultLayout from "@/layouts/default";
 import { login, LoginData, checkCaptcha } from "@/api";
 import "@/utils/tac.css";
@@ -250,15 +249,17 @@ export default function IndexPage() {
 
   return (
     <DefaultLayout>
-      <section className="flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-4 py-8 pb-24">
-        <div className="w-full max-w-md px-4 sm:px-0">
-          <Card className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <CardHeader className="flex-col items-center px-6 pb-0 pt-7">
-              <h1 className={title({ size: "sm" })}>登录</h1>
-              <p className="mt-2 text-sm text-zinc-500">请输入您的账号信息</p>
+      <section className="login-shell">
+        <div className="w-full max-w-[380px]">
+          <Card className="login-card shadow-none">
+            <CardHeader className="flex-col items-start gap-3 px-6 pb-0 pt-6">
+              <h1 className="page-title">登录</h1>
+              <p className="page-subtitle">
+                使用账号进入 {siteConfig.name}
+              </p>
             </CardHeader>
-            <CardBody className="px-6 py-6">
-              <div className="flex flex-col gap-4">
+            <CardBody className="px-6 pb-6 pt-5">
+              <div className="flex flex-col gap-3.5">
                 <Input
                   errorMessage={errors.username}
                   isDisabled={loading}
@@ -274,6 +275,7 @@ export default function IndexPage() {
                 />
 
                 <Input
+                  errorMessage={errors.password}
                   isDisabled={loading}
                   isInvalid={!!errors.password}
                   label="密码"
@@ -288,7 +290,7 @@ export default function IndexPage() {
                 />
 
                 <Button
-                  className="mt-2 rounded-lg bg-blue-500 font-medium text-white shadow-none"
+                  className="mt-1 h-10 rounded-lg bg-blue-500 text-sm font-medium text-white shadow-none"
                   color="primary"
                   disabled={loading}
                   isLoading={loading}
@@ -303,9 +305,9 @@ export default function IndexPage() {
 
           {/* 站长入口。放登录页是因为这是所有人(车主和车友)都必然看到的一页,
               而面板内部的页面车友多半只开「我的订阅」那一个。 */}
-          <div className="mt-5 grid gap-2 text-center">
+          <div className="mt-6 flex flex-col items-center gap-1.5 text-center">
             <a
-              className="inline-flex items-center justify-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-blue-600"
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
               href="https://3yuedaohang.com"
               rel="noopener noreferrer"
               target="_blank"
@@ -315,7 +317,7 @@ export default function IndexPage() {
               <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
             <a
-              className="inline-flex items-center justify-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-blue-600"
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
               href="https://www.youtube.com/@zhanzhang3yue"
               rel="noopener noreferrer"
               target="_blank"
@@ -325,7 +327,7 @@ export default function IndexPage() {
               <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
             <a
-              className="inline-flex items-center justify-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-blue-600"
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
               href="https://3yuedaohang.com/cn2/banwagong"
               rel="noopener noreferrer"
               target="_blank"
@@ -337,13 +339,11 @@ export default function IndexPage() {
           </div>
         </div>
 
-        {/* 版权信息 - 固定在底部，不占据布局空间 */}
-
         <div className="fixed inset-x-0 bottom-4 py-4 text-center">
-          <p className="text-xs text-zinc-400">
+          <p className="text-[11px] text-zinc-400">
             Powered by <span className="text-zinc-500">TMS</span>
           </p>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-[11px] text-zinc-400">
             v{isWebView ? siteConfig.app_version : siteConfig.version}
           </p>
         </div>

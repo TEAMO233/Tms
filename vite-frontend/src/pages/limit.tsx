@@ -231,34 +231,32 @@ export default function LimitPage() {
 
   if (loading) {
     return (
-      <div className="px-3 py-8 lg:px-6">
+      <div className="page-shell">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="page-title">
             限速管理
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="page-subtitle">
             为不同隧道配置可复用的速度限制规则
           </p>
         </div>
-        <div className="flex h-64 items-center justify-center">
-          <div className="flex items-center gap-3">
+        <div className="page-loading">
             <Spinner size="sm" />
-            <span className="text-default-600">正在加载...</span>
-          </div>
+            <span>正在加载…</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-3 lg:px-6 py-8">
+    <div className="page-shell">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="page-title">
             限速管理
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="page-subtitle">
             为不同隧道配置可复用的速度限制规则
           </p>
         </div>
@@ -274,7 +272,7 @@ export default function LimitPage() {
           {rules.map((rule) => (
             <Card
               key={rule.id}
-              className="shadow-sm border border-gray-200 dark:border-gray-700"
+              className="page-surface"
             >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start w-full">
@@ -346,7 +344,7 @@ export default function LimitPage() {
         </div>
       ) : (
         /* 空状态 */
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="page-surface">
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">

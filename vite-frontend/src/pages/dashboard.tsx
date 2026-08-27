@@ -630,26 +630,24 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[420px] items-center justify-center">
-          <div className="flex items-center gap-3 text-sm text-zinc-500">
-            <span aria-hidden="true" className="loading-spinner" />
-            正在加载数据...
-          </div>
+      <div className="page-shell">
+        <div className="page-loading">
+          <span aria-hidden="true" className="loading-spinner" />
+          正在加载…
         </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-page min-h-full px-4 pb-8 pt-7 text-foreground sm:px-6 lg:pl-6 lg:pr-[26px]">
+    <div className="page-shell dashboard-page text-foreground">
       <div className="mx-auto max-w-none">
-        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="page-header">
           <div>
-            <h1 className="text-[26px] font-semibold tracking-[-0.025em] text-foreground">
+            <h1 className="page-title">
               仪表板
             </h1>
-            <p className="mt-1 text-sm text-default-500">
+            <p className="page-subtitle">
               账户用量、统计范围和转发线路一览
             </p>
           </div>
@@ -659,12 +657,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="dashboard-surface h-[148px] p-4 sm:p-5">
+        <div className="dashboard-compose">
+        <section className="dashboard-metrics">
+          <article className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-default-500">总流量</p>
-                <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                <p className="mt-1.5 text-[22px] font-semibold tracking-[-0.04em] text-foreground">
                   {formatFlow(userInfo.flow, "gb")}
                 </p>
                 <p className="mt-1 text-xs text-default-400">套餐上限</p>
@@ -675,11 +674,11 @@ export default function DashboardPage() {
             </div>
           </article>
 
-          <article className="dashboard-surface h-[148px] p-4 sm:p-5">
+          <article className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-default-500">已用流量</p>
-                <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                <p className="mt-1.5 text-[22px] font-semibold tracking-[-0.04em] text-foreground">
                   {formatFlow(usedFlow)}
                 </p>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-default-200">
@@ -714,13 +713,13 @@ export default function DashboardPage() {
           </article>
 
           {isAdmin && (
-            <article className="dashboard-surface h-[148px] p-4 sm:p-5">
+            <article className="p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-default-500">
                     转发配额
                   </p>
-                  <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                  <p className="mt-1.5 text-[22px] font-semibold tracking-[-0.04em] text-foreground">
                     {formatNumber(userInfo.num || 0)}
                   </p>
                   <p className="mt-1 text-xs text-default-400">
@@ -735,13 +734,13 @@ export default function DashboardPage() {
           )}
 
           {isAdmin && (
-            <article className="dashboard-surface h-[148px] p-4 sm:p-5">
+            <article className="p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-default-500">
                     已用转发
                   </p>
-                  <p className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-foreground">
+                  <p className="mt-1.5 text-[22px] font-semibold tracking-[-0.04em] text-foreground">
                     {forwardList.length}
                   </p>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-default-200">
@@ -769,11 +768,11 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="dashboard-surface mt-5 overflow-hidden">
-          <div className="flex flex-col gap-5 border-b border-divider p-4 xl:flex-row xl:items-end xl:justify-between">
+        <section className="overflow-hidden border-t border-zinc-200">
+          <div className="flex flex-col gap-4 border-b border-zinc-200 p-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                <h2 className="text-base font-semibold tracking-[-0.02em] text-foreground">
                   流量统计
                 </h2>
                 {flowStatisticsLoading && (
@@ -1042,12 +1041,14 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        </div>
+
         {isAdmin && (
           <section className="dashboard-surface mt-4 overflow-hidden">
             <div className="flex items-center justify-between gap-3 border-b border-divider px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                  <h2 className="text-base font-semibold tracking-[-0.02em] text-foreground">
                     转发配置
                   </h2>
                   <span className="rounded-full bg-primary-50 px-2 py-1 text-[11px] font-semibold text-primary">
@@ -1218,7 +1219,7 @@ export default function DashboardPage() {
                 {addressList.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between rounded-lg border border-default-200 p-3 dark:border-default-100"
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 p-3"
                   >
                     <code className="mr-3 flex-1 text-sm text-foreground">
                       {item.address}

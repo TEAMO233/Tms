@@ -633,19 +633,18 @@ export default function UserPage() {
   );
 
   return (
-    <div className="px-3 lg:px-6 py-8">
+    <div className="page-shell">
       {/* 页面头部 */}
-      <div className="flex flex-col gap-4 mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            用户管理
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="page-title">用户管理</h1>
+          <p className="page-subtitle">
             管理账号状态、套餐用量与线路权限
           </p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+      </div>
+        <div className="page-toolbar">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between w-full">
           <div className="flex items-center gap-3 flex-1 max-w-md">
             <Input
               className="flex-1"
@@ -653,7 +652,7 @@ export default function UserPage() {
                 base: "bg-default-100",
                 input: "bg-transparent",
                 inputWrapper:
-                  "bg-default-100 border-2 border-default-200 hover:border-default-300 focus-within:border-primary data-[hover=true]:border-default-300",
+                  "h-9 bg-white border border-zinc-200 hover:border-zinc-300 focus-within:border-primary data-[hover=true]:border-zinc-300",
               }}
               placeholder="搜索用户名"
               startContent={<SearchIcon className="w-4 h-4 text-default-400" />}
@@ -680,14 +679,12 @@ export default function UserPage() {
 
       {/* 用户列表 */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="flex items-center gap-3">
+        <div className="page-loading">
             <Spinner size="sm" />
-            <span className="text-default-600">正在加载...</span>
-          </div>
+            <span>正在加载…</span>
         </div>
       ) : users.length === 0 ? (
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="page-surface">
           <CardBody className="text-center py-16">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-default-100 rounded-full flex items-center justify-center">
@@ -1241,7 +1238,7 @@ export default function UserPage() {
                   aria-label="用户隧道权限列表"
                   classNames={{
                     wrapper: "shadow-none",
-                    th: "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium",
+                    th: "bg-zinc-50 text-zinc-600 font-medium",
                   }}
                 >
                   <TableHeader>
@@ -1653,8 +1650,8 @@ export default function UserPage() {
                 <p className="text-small text-default-500 mt-1">
                   该操作只会重置账号流量不会重置隧道权限流量，重置后该用户的上下行流量将归零，此操作不可撤销。
                 </p>
-                <div className="mt-2 p-2 bg-warning-50 dark:bg-warning-100/10 rounded text-xs">
-                  <div className="text-warning-700 dark:text-warning-300">
+                <div className="mt-2 p-2 bg-warning-50 rounded text-xs">
+                  <div className="text-warning-700">
                     当前流量使用情况：
                   </div>
                   <div className="mt-1 space-y-1">
@@ -1676,7 +1673,7 @@ export default function UserPage() {
                     </div>
                     <div className="flex justify-between font-medium">
                       <span>总计：</span>
-                      <span className="font-mono text-warning-700 dark:text-warning-300">
+                      <span className="font-mono text-warning-700">
                         {userToReset
                           ? formatFlow(calculateUserTotalUsedFlow(userToReset))
                           : "-"}
@@ -1733,8 +1730,8 @@ export default function UserPage() {
                 <p className="text-small text-default-500 mt-1">
                   该操作只会重置隧道权限流量不会重置账号流量，重置后该隧道权限的上下行流量将归零，此操作不可撤销。
                 </p>
-                <div className="mt-2 p-2 bg-warning-50 dark:bg-warning-100/10 rounded text-xs">
-                  <div className="text-warning-700 dark:text-warning-300">
+                <div className="mt-2 p-2 bg-warning-50 rounded text-xs">
+                  <div className="text-warning-700">
                     当前流量使用情况：
                   </div>
                   <div className="mt-1 space-y-1">
@@ -1756,7 +1753,7 @@ export default function UserPage() {
                     </div>
                     <div className="flex justify-between font-medium">
                       <span>总计：</span>
-                      <span className="font-mono text-warning-700 dark:text-warning-300">
+                      <span className="font-mono text-warning-700">
                         {tunnelToReset
                           ? formatFlow(calculateTunnelUsedFlow(tunnelToReset))
                           : "-"}

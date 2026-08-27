@@ -11,7 +11,6 @@ import toast from "react-hot-toast";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 
 import { updateConfigs } from "@/api";
-import { SettingsIcon } from "@/components/icons";
 import { isProtocolDesignPreview } from "@/config/design-preview";
 import { isAdmin } from "@/utils/auth";
 import {
@@ -288,7 +287,7 @@ export default function ConfigPage() {
               handleConfigChange(item.key, checked ? "true" : "false")
             }
           >
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm text-zinc-700">
               {configs[item.key] === "true" ? "已启用" : "已禁用"}
             </span>
           </Switch>
@@ -329,20 +328,22 @@ export default function ConfigPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner label="加载配置中..." size="lg" />
+      <div className="page-shell">
+        <div className="page-loading">
+          <Spinner size="sm" />
+          <span>正在加载…</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="page-shell page-shell--narrow">
       {/* 页面标题 */}
-      <div className="flex items-center gap-3 mb-6">
-        <SettingsIcon className="w-8 h-8 text-primary" />
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold">网站配置</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <h1 className="page-title">网站配置</h1>
+          <p className="page-subtitle">
             管理网站的基本信息和显示设置
           </p>
         </div>
@@ -353,7 +354,7 @@ export default function ConfigPage() {
           <div className="flex justify-between items-center w-full">
             <div>
               <h2 className="text-xl font-semibold">基本设置</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="page-subtitle">
                 配置网站的基本信息，这些设置会影响网站的显示效果
               </p>
             </div>
@@ -389,11 +390,11 @@ export default function ConfigPage() {
             return (
               <div key={item.key} className="space-y-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="text-sm font-medium text-gray-700">
                     {item.label}
                   </label>
                   {item.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-zinc-500">
                       {item.description}
                     </p>
                   )}
@@ -412,9 +413,9 @@ export default function ConfigPage() {
 
       {/* 操作提示 */}
       {hasChanges && (
-        <Card className="mt-4 bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800">
+        <Card className="mt-4 border border-amber-200 bg-amber-50">
           <CardBody className="py-3">
-            <div className="flex items-center gap-2 text-warning-700 dark:text-warning-300">
+            <div className="flex items-center gap-2 text-amber-700">
               <div className="w-2 h-2 bg-warning-500 rounded-full animate-pulse" />
               <span className="text-sm">
                 检测到配置变更，请记得保存您的修改
