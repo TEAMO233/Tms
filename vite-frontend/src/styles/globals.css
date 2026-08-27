@@ -220,6 +220,7 @@ textarea:focus-visible {
 }
 
 .app-main {
+  min-width: 0;
   overflow-x: clip;
 }
 
@@ -558,6 +559,7 @@ textarea:focus-visible {
   --operations-blue: var(--tms-primary);
   width: 100%;
   max-width: 1600px;
+  min-width: 0;
   min-height: 100%;
   margin: 0 auto;
   padding: var(--tms-page-pad-y) 16px calc(var(--tms-page-pad-y) + var(--safe-area-bottom));
@@ -829,7 +831,11 @@ textarea:focus-visible {
 }
 
 .protocol-operations-table-scroll {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   border: 1px solid var(--operations-border);
   border-radius: 12px;
   background: #ffffff;
@@ -841,7 +847,7 @@ textarea:focus-visible {
 }
 
 .protocol-operations-table-head {
-  min-width: 1185px;
+  min-width: 100%;
 }
 
 .protocol-operations-table-header-row {
@@ -863,6 +869,11 @@ textarea:focus-visible {
 .protocol-operations-table-header-row > div:first-child,
 .protocol-operations-table-row > div:first-child {
   padding-left: 18px;
+}
+
+.protocol-operations-table-header-row,
+.protocol-operations-table-row {
+  width: 100%;
 }
 
 .protocol-operations-table-row {
@@ -1045,22 +1056,23 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   overflow: visible;
 }
 
 .protocol-table-protocol-chip {
   display: inline-flex;
-  min-height: 25px;
+  min-height: 22px;
   flex: 0 0 auto;
   align-items: center;
   border: 1px solid #bbf7d0;
-  border-radius: 6px;
+  border-radius: 5px;
   background: #f0fdf4;
-  padding: 0 7px;
+  padding: 0 6px;
   color: #047857;
   font-size: 10px;
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -1079,12 +1091,12 @@ textarea:focus-visible {
 
 .protocol-table-add-button {
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
   place-items: center;
   border: 1px dashed #93c5fd;
-  border-radius: 6px;
+  border-radius: 5px;
   background: #eff6ff;
   color: #2563eb;
 }
@@ -1115,18 +1127,40 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
+.protocol-table-actions-head,
+.protocol-table-actions-cell {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  box-shadow: -10px 0 12px -10px rgba(24, 24, 27, 0.18);
+}
+
+.protocol-table-actions-head {
+  background: #fafafa;
+  padding-right: 16px !important;
+}
+
 .protocol-table-actions-cell {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  background: #ffffff;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-right: 16px !important;
+}
+
+.protocol-operations-table-row:hover .protocol-table-actions-cell {
+  background: #fafafa;
 }
 
 .protocol-table-action {
-  flex: 1 1 0;
-  min-width: 0 !important;
+  flex: 0 0 auto;
+  min-width: max-content !important;
   min-height: 30px !important;
   border-radius: 7px !important;
-  padding: 0 6px !important;
+  padding: 0 8px !important;
   font-size: 11px !important;
   font-weight: 600 !important;
   white-space: nowrap;
@@ -1346,11 +1380,19 @@ textarea:focus-visible {
     overflow: visible;
   }
 
+  .protocol-table-actions-head,
+  .protocol-table-actions-cell {
+    position: static;
+    box-shadow: none;
+    background: transparent;
+  }
+
   .protocol-table-actions-cell {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr)) 32px;
     border-top: 1px solid #f4f4f5;
     padding-top: 12px !important;
+    padding-right: 0 !important;
   }
 
   .protocol-table-action {

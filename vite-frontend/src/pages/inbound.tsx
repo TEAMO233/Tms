@@ -191,17 +191,17 @@ const protocolDesignPreviewUsers = Array.from({ length: 8 }, (_, index) => ({
 }));
 
 const protocolTableColumns = [
-  { key: "machine", label: "机器", width: "175px" },
-  { key: "nodeStatus", label: "节点状态", width: "85px" },
-  { key: "ip", label: "IP 地址", width: "125px" },
+  { key: "machine", label: "机器", width: "156px" },
+  { key: "nodeStatus", label: "节点状态", width: "80px" },
+  { key: "ip", label: "IP 地址", width: "118px" },
   {
     key: "protocolStatus",
     label: "协议运行状态（运行 / 总数）",
-    width: "150px",
+    width: "128px",
   },
-  { key: "protocols", label: "协议列表", width: "minmax(320px, 1fr)" },
-  { key: "users", label: "分配用户", width: "105px" },
-  { key: "actions", label: "操作", width: "225px" },
+  { key: "protocols", label: "协议列表", width: "minmax(180px, 1fr)" },
+  { key: "users", label: "分配用户", width: "96px" },
+  { key: "actions", label: "操作", width: "minmax(168px, max-content)" },
 ];
 
 /**
@@ -645,7 +645,7 @@ export default function InboundPage() {
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <section className="protocol-operations-table">
         <div className="protocol-operations-header">
           <div>
@@ -861,7 +861,15 @@ export default function InboundPage() {
               style={{ gridTemplateColumns: tableGridTemplate }}
             >
               {visibleTableColumns.map((column) => (
-                <div key={column.key} role="columnheader">
+                <div
+                  key={column.key}
+                  className={
+                    column.key === "actions"
+                      ? "protocol-table-actions-head"
+                      : undefined
+                  }
+                  role="columnheader"
+                >
                   {column.label}
                 </div>
               ))}

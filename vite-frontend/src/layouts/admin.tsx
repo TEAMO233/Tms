@@ -402,7 +402,7 @@ export default function AdminLayout({
       </aside>
 
       <div
-        className={`min-h-screen transition-[padding] duration-150 ${contentOffset}`}
+        className={`min-h-screen min-w-0 transition-[padding] duration-150 ${contentOffset}`}
       >
         <header className="admin-topbar sticky top-0 z-30 flex items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
@@ -468,7 +468,7 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="app-main min-h-[calc(100vh-var(--tms-topbar))] bg-[#fafafa]">
+        <main className="app-main min-h-[calc(100vh-var(--tms-topbar))] min-w-0 bg-[#fafafa]">
           {children}
         </main>
       </div>
